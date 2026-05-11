@@ -194,7 +194,26 @@ export async function registerRoutes(
   app.get("/api/novel/stories", async (req, res) => {
     try {
       const stories = await storage.getNovelStories(true);
-      res.json(stories);
+      const storiesWithStats = await Promise.all(
+        stories.map(async (story) => {
+          const seasons = await storage.getNovelSeasons(story.id);
+          let totalChapters = 0;
+          let lastChapterAt: string | null = null;
+          for (const season of seasons) {
+            const chapters = await storage.getNovelChapters(season.id, true);
+            totalChapters += chapters.length;
+            for (const ch of chapters) {
+              const chDate = ch.updatedAt ?? ch.createdAt;
+              if (chDate) {
+                const d = typeof chDate === "string" ? chDate : (chDate as Date).toISOString();
+                if (!lastChapterAt || d > lastChapterAt) lastChapterAt = d;
+              }
+            }
+          }
+          return { ...story, totalChapters, lastChapterAt };
+        })
+      );
+      res.json(storiesWithStats);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 

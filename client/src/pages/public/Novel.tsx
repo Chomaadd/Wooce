@@ -203,7 +203,13 @@ export default function Novel() {
     return Array.from(cats).sort();
   }, [stories]);
 
-  const featured = useMemo(() => stories?.find(s => s.featured), [stories]);
+  const featured = useMemo(() => {
+    if (!stories || stories.length === 0) return null;
+    const manual = stories.find(s => s.featured);
+    if (manual) return manual;
+    // Fallback: novel dengan viewCount tertinggi (booming)
+    return [...stories].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))[0] ?? null;
+  }, [stories]);
 
   const filtered = useMemo(() => {
     let result = stories ?? [];

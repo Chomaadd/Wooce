@@ -142,9 +142,10 @@ export class DatabaseStorage implements IStorage {
 
   // ── Novel Chapters ─────────────────────────────────────────────────────────
   async getNovelChapters(seasonId: string, published?: boolean): Promise<NovelChapter[]> {
+    const now = new Date();
     await NovelChapterModel.updateMany(
-      { scheduledAt: { $lte: new Date() }, published: false },
-      { $set: { published: true } }
+      { scheduledAt: { $lte: now }, published: false },
+      { $set: { published: true, scheduledAt: null, updatedAt: now } }
     );
     const query: any = { seasonId };
     if (published !== undefined) query.published = published;
@@ -191,7 +192,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateNovelChapter(id: string, updates: UpdateNovelChapterRequest): Promise<NovelChapter> {
-    const doc = await NovelChapterModel.findByIdAndUpdate(id, { ...updates, updatedAt: new Date() }, { new: true });
+    const patch: any = { ...updates, updatedAt: new Date() };
+    // When manually publishing, reset scheduledAt so publish time = now
+    if (updates.published === true) {
+      patch.scheduledAt = null;
+    }
+    const doc = await NovelChapterModel.findByIdAndUpdate(id, patch, { new: true });
     if (!doc) throw new Error('Chapter not found');
     return { ...mapId<NovelChapter>(doc), storyId: doc.storyId?.toString(), seasonId: doc.seasonId?.toString() };
   }
