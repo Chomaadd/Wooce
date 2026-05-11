@@ -2,13 +2,13 @@ import mongoose from 'mongoose';
   import * as schema from '@shared/schema';
   import { log } from './logger';
 
-  if (!process.env.MONGODB_URI) {
+  if (!process.env.MONGODB_URI && !process.env.MONGODB_URI_NEW) {
     console.warn("MONGODB_URI must be set in production.");
   }
 
   export async function connectToDatabase() {
     try {
-      const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/portfolio';
+      const uri = process.env.MONGODB_URI_NEW || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/portfolio';
       await mongoose.connect(uri);
       log('Connected to MongoDB', 'mongodb');
     } catch (error) {
