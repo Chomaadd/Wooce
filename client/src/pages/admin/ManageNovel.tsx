@@ -356,6 +356,59 @@ function SeasonForm({ storyId, initial, onSave, onCancel }: {
   );
 }
 
+function ChapterPreviewModal({ title, chapterNumber, content, onClose }: {
+  title: string;
+  chapterNumber: number;
+  content: string;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  const wordCount = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length;
+  const readTime = Math.max(1, Math.ceil(wordCount / 200));
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-sm overflow-y-auto">
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-md border-b border-border flex items-center justify-between px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          <span className="text-sm font-semibold text-foreground">{t("admin.novel.form.previewTitle")}</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Draft</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted"
+        >
+          <X size={15} />
+          Tutup Preview
+        </button>
+      </div>
+      <div className="max-w-2xl mx-auto px-6 lg:px-8 py-12">
+        <div className="mb-8 pb-6 border-b border-border">
+          <p className="text-sm text-muted-foreground mb-1">Preview</p>
+          <h1 className="text-2xl lg:text-3xl font-bold mb-3 text-foreground">
+            Bab {chapterNumber}: {title || <span className="text-muted-foreground italic">Judul belum diisi</span>}
+          </h1>
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Clock size={14} />
+            <span>~{readTime} menit baca · {wordCount} kata</span>
+          </div>
+        </div>
+        {content ? (
+          <div
+            className="prose prose-gray dark:prose-invert max-w-none prose-p:leading-[1.95] prose-headings:font-bold prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic prose-p:my-4 prose-hr:my-8 font-sans text-base"
+            dangerouslySetInnerHTML={{ __html: renderRichContent(content) }}
+          />
+        ) : (
+          <div className="text-center py-20 text-muted-foreground">
+            <FileText size={40} className="mx-auto mb-4 opacity-20" />
+            <p className="text-sm">Konten belum ada. Mulai menulis di editor.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
   chapter?: NovelChapter;
   storyId: string;
@@ -380,6 +433,7 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
     published: chapter?.published ?? false,
     scheduledAt: toDatetimeLocal(chapter?.scheduledAt),
   });
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const isScheduled = !form.published && !!form.scheduledAt && new Date(form.scheduledAt) > new Date();
 
@@ -407,10 +461,29 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
   };
 
   return (
+    <>
+    {previewOpen && (
+      <ChapterPreviewModal
+        title={form.title}
+        chapterNumber={form.chapterNumber}
+        content={form.content}
+        onClose={() => setPreviewOpen(false)}
+      />
+    )}
     <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2" data-testid="button-back-from-write">
-        <ArrowLeft size={16} /> {t("admin.novel.form.returnToChapters")}
-      </button>
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-from-write">
+          <ArrowLeft size={16} /> {t("admin.novel.form.returnToChapters")}
+        </button>
+        <button
+          onClick={() => setPreviewOpen(true)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg border border-border hover:bg-muted"
+          data-testid="button-preview-chapter"
+        >
+          <Eye size={14} />
+          {t("admin.novel.form.previewChapter")}
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium mb-1 block">{t("admin.novel.form.chapterNumber")} *</label>
@@ -495,6 +568,7 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
         </Button>
       </div>
     </div>
+    </>
   );
 }
 

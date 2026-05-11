@@ -172,6 +172,13 @@ const translations: Record<Language, Record<string, string>> = {
     "novel.read.modeSepia": "Sepia",
     "novel.read.modeNight": "Night",
 
+    "novel.share": "Share",
+    "novel.share.copied": "Link copied!",
+    "novel.read.toc": "Chapter List",
+    "novel.read.tocTitle": "Contents",
+    "admin.novel.form.previewChapter": "Preview",
+    "admin.novel.form.previewTitle": "Chapter Preview",
+
     "about.now.title": "Now",
     "about.now.playing": "🎮 Playing",
     "about.now.listening.spotify": "🎵 Now Playing",
@@ -707,6 +714,13 @@ const translations: Record<Language, Record<string, string>> = {
     "novel.read.modeLight": "Terang",
     "novel.read.modeSepia": "Sepia",
     "novel.read.modeNight": "Malam",
+
+    "novel.share": "Bagikan",
+    "novel.share.copied": "Link disalin!",
+    "novel.read.toc": "Daftar Bab",
+    "novel.read.tocTitle": "Daftar Isi",
+    "admin.novel.form.previewChapter": "Preview",
+    "admin.novel.form.previewTitle": "Preview Chapter",
 
     "about.now.title": "Sekarang",
     "about.now.playing": "🎮 Sedang Dimainkan",

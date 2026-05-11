@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ArrowRight, BookOpen, Clock, ChevronLeft, Settings2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Clock, ChevronLeft, Settings2, X, Share2, Check, List } from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { renderRichContent } from "@/components/ui/rich-text-editor";
@@ -172,6 +172,72 @@ function SettingsPanel({
   );
 }
 
+// ── TOC Panel ─────────────────────────────────────────────────────────────────
+
+function TOCPanel({
+  chapters, currentChapterNum, slug, seasonNum, onClose,
+}: {
+  chapters: NovelChapter[];
+  currentChapterNum: number;
+  slug: string;
+  seasonNum: number;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 320 }}
+        className="fixed right-0 top-0 bottom-0 z-50 w-72 sm:w-80 bg-background border-l border-border shadow-2xl flex flex-col"
+        data-testid="panel-toc"
+      >
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <List size={15} className="text-muted-foreground" />
+            <span className="font-semibold text-sm text-foreground">{t("novel.read.tocTitle")}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-toc">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 py-2">
+          {chapters.map(ch => {
+            const isCurrent = ch.chapterNumber === currentChapterNum;
+            return (
+              <a
+                key={ch.id}
+                href={`/${slug}/season-${seasonNum}/bab-${ch.chapterNumber}`}
+                onClick={onClose}
+                className={`flex items-center gap-3 px-4 py-2.5 transition-colors group ${isCurrent ? "bg-primary/10" : "hover:bg-muted/60"}`}
+                data-testid={`toc-chapter-${ch.chapterNumber}`}
+              >
+                <span className={`text-xs font-mono w-7 flex-shrink-0 ${isCurrent ? "text-primary font-bold" : "text-muted-foreground/50"}`}>
+                  {ch.chapterNumber}
+                </span>
+                <span className={`text-sm leading-snug line-clamp-2 ${isCurrent ? "text-primary font-semibold" : "text-foreground/80 group-hover:text-foreground"}`}>
+                  {ch.title}
+                </span>
+                {isCurrent && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />}
+              </a>
+            );
+          })}
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function NovelRead() {
@@ -183,8 +249,23 @@ export default function NovelRead() {
 
   const { settings, update } = useReadingSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const restoredRef = useRef(false);
+
+  const handleShare = async (title: string, storyTitle?: string) => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: `${title} — ${storyTitle ?? ""}`, url }); } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch {}
+    }
+  };
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -443,20 +524,53 @@ export default function NovelRead() {
         </div>
       </main>
 
-      {/* Floating Settings Button */}
-      <button
-        onClick={() => setSettingsOpen(v => !v)}
-        className="fixed bottom-5 right-5 z-50 w-11 h-11 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        data-testid="button-reading-settings"
-        title={t("novel.read.settings")}
-      >
-        <Settings2 size={18} />
-      </button>
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-2">
+        <button
+          onClick={() => handleShare(chapter.title, story?.title)}
+          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+          data-testid="button-share-chapter"
+          title={t("novel.share")}
+        >
+          {shareCopied ? <Check size={16} className="text-green-500" /> : <Share2 size={16} />}
+        </button>
+        {chapterList && chapterList.length > 1 && (
+          <button
+            onClick={() => { setTocOpen(v => !v); setSettingsOpen(false); }}
+            className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+            data-testid="button-toc"
+            title={t("novel.read.toc")}
+          >
+            <List size={16} />
+          </button>
+        )}
+        <button
+          onClick={() => { setSettingsOpen(v => !v); setTocOpen(false); }}
+          className="w-11 h-11 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+          data-testid="button-reading-settings"
+          title={t("novel.read.settings")}
+        >
+          <Settings2 size={18} />
+        </button>
+      </div>
 
       {/* Settings Panel */}
       <AnimatePresence>
         {settingsOpen && (
           <SettingsPanel settings={settings} update={update} onClose={() => setSettingsOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* TOC Panel */}
+      <AnimatePresence>
+        {tocOpen && chapterList && (
+          <TOCPanel
+            chapters={chapterList}
+            currentChapterNum={chapterNum}
+            slug={slug}
+            seasonNum={seasonNum}
+            onClose={() => setTocOpen(false)}
+          />
         )}
       </AnimatePresence>
     </div>

@@ -8,7 +8,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
-  Clock, Eye, Play, Lock, BookMarked, List,
+  Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
 } from "lucide-react";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
@@ -194,6 +194,20 @@ export default function NovelDetail() {
   const slug = params?.slug ?? "";
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async (title: string, description?: string | null) => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title, text: description ?? "", url }); } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch {}
+    }
+  };
 
   const { data: story, isLoading: storyLoading } = useQuery<NovelStory>({
     queryKey: ["/api/novel/stories", slug],
@@ -382,6 +396,14 @@ export default function NovelDetail() {
                   Daftar Isi
                 </button>
               </a>
+              <button
+                onClick={() => handleShare(story.title, story.description)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+                data-testid="button-share-story"
+              >
+                {shareCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
+                {shareCopied ? t("novel.share.copied") : t("novel.share")}
+              </button>
             </div>
           </div>
         </motion.div>
