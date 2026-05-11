@@ -122,7 +122,7 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Invalid credentials" });
       }
       req.session.adminId = "1";
-      res.json({ success: true, admin: { id: "1", username: adminUsername, name: "Admin" } });
+      res.json({ success: true, admin: { id: "1", username: adminUsername, name: "Admin", email: "" } });
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       console.error("Login error:", err);
