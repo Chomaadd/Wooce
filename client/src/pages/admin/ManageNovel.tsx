@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -575,7 +575,8 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
 export default function ManageNovel() {
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
+  const [, navigate] = useLocation();
   const [view, setView] = useState<View>("stories");
   const [selectedStory, setSelectedStory] = useState<NovelStory | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
@@ -587,18 +588,19 @@ export default function ManageNovel() {
 
   const { data: stories, isLoading: storiesLoading } = useQuery<NovelStory[]>({
     queryKey: ["/api/novel/stories/all"],
+    enabled: !!user,
   });
 
   const { data: seasons, isLoading: seasonsLoading } = useQuery<NovelSeason[]>({
     queryKey: ["/api/novel/stories", selectedStory?.id, "seasons"],
-    queryFn: () => fetch(`/api/novel/stories/${selectedStory!.id}/seasons`).then(r => r.json()),
-    enabled: !!selectedStory?.id,
+    queryFn: () => fetch(`/api/novel/stories/${selectedStory!.id}/seasons`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!selectedStory?.id && !!user,
   });
 
   const { data: chapters, isLoading: chaptersLoading } = useQuery<NovelChapter[]>({
     queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"],
-    queryFn: () => fetch(`/api/novel/seasons/${selectedSeason!.id}/chapters/all`).then(r => r.json()),
-    enabled: !!selectedSeason?.id,
+    queryFn: () => fetch(`/api/novel/seasons/${selectedSeason!.id}/chapters/all`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!selectedSeason?.id && !!user,
   });
 
   const createStory = useMutation({
@@ -647,6 +649,20 @@ export default function ManageNovel() {
     mutationFn: ({ id, published }: { id: string; published: boolean }) => apiRequest("PUT", `/api/novel/chapters/${id}`, { published }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"] }),
   });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
+    }
+  }, [authLoading, user, navigate]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   const handleDelete = () => {
     if (!deleteDialog) return;
