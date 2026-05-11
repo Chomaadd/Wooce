@@ -1,0 +1,442 @@
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Link, useRoute } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { SeoHead } from "@/components/seometa/SeoHead";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BookOpen, ChevronDown, ChevronRight, ArrowLeft,
+  Clock, Eye, Play, Lock, BookMarked, List,
+} from "lucide-react";
+import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
+import { useLanguage } from "@/hooks/use-language";
+
+const STATUS_CONFIG: Record<string, { badge: string; dot: string; label: string }> = {
+  ongoing:   { badge: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400", label: "Ongoing" },
+  completed: { badge: "bg-blue-500/20 text-blue-400 border border-blue-500/30",          dot: "bg-blue-400",   label: "Completed" },
+  hiatus:    { badge: "bg-amber-500/20 text-amber-400 border border-amber-500/30",        dot: "bg-amber-400",  label: "Hiatus" },
+};
+
+const STATUS_LABEL_KEY: Record<string, string> = {
+  ongoing: "novel.status.ongoing",
+  completed: "novel.status.completed",
+  hiatus: "novel.status.hiatus",
+};
+
+function timeAgo(date: string | Date, lang: string): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diff = Math.max(0, now - then);
+  const minutes = Math.floor(diff / 60000);
+  const hours   = Math.floor(diff / 3600000);
+  const days    = Math.floor(diff / 86400000);
+  const months  = Math.floor(days / 30);
+  const years   = Math.floor(days / 365);
+  if (lang === "id") {
+    if (minutes < 1)  return "Baru saja";
+    if (minutes < 60) return `${minutes} menit lalu`;
+    if (hours < 24)   return `${hours} jam lalu`;
+    if (days < 30)    return `${days} hari lalu`;
+    if (months < 12)  return `${months} bulan lalu`;
+    return `${years} tahun lalu`;
+  }
+  if (minutes < 1)  return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24)   return `${hours}h ago`;
+  if (days < 30)    return `${days}d ago`;
+  if (months < 12)  return `${months}mo ago`;
+  return `${years}y ago`;
+}
+
+function countdown(scheduledAt: string, lang: string): string {
+  const diff = new Date(scheduledAt).getTime() - Date.now();
+  if (diff <= 0) return lang === "id" ? "Sebentar lagi" : "Very soon";
+  const days  = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins  = Math.floor((diff % 3600000) / 60000);
+  if (lang === "id") {
+    if (days > 0) return `${days} hari${hours > 0 ? ` ${hours} jam` : ""}`;
+    if (hours > 0) return `${hours} jam ${mins} menit`;
+    return `${mins} menit`;
+  }
+  if (days > 0) return `${days}d${hours > 0 ? ` ${hours}h` : ""}`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+interface UpcomingChapter {
+  id: string;
+  chapterNumber: number;
+  title: string;
+  scheduledAt: string | null;
+}
+
+function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSeason }) {
+  const [open, setOpen] = useState(true);
+  const { t, language } = useLanguage();
+
+  const { data: chapters, isLoading } = useQuery<NovelChapter[]>({
+    queryKey: ["/api/novel/seasons", season.id, "chapters"],
+    queryFn: () => fetch(`/api/novel/seasons/${season.id}/chapters`).then(r => r.json()),
+  });
+
+  const { data: upcoming } = useQuery<UpcomingChapter[]>({
+    queryKey: ["/api/novel/seasons", season.id, "upcoming"],
+    queryFn: () => fetch(`/api/novel/seasons/${season.id}/upcoming`).then(r => r.json()),
+  });
+
+  const totalVisible = (chapters?.length ?? 0) + (upcoming?.length ?? 0);
+
+  return (
+    <div className="border border-border/60 rounded-2xl overflow-hidden bg-card/40">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition-colors text-left"
+        data-testid={`button-season-${season.id}`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <span className="text-xs font-bold">{season.seasonNumber}</span>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground text-sm">Season {season.seasonNumber}</p>
+            <p className="text-xs text-muted-foreground">{season.title}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{totalVisible} {t("novel.detail.chapters")}</span>
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronDown size={16} />
+          </motion.div>
+        </div>
+      </button>
+
+      <motion.div
+        initial={false}
+        animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.25 }}
+        style={{ overflow: "hidden" }}
+      >
+        <div className="border-t border-border/40 divide-y divide-border/40">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="px-5 py-3.5 flex items-center gap-3">
+                <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-4 flex-1" />
+              </div>
+            ))
+          ) : chapters?.length === 0 && !upcoming?.length ? (
+            <div className="px-5 py-5 text-sm text-muted-foreground text-center">{t("novel.detail.noChapters")}</div>
+          ) : (
+            <>
+              {chapters?.map(ch => (
+                <Link
+                  key={ch.id}
+                  href={`/${story.slug}/season-${season.seasonNumber}/bab-${ch.chapterNumber}`}
+                  data-testid={`link-chapter-${ch.id}`}
+                >
+                  <div className="px-5 py-3.5 hover:bg-primary/5 transition-colors flex items-center justify-between group cursor-pointer">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="shrink-0 text-xs text-muted-foreground/60 font-mono w-8">
+                        {ch.chapterNumber}
+                      </span>
+                      <span className="text-sm text-foreground group-hover:text-primary transition-colors font-medium truncate">
+                        {ch.title}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground/60 shrink-0 ml-2">
+                      <Clock size={10} />
+                      <span>{ch.createdAt ? timeAgo(ch.createdAt, language) : "—"}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+
+              {upcoming?.map(ch => (
+                <div
+                  key={ch.id}
+                  className="px-5 py-3.5 flex items-center justify-between opacity-50"
+                  data-testid={`upcoming-chapter-${ch.id}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="shrink-0 text-xs text-muted-foreground/60 font-mono w-8">{ch.chapterNumber}</span>
+                    <Lock size={11} className="shrink-0 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground italic truncate">{ch.title}</span>
+                  </div>
+                  {ch.scheduledAt && (
+                    <div className="flex items-center gap-1 text-[10px] text-amber-500 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full ml-2">
+                      <Clock size={9} />
+                      <span>{countdown(ch.scheduledAt, language)}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+interface ReadingProgress {
+  seasonNum: number;
+  chapterNum: number;
+  chapterTitle: string;
+  updatedAt: string;
+}
+
+export default function NovelDetail() {
+  const [, params] = useRoute("/:slug");
+  const { t } = useLanguage();
+  const slug = params?.slug ?? "";
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
+
+  const { data: story, isLoading: storyLoading } = useQuery<NovelStory>({
+    queryKey: ["/api/novel/stories", slug],
+    queryFn: () => fetch(`/api/novel/stories/${slug}`).then(r => r.json()),
+    enabled: !!slug,
+  });
+
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`/api/novel/stories/${slug}/view`, { method: "PATCH" })
+      .then(r => r.json())
+      .then(data => setViewCount(data.viewCount))
+      .catch(() => {});
+    try {
+      const saved = localStorage.getItem(`novel-progress-${slug}`);
+      if (saved) setReadingProgress(JSON.parse(saved));
+    } catch {}
+  }, [slug]);
+
+  const { data: seasons, isLoading: seasonsLoading } = useQuery<NovelSeason[]>({
+    queryKey: ["/api/novel/stories", story?.id, "seasons"],
+    queryFn: () => fetch(`/api/novel/stories/${story!.id}/seasons`).then(r => r.json()),
+    enabled: !!story?.id,
+  });
+
+  const { data: stats } = useQuery<{ totalSeasons: number; totalChapters: number }>({
+    queryKey: ["/api/novel/stories", story?.id, "stats"],
+    queryFn: () => fetch(`/api/novel/stories/${story!.id}/stats`).then(r => r.json()),
+    enabled: !!story?.id,
+  });
+
+  const isLoading = storyLoading || seasonsLoading;
+
+  const firstChapter = seasons && seasons.length > 0 ? { seasonNum: seasons[0].seasonNumber } : null;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="h-64 bg-muted/30" />
+        <main className="max-w-4xl mx-auto px-5 lg:px-8 py-8">
+          <div className="flex flex-col sm:flex-row gap-6">
+            <Skeleton className="w-36 aspect-[2/3] rounded-2xl flex-shrink-0 -mt-20" />
+            <div className="flex-1 space-y-3 pt-2">
+              <Skeleton className="h-7 w-3/4" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!story) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20">
+          <BookOpen size={48} className="text-muted-foreground/30 mb-4" />
+          <p className="text-muted-foreground">{t("novel.detail.notFound")}</p>
+          <Link href="/">
+            <button className="mt-4 text-sm text-primary hover:underline">Kembali ke daftar</button>
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <SeoHead
+        title={story.title}
+        description={story.description ?? `Baca ${story.title}.`}
+        url={`/${story.slug}`}
+        image={story.coverUrl ?? undefined}
+      />
+      <Navbar />
+
+      {/* Hero Banner */}
+      <div className="relative h-52 sm:h-64 overflow-hidden">
+        {story.coverUrl ? (
+          <>
+            <img src={story.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-105 blur-sm" aria-hidden />
+            <div className="absolute inset-0 bg-black/65" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+      </div>
+
+      <main className="max-w-4xl mx-auto px-5 lg:px-8">
+        {/* Back */}
+        <Link href="/">
+          <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6 mt-2" data-testid="button-back-novel">
+            <ArrowLeft size={14} />
+            Semua Cerita
+          </button>
+        </Link>
+
+        {/* Story Header — floats over banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row gap-6 mb-8 -mt-28 sm:-mt-36 relative"
+        >
+          {/* Cover */}
+          <div className="w-28 sm:w-40 flex-shrink-0">
+            <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-muted shadow-2xl border border-border/30">
+              {story.coverUrl ? (
+                <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                  <BookOpen size={32} className="text-primary/40" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 pt-20 sm:pt-24">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full ${cfg.badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                {t(STATUS_LABEL_KEY[story.status] ?? "novel.status.ongoing")}
+              </span>
+              <span className="text-[11px] capitalize bg-muted px-2.5 py-1 rounded-full text-muted-foreground">
+                {story.category}
+              </span>
+              {(story.tags ?? []).map(tag => (
+                <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">{tag}</span>
+              ))}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 leading-tight" data-testid="text-story-title">
+              {story.title}
+            </h1>
+            {story.description && (
+              <p className="text-muted-foreground text-sm leading-relaxed mb-4 max-w-xl">{story.description}</p>
+            )}
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
+              <span className="flex items-center gap-1.5">
+                <BookMarked size={13} className="text-primary/60" />
+                {stats?.totalSeasons ?? seasons?.length ?? 0} Season
+              </span>
+              <span className="text-border">·</span>
+              <span>{stats?.totalChapters ?? 0} {t("novel.detail.chapters")}</span>
+              {viewCount !== null && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="flex items-center gap-1"><Eye size={12} />{viewCount.toLocaleString()}</span>
+                </>
+              )}
+            </div>
+
+            {/* CTAs */}
+            <div className="flex flex-wrap gap-2">
+              {readingProgress ? (
+                <Link href={`/${slug}/season-${readingProgress.seasonNum}/bab-${readingProgress.chapterNum}`}>
+                  <button
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shadow-primary/30"
+                    data-testid="button-continue-reading"
+                  >
+                    <Play size={13} fill="currentColor" />
+                    Lanjut Baca — Bab {readingProgress.chapterNum}
+                  </button>
+                </Link>
+              ) : firstChapter ? (
+                <Link href={`/${slug}/season-${firstChapter.seasonNum}/bab-1`}>
+                  <button
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shadow-primary/30"
+                    data-testid="button-start-reading"
+                  >
+                    <Play size={13} fill="currentColor" />
+                    Mulai Baca
+                  </button>
+                </Link>
+              ) : null}
+              <a href="#chapters">
+                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
+                  <List size={14} />
+                  Daftar Isi
+                </button>
+              </a>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Continue Reading banner (if progress) */}
+        {readingProgress && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-center justify-between gap-4 px-4 py-3.5 rounded-xl bg-primary/8 border border-primary/20"
+            data-testid="banner-continue-reading"
+          >
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground mb-0.5">Terakhir dibaca</p>
+              <p className="font-medium text-foreground text-sm truncate">
+                Bab {readingProgress.chapterNum}: {readingProgress.chapterTitle}
+              </p>
+            </div>
+            <Link href={`/${slug}/season-${readingProgress.seasonNum}/bab-${readingProgress.chapterNum}`}>
+              <button className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline" data-testid="button-continue-reading-banner">
+                Lanjut <ChevronRight size={12} />
+              </button>
+            </Link>
+          </motion.div>
+        )}
+
+        {/* Table of Contents */}
+        <motion.div
+          id="chapters"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="pb-12"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-foreground">{t("novel.detail.tableOfContents")}</h2>
+            <div className="flex-1 h-px bg-border/60" />
+          </div>
+
+          {!seasons || seasons.length === 0 ? (
+            <div className="text-center py-14 text-muted-foreground border border-border/50 rounded-2xl bg-muted/20">
+              <BookOpen size={28} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{t("novel.detail.noSeasons")}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {seasons.map(season => (
+                <SeasonAccordion key={season.id} story={story} season={season} />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
