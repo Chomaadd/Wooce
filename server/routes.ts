@@ -1,0 +1,430 @@
+import type { Express } from "express";
+import type { Server } from "http";
+import session from "express-session";
+import mongoose from "mongoose";
+import { storage } from "./storage";
+import { log } from "./logger";
+import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import express from "express";
+
+declare module "express-session" {
+  interface SessionData {
+    adminId?: string;
+  }
+}
+
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+): Promise<Server> {
+  // ── Session store ─────────────────────────────────────────────────────────
+  let store: session.Store;
+  if (process.env.NODE_ENV === "production") {
+    try {
+      const connectMongo = require("connect-mongo");
+      const MongoStore = connectMongo.default || connectMongo;
+      store = new MongoStore({
+        mongoUrl: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/portfolio",
+        touchAfter: 24 * 3600,
+      });
+      log("Using MongoDB session store", "express");
+    } catch {
+      store = new session.MemoryStore();
+    }
+  } else {
+    store = new session.MemoryStore();
+  }
+
+  if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+
+  app.use(session({
+    store,
+    secret: process.env.SESSION_SECRET || "wooce-novel-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
+  }));
+
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.adminId) return res.status(401).json({ message: "Unauthorized" });
+    next();
+  };
+
+  // ── File Upload (GridFS) ──────────────────────────────────────────────────
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+  function getGridFSBucket() {
+    const db = mongoose.connection.db;
+    if (!db) throw new Error("MongoDB not connected");
+    return new mongoose.mongo.GridFSBucket(db, { bucketName: "uploads" });
+  }
+
+  app.post("/api/upload", requireAuth, upload.single("file"), async (req: any, res: any) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const bucket = getGridFSBucket();
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(req.file.originalname);
+      const filename = `file-${uniqueSuffix}${ext}`;
+      const uploadStream = bucket.openUploadStream(filename, { contentType: req.file.mimetype });
+      await new Promise<void>((resolve, reject) => {
+        uploadStream.on("finish", resolve);
+        uploadStream.on("error", reject);
+        uploadStream.end(req.file.buffer);
+      });
+      return res.json({ url: `/uploads/${filename}` });
+    } catch (err) {
+      console.error("Upload error:", err);
+      return res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+  app.get("/uploads/:filename", async (req, res) => {
+    const filename = req.params.filename;
+    try {
+      const bucket = getGridFSBucket();
+      const files = await bucket.find({ filename }).toArray();
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.contentType) res.set("Content-Type", file.contentType);
+        res.set("Cache-Control", "public, max-age=31536000");
+        const downloadStream = bucket.openDownloadStreamByName(filename);
+        downloadStream.on("error", (err) => {
+          console.error("GridFS stream error:", err);
+          if (!res.headersSent) res.status(500).json({ message: "Error streaming file" });
+        });
+        downloadStream.pipe(res);
+        return;
+      }
+    } catch (err) {
+      console.error("GridFS lookup error:", err);
+    }
+    const localPath = path.join(process.cwd(), "uploads", filename);
+    if (fs.existsSync(localPath)) return res.sendFile(localPath);
+    return res.status(404).json({ message: "File not found" });
+  });
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = z.object({ username: z.string(), password: z.string() }).parse(req.body);
+      const adminUsername = (process.env.ADMIN_USERNAME || "admin").trim();
+      const adminPassword = (process.env.ADMIN_PASSWORD || "admin123").trim();
+      if (username.trim() !== adminUsername || password.trim() !== adminPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      req.session.adminId = "1";
+      res.json({ success: true, admin: { id: "1", username: adminUsername, name: "Admin" } });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      console.error("Login error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) return res.status(500).json({ success: false });
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", (req, res) => {
+    if (!req.session.adminId) return res.json(null);
+    const adminUsername = process.env.ADMIN_USERNAME || "admin";
+    res.json({ id: "1", username: adminUsername, name: "Admin" });
+  });
+
+  // ── Settings (minimal — for SeoHead/frontend) ─────────────────────────────
+  app.get("/api/settings", (_req, res) => {
+    res.json({
+      siteTitle: "WOOCE Novel",
+      siteOwnerName: "WOOCE Novel",
+      metaDescription: "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.",
+      metaKeywords: "WOOCE Novel, novel online, baca novel, komik, cerita pendek",
+    });
+  });
+
+  // ── Sitemap ───────────────────────────────────────────────────────────────
+  app.get("/sitemap.xml", async (_req, res) => {
+    const SITE_URL = "https://wooce.novel";
+    const today = new Date().toISOString().split("T")[0];
+    const makeUrl = (loc: string, lastmod: string, changefreq: string, priority: string) =>
+      `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+
+    const staticEntries = [
+      makeUrl(`${SITE_URL}/`, today, "weekly", "1.0"),
+    ].join("\n");
+
+    let novelEntries = "";
+    try {
+      const stories = await storage.getNovelStories(true);
+      const lines: string[] = [];
+      for (const story of stories) {
+        lines.push(makeUrl(`${SITE_URL}/${story.slug}`, today, "weekly", "0.8"));
+        const seasons = await storage.getNovelSeasons(story.id);
+        for (const season of seasons) {
+          const chapters = await storage.getNovelChapters(season.id, true);
+          for (const chapter of chapters) {
+            lines.push(makeUrl(`${SITE_URL}/${story.slug}/season-${season.seasonNumber}/bab-${chapter.chapterNumber}`, today, "monthly", "0.6"));
+          }
+        }
+      }
+      novelEntries = lines.join("\n");
+    } catch { novelEntries = ""; }
+
+    res.setHeader("Content-Type", "application/xml");
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${novelEntries}\n</urlset>`);
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    res.setHeader("Content-Type", "text/plain");
+    res.send(`User-agent: *\nAllow: /\n\nSitemap: https://wooce.novel/sitemap.xml\n`);
+  });
+
+  // ── Novel Stories ─────────────────────────────────────────────────────────
+  app.get("/api/novel/stories", async (req, res) => {
+    try {
+      const stories = await storage.getNovelStories(true);
+      res.json(stories);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/stories/all", async (req, res) => {
+    if (!req.session?.adminId) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const stories = await storage.getNovelStories();
+      res.json(stories);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/stories/:slug", async (req, res) => {
+    try {
+      const story = await storage.getNovelStory(req.params.slug);
+      if (!story) return res.status(404).json({ message: "Story not found" });
+      res.json(story);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/novel/stories/:slug/view", async (req, res) => {
+    try {
+      const story = await storage.incrementNovelViewCount(req.params.slug);
+      res.json({ viewCount: story.viewCount });
+    } catch { res.status(404).json({ message: "Story not found" }); }
+  });
+
+  app.get("/api/novel/stories/:storyId/seasons", async (req, res) => {
+    try {
+      const seasons = await storage.getNovelSeasons(req.params.storyId);
+      res.json(seasons);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/stories/:storyId/stats", async (req, res) => {
+    try {
+      const seasons = await storage.getNovelSeasons(req.params.storyId);
+      let totalChapters = 0;
+      for (const season of seasons) {
+        const chapters = await storage.getNovelChapters(season.id, true);
+        totalChapters += chapters.length;
+      }
+      res.json({ seasonCount: seasons.length, chapterCount: totalChapters });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/novel/stories", requireAuth, async (req, res) => {
+    try {
+      const story = await storage.createNovelStory(req.body);
+      res.status(201).json(story);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/novel/stories/:id", requireAuth, async (req, res) => {
+    try {
+      const story = await storage.updateNovelStory(req.params.id, req.body);
+      res.json(story);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/novel/stories/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteNovelStory(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Novel Seasons ─────────────────────────────────────────────────────────
+  app.post("/api/novel/seasons", requireAuth, async (req, res) => {
+    try {
+      const season = await storage.createNovelSeason(req.body);
+      res.status(201).json(season);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/novel/seasons/:id", requireAuth, async (req, res) => {
+    try {
+      const season = await storage.updateNovelSeason(req.params.id, req.body);
+      res.json(season);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/novel/seasons/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteNovelSeason(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Novel Chapters ────────────────────────────────────────────────────────
+  app.get("/api/novel/seasons/:seasonId/chapters", async (req, res) => {
+    try {
+      const chapters = await storage.getNovelChapters(req.params.seasonId, true);
+      res.json(chapters);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/seasons/:seasonId/upcoming", async (req, res) => {
+    try {
+      const chapters = await storage.getUpcomingChapters(req.params.seasonId);
+      res.json(chapters);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/seasons/:seasonId/chapters/all", requireAuth, async (req, res) => {
+    try {
+      const chapters = await storage.getNovelChapters(req.params.seasonId);
+      res.json(chapters);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/chapters/:id", async (req, res) => {
+    try {
+      const chapter = await storage.getNovelChapter(req.params.id);
+      if (!chapter || !chapter.published) return res.status(404).json({ message: "Chapter not found" });
+      res.json(chapter);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/read/:slug/season-:seasonNum/bab-:chapterNum", async (req, res) => {
+    try {
+      const { slug, seasonNum, chapterNum } = req.params;
+      const chapter = await storage.getNovelChapterByNumber(slug, seasonNum, Number(chapterNum));
+      if (!chapter) return res.status(404).json({ message: "Chapter not found" });
+      res.json(chapter);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/novel/chapters", requireAuth, async (req, res) => {
+    try {
+      const chapter = await storage.createNovelChapter(req.body);
+      res.status(201).json(chapter);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/novel/chapters/:id", requireAuth, async (req, res) => {
+    try {
+      const chapter = await storage.updateNovelChapter(req.params.id, req.body);
+      res.json(chapter);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/novel/chapters/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteNovelChapter(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Translation API ───────────────────────────────────────────────────────
+  const LINGVA_INSTANCES = [
+    "https://lingva.ml",
+    "https://translate.plausibility.cloud",
+    "https://lingva.tiekoetter.com",
+  ];
+
+  async function lingvaTranslate(text: string, from: string, to: string): Promise<string> {
+    const srcLang = !from || from === "auto" ? "auto" : from;
+    for (const instance of LINGVA_INSTANCES) {
+      try {
+        const url = `${instance}/api/v1/${srcLang}/${to}/${encodeURIComponent(text)}`;
+        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) continue;
+        const d = await r.json() as any;
+        if (d.translation && d.translation !== text) return d.translation;
+      } catch {}
+    }
+    return text;
+  }
+
+  app.post("/api/translate", async (req, res) => {
+    try {
+      const { segments, from = "auto", to } = req.body as { segments: string[]; from?: string; to: string };
+      if (!Array.isArray(segments) || !to) return res.status(400).json({ error: "Invalid request" });
+      const translated = await Promise.all(
+        segments.map(seg => seg.trim() ? lingvaTranslate(seg.trim(), from, to) : Promise.resolve(seg))
+      );
+      res.json({ segments: translated });
+    } catch (err) {
+      console.error("Translation error:", err);
+      res.status(500).json({ error: "Translation failed" });
+    }
+  });
+
+  // ── Social Bot OG Middleware ──────────────────────────────────────────────
+  const SITE_URL = "https://wooce.novel";
+  const SITE_NAME = "WOOCE Novel";
+  const SITE_DESC = "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.";
+
+  const SOCIAL_BOTS = ["WhatsApp", "TelegramBot", "facebookexternalhit", "Twitterbot", "LinkedInBot", "Slackbot", "Discordbot", "google", "bingbot"];
+
+  app.use(async (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
+    const ua = req.headers["user-agent"] || "";
+    const isBot = SOCIAL_BOTS.some(bot => ua.toLowerCase().includes(bot.toLowerCase()));
+    if (!isBot) return next();
+
+    let title = SITE_NAME;
+    let description = SITE_DESC;
+
+    try {
+      const slugParts = req.path.replace(/^\//, "").split("/");
+      if (slugParts.length === 1 && slugParts[0]) {
+        const story = await storage.getNovelStory(slugParts[0]);
+        if (story) {
+          title = `${story.title} | ${SITE_NAME}`;
+          description = story.description || SITE_DESC;
+        }
+      }
+    } catch {}
+
+    const canonicalUrl = `${SITE_URL}${req.path}`;
+    const html = `<!DOCTYPE html><html lang="id"><head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <meta name="description" content="${description}">
+  <meta property="og:site_name" content="${SITE_NAME}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:url" content="${canonicalUrl}">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
+  <link rel="canonical" href="${canonicalUrl}">
+</head><body></body></html>`;
+
+    return res.status(200).set("Content-Type", "text/html").end(html);
+  });
+
+  log("Database and routes initialized successfully", "express");
+
+  return httpServer;
+}
