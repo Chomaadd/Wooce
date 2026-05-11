@@ -358,6 +358,36 @@ export default function NovelRead() {
   const modeStyle = MODE_STYLES[settings.mode];
   const fontClass = settings.fontFamily === "serif" ? "font-serif" : "font-sans";
 
+  // Override prose CSS variables per reading mode so bold/headings/etc
+  // stay in sync regardless of the global dark mode toggle on the navbar.
+  const proseInvertClass =
+    settings.mode === "light" ? "dark:prose-invert" :
+    settings.mode === "night" ? "prose-invert" : "";
+
+  const proseColorVars: React.CSSProperties =
+    settings.mode === "sepia" ? {
+      "--tw-prose-body":          "#5c3d1e",
+      "--tw-prose-headings":      "#3d2810",
+      "--tw-prose-bold":          "#3d2810",
+      "--tw-prose-links":         "#7a4f26",
+      "--tw-prose-code":          "#5c3d1e",
+      "--tw-prose-quotes":        "#7a5230",
+      "--tw-prose-quote-borders": "#c4a882",
+      "--tw-prose-captions":      "#7a5230",
+      "--tw-prose-hr":            "#d4c4a8",
+    } as React.CSSProperties :
+    settings.mode === "night" ? {
+      "--tw-prose-body":          "#c9d1d9",
+      "--tw-prose-headings":      "#e6edf3",
+      "--tw-prose-bold":          "#e6edf3",
+      "--tw-prose-links":         "#58a6ff",
+      "--tw-prose-code":          "#c9d1d9",
+      "--tw-prose-quotes":        "#8b949e",
+      "--tw-prose-quote-borders": "#30363d",
+      "--tw-prose-captions":      "#8b949e",
+      "--tw-prose-hr":            "#21262d",
+    } as React.CSSProperties : {};
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -455,10 +485,11 @@ export default function NovelRead() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className={`prose prose-gray dark:prose-invert max-w-none prose-p:leading-[1.95] prose-headings:font-bold prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic prose-p:my-4 prose-hr:my-8 ${fontClass}`}
+          className={`prose prose-gray max-w-none prose-p:leading-[1.95] prose-headings:font-bold prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic prose-p:my-4 prose-hr:my-8 ${proseInvertClass} ${fontClass}`}
           style={{
             fontSize: `${settings.fontSize}px`,
             color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+            ...proseColorVars,
           }}
           data-testid="text-chapter-content"
           dangerouslySetInnerHTML={{ __html: renderRichContent(chapter.content) }}
