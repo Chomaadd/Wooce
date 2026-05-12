@@ -65,6 +65,17 @@ import mongoose from 'mongoose';
   export const NovelSeasonModel = mongoose.models.NovelSeason || mongoose.model('NovelSeason', novelSeasonSchema);
   export const NovelChapterModel = mongoose.models.NovelChapter || mongoose.model('NovelChapter', novelChapterSchema);
 
+  const bannerSlideMongoSchema = new mongoose.Schema({
+    imageUrl: { type: String, required: true },
+    title: { type: String, default: '' },
+    subtitle: { type: String, default: '' },
+    link: { type: String, default: '' },
+    order: { type: Number, default: 0 },
+    active: { type: Boolean, default: true },
+  }, { timestamps: true });
+
+  export const BannerSlideModel = mongoose.models.BannerSlide || mongoose.model('BannerSlide', bannerSlideMongoSchema);
+
   const shortUrlSchema = new mongoose.Schema({
     slug: { type: String, required: true, unique: true },
     targetUrl: { type: String, required: true },

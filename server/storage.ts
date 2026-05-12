@@ -9,12 +9,16 @@ import {
   type NovelChapter,
   type CreateNovelChapterRequest,
   type UpdateNovelChapterRequest,
+  type BannerSlide,
+  type CreateBannerSlideRequest,
+  type UpdateBannerSlideRequest,
 } from "@shared/schema";
 import {
   AdminModel,
   NovelStoryModel,
   NovelSeasonModel,
   NovelChapterModel,
+  BannerSlideModel,
 } from "./db";
 
 export interface IStorage {
@@ -42,6 +46,12 @@ export interface IStorage {
   createNovelChapter(data: CreateNovelChapterRequest): Promise<NovelChapter>;
   updateNovelChapter(id: string, updates: UpdateNovelChapterRequest): Promise<NovelChapter>;
   deleteNovelChapter(id: string): Promise<void>;
+
+  getBanners(activeOnly?: boolean): Promise<BannerSlide[]>;
+  createBanner(data: CreateBannerSlideRequest): Promise<BannerSlide>;
+  updateBanner(id: string, updates: UpdateBannerSlideRequest): Promise<BannerSlide>;
+  deleteBanner(id: string): Promise<void>;
+  reorderBanners(ids: string[]): Promise<void>;
 }
 
 function mapId<T>(doc: any): T {
@@ -210,6 +220,35 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNovelChapter(id: string): Promise<void> {
     await NovelChapterModel.findByIdAndDelete(id);
+  }
+
+  // ── Banner Slides ──────────────────────────────────────────────────────────
+  async getBanners(activeOnly?: boolean): Promise<BannerSlide[]> {
+    const query = activeOnly ? { active: true } : {};
+    const docs = await BannerSlideModel.find(query).sort({ order: 1, createdAt: 1 });
+    return docs.map((d: any) => mapId<BannerSlide>(d));
+  }
+
+  async createBanner(data: CreateBannerSlideRequest): Promise<BannerSlide> {
+    const count = await BannerSlideModel.countDocuments();
+    const doc = await BannerSlideModel.create({ ...data, order: count });
+    return mapId<BannerSlide>(doc);
+  }
+
+  async updateBanner(id: string, updates: UpdateBannerSlideRequest): Promise<BannerSlide> {
+    const doc = await BannerSlideModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
+    if (!doc) throw new Error('Banner not found');
+    return mapId<BannerSlide>(doc);
+  }
+
+  async deleteBanner(id: string): Promise<void> {
+    await BannerSlideModel.findByIdAndDelete(id);
+  }
+
+  async reorderBanners(ids: string[]): Promise<void> {
+    await Promise.all(ids.map((id, idx) =>
+      BannerSlideModel.findByIdAndUpdate(id, { $set: { order: idx } })
+    ));
   }
 }
 

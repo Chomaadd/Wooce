@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/hooks/use-language";
 import { HelmetProvider } from "react-helmet-async";
+import { SearchProvider } from "@/lib/search-context";
 
 import Novel from "./pages/public/Novel";
 import NovelDetail from "./pages/public/NovelDetail";
@@ -31,10 +32,12 @@ function App() {
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <SearchProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </SearchProvider>
         </LanguageProvider>
       </QueryClientProvider>
     </HelmetProvider>

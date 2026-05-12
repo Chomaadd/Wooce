@@ -362,6 +362,51 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── Banner Slides ─────────────────────────────────────────────────────────
+  app.get("/api/banners", async (_req, res) => {
+    try {
+      const banners = await storage.getBanners(true);
+      res.json(banners);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/banners/all", requireAuth, async (_req, res) => {
+    try {
+      const banners = await storage.getBanners();
+      res.json(banners);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/banners", requireAuth, async (req, res) => {
+    try {
+      const banner = await storage.createBanner(req.body);
+      res.status(201).json(banner);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/banners/:id", requireAuth, async (req, res) => {
+    try {
+      const banner = await storage.updateBanner(req.params.id, req.body);
+      res.json(banner);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/banners/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteBanner(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/banners/reorder", requireAuth, async (req, res) => {
+    try {
+      const { ids } = req.body as { ids: string[] };
+      if (!Array.isArray(ids)) return res.status(400).json({ message: "ids must be an array" });
+      await storage.reorderBanners(ids);
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // ── Translation API ───────────────────────────────────────────────────────
   const LINGVA_INSTANCES = [
     "https://lingva.ml",

@@ -266,6 +266,22 @@ export type CreateShortUrlRequest = InsertShortUrl;
 
 // ─────────────────────────────────────────────────────────────────────────
 
+// ── Banner Slides ──────────────────────────────────────────────────────────
+export const bannerSlideSchema = z.object({
+  id: z.string(),
+  imageUrl: z.string(),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  link: z.string().optional(),
+  order: z.number().default(0),
+  active: z.boolean().default(true),
+  createdAt: z.union([z.date(), z.string()]).optional(),
+  updatedAt: z.union([z.date(), z.string()]).optional(),
+});
+export type BannerSlide = z.infer<typeof bannerSlideSchema>;
+export type CreateBannerSlideRequest = Omit<BannerSlide, "id" | "createdAt" | "updatedAt">;
+export type UpdateBannerSlideRequest = Partial<CreateBannerSlideRequest>;
+
 export interface LoginRequest {
   username: string;
   password: string;

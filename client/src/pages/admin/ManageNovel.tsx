@@ -15,17 +15,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  BookOpen, Plus, Pencil, Trash2, ChevronRight,
+  BookOpen, Plus, Pencil, Trash2, ChevronRight, ChevronUp, ChevronDown,
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
-  LogOut, ExternalLink,
+  LogOut, ExternalLink, Settings,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
+import type { NovelStory, NovelSeason, NovelChapter, BannerSlide } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 
-type View = "stories" | "seasons" | "chapters" | "write";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings";
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -217,6 +217,174 @@ function CoverUploadCrop({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function BannerUploadCrop({
+  value, onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [rawSrc, setRawSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const onCropComplete = useCallback((_: any, pixels: any) => {
+    setCroppedAreaPixels(pixels);
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawSrc(reader.result as string);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleConfirmCrop = async () => {
+    if (!rawSrc || !croppedAreaPixels) return;
+    setUploading(true);
+    try {
+      const blob = await getCroppedBlob(rawSrc, croppedAreaPixels);
+      const formData = new FormData();
+      formData.append("file", blob, `banner-${Date.now()}.jpg`);
+      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json();
+      onChange(url);
+      setCropOpen(false);
+      setRawSrc(null);
+      toast({ title: "Banner berhasil diupload!" });
+    } catch {
+      toast({ title: "Upload gagal", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex gap-2 items-center flex-wrap">
+        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+          <Upload size={14} className="mr-1.5" /> Upload Gambar
+        </Button>
+        {value && (
+          <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onChange("")}>
+            <RotateCcw size={14} className="mr-1.5" /> Hapus
+          </Button>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      </div>
+
+      {value ? (
+        <div className="mt-2 relative w-full max-w-xs">
+          <img src={value} alt="Banner" className="w-full h-20 object-cover rounded-lg border border-border" />
+        </div>
+      ) : (
+        <div
+          className="mt-2 w-full max-w-xs h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <ImageIcon size={20} className="text-muted-foreground mb-1" />
+          <span className="text-[10px] text-muted-foreground">16:5 (Banner)</span>
+        </div>
+      )}
+
+      <div className="mt-2">
+        <Input value={value} onChange={e => onChange(e.target.value)} placeholder="atau tempel URL gambar..." className="text-xs h-8" />
+      </div>
+
+      <Dialog open={cropOpen} onOpenChange={open => { if (!open) { setCropOpen(false); setRawSrc(null); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Crop Gambar Banner</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full h-52 bg-black rounded-lg overflow-hidden">
+            {rawSrc && (
+              <Cropper
+                image={rawSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={16 / 5}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            )}
+          </div>
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-10">Zoom</span>
+              <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="flex-1 accent-primary" />
+              <span className="text-xs text-muted-foreground w-8 text-right">{zoom.toFixed(1)}x</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCropOpen(false); setRawSrc(null); }}>Batal</Button>
+            <Button onClick={handleConfirmCrop} disabled={uploading}>
+              {uploading ? "Mengupload..." : "Gunakan Gambar Ini"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function BannerForm({
+  initial, onSave, onCancel,
+}: {
+  initial?: Partial<BannerSlide>;
+  onSave: (data: any) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState({
+    imageUrl: initial?.imageUrl ?? "",
+    title: initial?.title ?? "",
+    subtitle: initial?.subtitle ?? "",
+    link: initial?.link ?? "",
+    active: initial?.active ?? true,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium mb-1 block">Gambar Banner *</label>
+        <BannerUploadCrop value={form.imageUrl} onChange={v => setForm(f => ({ ...f, imageUrl: v }))} />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Judul <span className="text-muted-foreground font-normal">(opsional)</span></label>
+        <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Judul yang muncul di banner..." />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Subjudul <span className="text-muted-foreground font-normal">(opsional)</span></label>
+        <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} placeholder="Deskripsi singkat..." />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Link <span className="text-muted-foreground font-normal">(opsional)</span></label>
+        <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} placeholder="https://..." />
+      </div>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} className="rounded" />
+        Aktifkan banner (tampil di halaman utama)
+      </label>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>Batal</Button>
+        <Button onClick={() => onSave(form)} disabled={!form.imageUrl}>Simpan Banner</Button>
+      </DialogFooter>
     </div>
   );
 }
@@ -585,6 +753,13 @@ export default function ManageNovel() {
   const [storyDialog, setStoryDialog] = useState<{ open: boolean; story?: NovelStory }>({ open: false });
   const [seasonDialog, setSeasonDialog] = useState<{ open: boolean; season?: NovelSeason }>({ open: false });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; name: string } | null>(null);
+  const [bannerDialog, setBannerDialog] = useState<{ open: boolean; banner?: BannerSlide }>({ open: false });
+
+  const { data: banners, isLoading: bannersLoading } = useQuery<BannerSlide[]>({
+    queryKey: ["/api/banners/all"],
+    queryFn: () => fetch("/api/banners/all", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user,
+  });
 
   const { data: stories, isLoading: storiesLoading } = useQuery<NovelStory[]>({
     queryKey: ["/api/novel/stories/all"],
@@ -650,6 +825,41 @@ export default function ManageNovel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"] }),
   });
 
+  const createBanner = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/banners", data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }); setBannerDialog({ open: false }); toast({ title: "Banner berhasil ditambahkan!" }); },
+    onError: () => toast({ title: "Gagal menambah banner", variant: "destructive" }),
+  });
+
+  const updateBanner = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PUT", `/api/banners/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }); setBannerDialog({ open: false }); toast({ title: "Banner diperbarui!" }); },
+    onError: () => toast({ title: "Gagal memperbarui banner", variant: "destructive" }),
+  });
+
+  const deleteBanner = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/banners/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }); setDeleteDialog(null); toast({ title: "Banner dihapus!" }); },
+    onError: () => toast({ title: "Gagal menghapus banner", variant: "destructive" }),
+  });
+
+  const reorderBanner = useMutation({
+    mutationFn: (ids: string[]) => apiRequest("PATCH", "/api/banners/reorder", { ids }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }),
+  });
+
+  const handleBannerMove = (bannerId: string, direction: "up" | "down") => {
+    if (!banners) return;
+    const sorted = [...banners].sort((a, b) => a.order - b.order);
+    const i = sorted.findIndex(b => b.id === bannerId);
+    if (direction === "up" && i === 0) return;
+    if (direction === "down" && i === sorted.length - 1) return;
+    const swap = direction === "up" ? i - 1 : i + 1;
+    const newOrder = [...sorted];
+    [newOrder[i], newOrder[swap]] = [newOrder[swap], newOrder[i]];
+    reorderBanner.mutate(newOrder.map(b => b.id));
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/login");
@@ -669,6 +879,7 @@ export default function ManageNovel() {
     if (deleteDialog.type === "story") deleteStory.mutate(deleteDialog.id);
     if (deleteDialog.type === "season") deleteSeason.mutate(deleteDialog.id);
     if (deleteDialog.type === "chapter") deleteChapter.mutate(deleteDialog.id);
+    if (deleteDialog.type === "banner") deleteBanner.mutate(deleteDialog.id);
   };
 
   const AdminHeader = () => (
@@ -723,7 +934,24 @@ export default function ManageNovel() {
       <AdminHeader />
       <div className="max-w-5xl mx-auto px-6 py-8">
 
+        {/* Tab Nav */}
+        <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
+          <button
+            onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Cerita
+          </button>
+          <button
+            onClick={() => setView("settings")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "settings" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Settings size={13} /> Settings
+          </button>
+        </div>
+
         {/* Breadcrumb Nav */}
+        {view !== "settings" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
@@ -745,6 +973,7 @@ export default function ManageNovel() {
             </>
           )}
         </div>
+        )}
 
         {/* ── STORIES VIEW ── */}
         {view === "stories" && (
@@ -927,6 +1156,84 @@ export default function ManageNovel() {
             )}
           </div>
         )}
+
+        {/* ── SETTINGS VIEW ── */}
+        {view === "settings" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Settings size={22} /> Settings
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">Kelola banner slideshow di halaman utama</p>
+              </div>
+              <Button onClick={() => setBannerDialog({ open: true })}>
+                <Plus size={16} className="mr-1.5" /> Tambah Banner
+              </Button>
+            </div>
+
+            {bannersLoading ? (
+              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+            ) : !banners?.length ? (
+              <div className="text-center py-16 border border-dashed border-border rounded-xl">
+                <ImageIcon size={36} className="mx-auto mb-3 text-muted-foreground opacity-40" />
+                <p className="text-muted-foreground">Belum ada banner. Tambah banner pertamamu!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {[...(banners ?? [])].sort((a, b) => a.order - b.order).map((banner, idx, arr) => (
+                  <div key={banner.id} className="flex items-center gap-3 p-3.5 border border-border rounded-xl hover:bg-muted/30 transition-colors">
+                    <div className="w-24 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                      {banner.imageUrl
+                        ? <img src={banner.imageUrl} alt={banner.title ?? "banner"} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={18} className="text-muted-foreground" /></div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{banner.title || <span className="text-muted-foreground italic">Tanpa judul</span>}</p>
+                      {banner.subtitle && <p className="text-xs text-muted-foreground truncate">{banner.subtitle}</p>}
+                      {banner.link && <p className="text-xs text-blue-500 truncate">{banner.link}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${banner.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                        {banner.active ? "Aktif" : "Nonaktif"}
+                      </span>
+                      <Button size="icon" variant="ghost" disabled={idx === 0} onClick={() => handleBannerMove(banner.id, "up")} title="Pindah ke atas">
+                        <ChevronUp size={14} />
+                      </Button>
+                      <Button size="icon" variant="ghost" disabled={idx === arr.length - 1} onClick={() => handleBannerMove(banner.id, "down")} title="Pindah ke bawah">
+                        <ChevronDown size={14} />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setBannerDialog({ open: true, banner })}>
+                        <Pencil size={14} />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteDialog({ open: true, type: "banner", id: banner.id, name: banner.title ?? "Banner ini" })}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Banner Dialog ── */}
+        <Dialog open={bannerDialog.open} onOpenChange={open => setBannerDialog({ open })}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{bannerDialog.banner ? "Edit Banner" : "Tambah Banner Baru"}</DialogTitle>
+            </DialogHeader>
+            <BannerForm
+              initial={bannerDialog.banner}
+              onSave={(data) => bannerDialog.banner
+                ? updateBanner.mutate({ id: bannerDialog.banner.id, data })
+                : createBanner.mutate(data)
+              }
+              onCancel={() => setBannerDialog({ open: false })}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* ── Story Dialog ── */}
         <Dialog open={storyDialog.open} onOpenChange={open => setStoryDialog({ open })}>

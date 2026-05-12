@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -6,11 +6,22 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { useLanguage } from "@/hooks/use-language";
+import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Search, X, BookMarked, Sparkles, TrendingUp, Star } from "lucide-react";
+import { BookOpen, BookMarked, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
+
+interface BannerSlide {
+  id: string;
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  link?: string;
+  active: boolean;
+  order: number;
+}
 
 function isNewlyUpdated(lastChapterAt: string | null): boolean {
   if (!lastChapterAt) return false;
@@ -32,6 +43,106 @@ const CATEGORY_ICONS: Record<string, string> = {
   lainnya: "📝",
 };
 
+function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
+  const [idx, setIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const dragStartRef = useRef<number | null>(null);
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setIdx(i => (i + 1) % banners.length), 5000);
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    resetTimer();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [idx, resetTimer, banners.length]);
+
+  if (banners.length === 0) return null;
+
+  const go = (dir: 1 | -1) => {
+    setIdx(i => (i + dir + banners.length) % banners.length);
+    resetTimer();
+  };
+
+  return (
+    <div
+      className="relative w-full h-[220px] sm:h-[380px] overflow-hidden select-none"
+      onPointerDown={e => { dragStartRef.current = e.clientX; }}
+      onPointerUp={e => {
+        if (dragStartRef.current === null) return;
+        const diff = e.clientX - dragStartRef.current;
+        dragStartRef.current = null;
+        if (Math.abs(diff) > 50) go(diff < 0 ? 1 : -1);
+      }}
+      onPointerLeave={() => { dragStartRef.current = null; }}
+    >
+      {banners.map((banner, i) => (
+        <div
+          key={banner.id}
+          className={`absolute inset-0 transition-opacity duration-700 ${i === idx ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+          style={{ pointerEvents: i === idx ? "auto" : "none" }}
+        >
+          <img
+            src={banner.imageUrl}
+            alt={banner.title ?? ""}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+          {banner.link && (
+            <a href={banner.link} className="absolute inset-0 z-10" aria-label={banner.title} />
+          )}
+          {(banner.title || banner.subtitle) && (
+            <div className="absolute bottom-10 sm:bottom-16 left-5 sm:left-12 text-white pointer-events-none z-20">
+              {banner.title && (
+                <h2 className="text-lg sm:text-3xl font-bold drop-shadow-md mb-0.5 sm:mb-1 leading-tight">
+                  {banner.title}
+                </h2>
+              )}
+              {banner.subtitle && (
+                <p className="text-xs sm:text-base text-white/80 drop-shadow leading-snug max-w-md">
+                  {banner.subtitle}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {banners.length > 1 && (
+        <>
+          <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+            {banners.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { setIdx(i); resetTimer(); }}
+                className={`rounded-full transition-all duration-300 ${i === idx ? "w-5 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50 hover:bg-white/80"}`}
+                aria-label={`Slide ${i + 1}`}
+              />
+            ))}
+          </div>
+          <button
+            onClick={() => go(-1)}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-all"
+            aria-label="Sebelumnya"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => go(1)}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-all"
+            aria-label="Berikutnya"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
   const { t } = useLanguage();
   const STATUS_LABEL: Record<string, string> = {
@@ -50,7 +161,6 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
     >
       <Link href={`/${story.slug}`} data-testid={`link-story-${story.id}`}>
         <div className="group cursor-pointer">
-          {/* Cover */}
           <div className="aspect-[2/3] rounded-xl overflow-hidden mb-3 bg-muted relative shadow-sm">
             {story.coverUrl ? (
               <img
@@ -65,19 +175,13 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
                 <span className="text-[10px] text-muted-foreground font-medium px-2 text-center line-clamp-2">{story.title}</span>
               </div>
             )}
-
-            {/* Hover overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-            {/* Status badge */}
             <div className="absolute top-2 left-2">
               <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                 <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
                 {STATUS_LABEL[story.status] ?? story.status}
               </span>
             </div>
-
-            {/* New badge */}
             {updated && (
               <div className="absolute top-2 right-2">
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500 text-white shadow-lg">
@@ -86,16 +190,12 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
                 </span>
               </div>
             )}
-
-            {/* Hover CTA */}
             <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
               <div className="bg-white/10 backdrop-blur-md rounded-lg px-3 py-1.5 text-center">
                 <span className="text-white text-xs font-semibold">Baca Sekarang</span>
               </div>
             </div>
           </div>
-
-          {/* Info */}
           <div className="space-y-1">
             <h3
               className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug"
@@ -130,85 +230,29 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
   );
 }
 
-function FeaturedCard({ story }: { story: StoryWithStats }) {
-  const { t } = useLanguage();
-  const STATUS_LABEL: Record<string, string> = {
-    ongoing: t("novel.status.ongoing"),
-    completed: t("novel.status.completed"),
-    hiatus: t("novel.status.hiatus"),
-  };
-  const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
-
-  return (
-    <Link href={`/${story.slug}`} data-testid={`link-featured-${story.id}`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="group relative rounded-2xl overflow-hidden cursor-pointer h-56 sm:h-64 mb-10 shadow-xl"
-      >
-        {/* Background */}
-        {story.coverUrl ? (
-          <img src={story.coverUrl} alt={story.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/40 to-primary/10" />
-        )}
-
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
-
-        {/* Content */}
-        <div className="relative h-full flex flex-col justify-end p-6 sm:p-8">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-primary text-primary-foreground">
-              <Star size={10} fill="currentColor" /> Featured
-            </span>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.color}`}>
-              <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-              {STATUS_LABEL[story.status]}
-            </span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 line-clamp-2 leading-tight">{story.title}</h2>
-          {story.description && (
-            <p className="text-white/60 text-sm line-clamp-2 max-w-lg mb-3">{story.description}</p>
-          )}
-          <div className="flex items-center gap-3 text-white/50 text-xs">
-            <span className="capitalize">{CATEGORY_ICONS[story.category] ?? "📝"} {story.category}</span>
-            {story.totalChapters > 0 && (
-              <span className="flex items-center gap-1"><BookMarked size={11} /> {story.totalChapters} bab</span>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </Link>
-  );
-}
-
 export default function Novel() {
   const { t, language } = useLanguage();
-  const STATUS_LABEL: Record<string, string> = {
-    ongoing: t("novel.status.ongoing"),
-    completed: t("novel.status.completed"),
-    hiatus: t("novel.status.hiatus"),
-  };
-  const [search, setSearch] = useState("");
+  const { search, setSearch } = useSearchContext();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const { data: stories, isLoading } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/novel/stories"],
   });
 
+  const { data: banners } = useQuery<BannerSlide[]>({
+    queryKey: ["/api/banners"],
+    queryFn: () => fetch("/api/banners").then(r => r.json()),
+  });
+
+  const activeBanners = useMemo(() =>
+    (banners ?? []).filter(b => b.active).sort((a, b) => a.order - b.order),
+    [banners]
+  );
+
   const categories = useMemo(() => {
     const cats = new Set<string>();
     stories?.forEach(s => cats.add(s.category));
     return Array.from(cats).sort();
-  }, [stories]);
-
-  const featured = useMemo(() => {
-    if (!stories || stories.length === 0) return null;
-    const manual = stories.find(s => s.featured);
-    if (manual) return manual;
-    // Fallback: novel dengan viewCount tertinggi (booming)
-    return [...stories].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))[0] ?? null;
   }, [stories]);
 
   const filtered = useMemo(() => {
@@ -235,10 +279,13 @@ export default function Novel() {
       />
       <Navbar />
 
-      {/* Hero */}
+      {/* Banner Slideshow — Full Width at Top */}
+      <BannerSlideshow banners={activeBanners} />
+
+      {/* Hero — below banner */}
       <div className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8 py-10">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
@@ -246,14 +293,17 @@ export default function Novel() {
               </div>
               <span className="text-xs font-semibold uppercase tracking-widest text-primary/80">Perpustakaan</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-3 leading-tight">
+            <h1 className="text-3xl sm:text-5xl font-bold text-foreground mb-3 leading-tight">
               {t("novel.heading")}
             </h1>
             <p className="text-muted-foreground text-base max-w-xl">{t("novel.description")}</p>
 
             {!isLoading && stories && (
               <div className="flex items-center gap-4 mt-5 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><TrendingUp size={14} className="text-primary" />{stories.length} {language === "id" ? "cerita" : "stories"}</span>
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp size={14} className="text-primary" />
+                  {stories.length} {language === "id" ? "cerita" : "stories"}
+                </span>
                 <span>·</span>
                 <span>{categories.length} {language === "id" ? "kategori" : "categories"}</span>
               </div>
@@ -264,46 +314,25 @@ export default function Novel() {
 
       <main className="max-w-7xl mx-auto px-5 lg:px-8 py-8">
 
-        {/* Featured */}
-        {!isFiltering && featured && <FeaturedCard story={featured} />}
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          <div className="relative flex-1 max-w-xs">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder={t("novel.search.placeholder")}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-8 py-2 rounded-xl border border-border bg-background/60 backdrop-blur-sm text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-              data-testid="input-search-novel"
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2 flex-wrap">
+        {/* Category Filters */}
+        <div className="flex gap-2 flex-wrap mb-8">
+          <button
+            onClick={() => setActiveCategory(null)}
+            className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${!activeCategory ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+            data-testid="button-category-all"
+          >
+            Semua
+          </button>
+          {categories.map(cat => (
             <button
-              onClick={() => setActiveCategory(null)}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${!activeCategory ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"}`}
-              data-testid="button-category-all"
+              key={cat}
+              onClick={() => setActiveCategory(cat === activeCategory ? null : cat)}
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold capitalize transition-all ${activeCategory === cat ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              data-testid={`button-category-${cat}`}
             >
-              Semua
+              {CATEGORY_ICONS[cat] ?? "📝"} {cat}
             </button>
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat === activeCategory ? null : cat)}
-                className={`px-3.5 py-2 rounded-full text-xs font-semibold capitalize transition-all ${activeCategory === cat ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"}`}
-                data-testid={`button-category-${cat}`}
-              >
-                {CATEGORY_ICONS[cat] ?? "📝"} {cat}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
 
         {/* Section label */}
@@ -334,7 +363,10 @@ export default function Novel() {
             </div>
             <p className="text-muted-foreground font-medium">{t("novel.empty")}</p>
             {isFiltering && (
-              <button onClick={() => { setSearch(""); setActiveCategory(null); }} className="mt-3 text-sm text-primary hover:underline">
+              <button
+                onClick={() => { setSearch(""); setActiveCategory(null); }}
+                className="mt-3 text-sm text-primary hover:underline"
+              >
                 Reset filter
               </button>
             )}
