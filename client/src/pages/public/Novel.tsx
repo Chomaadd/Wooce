@@ -138,7 +138,7 @@ function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
 
 function BannerCard({ banner }: { banner: BannerSlide }) {
   return (
-    <div className="relative mx-4 sm:mx-8 my-5 rounded-2xl overflow-hidden h-[160px] sm:h-[240px] shadow-xl">
+    <div className="relative mx-4 sm:mx-8 my-5 rounded-2xl overflow-hidden aspect-[16/6] shadow-xl">
       {/* Background image */}
       <img
         src={banner.imageUrl}
