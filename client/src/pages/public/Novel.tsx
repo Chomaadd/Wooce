@@ -76,7 +76,7 @@ function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
 
   return (
     <div
-      className="relative w-full overflow-hidden select-none"
+      className="relative w-full select-none"
       onPointerDown={e => { dragStartRef.current = e.clientX; }}
       onPointerUp={e => {
         if (dragStartRef.current === null) return;
@@ -86,47 +86,52 @@ function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
       }}
       onPointerLeave={() => { dragStartRef.current = null; }}
     >
-      {/* Featured dark card style */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={cur.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative"
-        >
-          {cur.link ? (
-            <a href={cur.link} className="block">
+      <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        {/* Featured dark card style */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={cur.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative"
+          >
+            {cur.link ? (
+              <a href={cur.link} className="block">
+                <BannerCard banner={cur} />
+              </a>
+            ) : (
               <BannerCard banner={cur} />
-            </a>
-          ) : (
-            <BannerCard banner={cur} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+            )}
+          </motion.div>
+        </AnimatePresence>
 
-      {banners.length > 1 && (
-        <>
-          <div className="absolute bottom-4 right-6 flex gap-1.5 z-20">
+        {banners.length > 1 && (
+          <div className="flex justify-center gap-1.5 mt-2 mb-1">
             {banners.map((_, i) => (
               <button
                 key={i}
                 onClick={() => { setIdx(i); resetTimer(); }}
-                className={`rounded-full transition-all duration-300 ${i === idx ? "w-5 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40 hover:bg-white/70"}`}
+                className={`rounded-full transition-all duration-300 ${i === idx ? "w-5 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"}`}
                 aria-label={`Slide ${i + 1}`}
               />
             ))}
           </div>
+        )}
+      </div>
+
+      {banners.length > 1 && (
+        <>
           <button
             onClick={() => go(-1)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-all"
+            className="absolute left-8 lg:left-10 top-[calc(50%-12px)] -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-all"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={() => go(1)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-all"
+            className="absolute right-8 lg:right-10 top-[calc(50%-12px)] -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-all"
           >
             <ChevronRight size={16} />
           </button>
@@ -138,7 +143,7 @@ function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
 
 function BannerCard({ banner }: { banner: BannerSlide }) {
   return (
-    <div className="relative mx-4 sm:mx-8 my-5 rounded-2xl overflow-hidden aspect-[16/4] shadow-xl">
+    <div className="relative my-5 rounded-2xl overflow-hidden aspect-[16/4] shadow-xl">
       {/* Background image */}
       <img
         src={banner.imageUrl}
@@ -172,7 +177,7 @@ function BannerCard({ banner }: { banner: BannerSlide }) {
   );
 }
 
-// ── Novel Unggulan (horizontal scroll) ───────────────────────────────────────
+// ── Novel Unggulan (horizontal scroll, same card style as StoryCard) ──────────
 function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const featured = useMemo(
@@ -185,12 +190,12 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
   if (featured.length === 0) return null;
 
   const scroll = (dir: 1 | -1) => {
-    scrollRef.current?.scrollBy({ left: dir * 220, behavior: "smooth" });
+    scrollRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-5 lg:px-8 mb-8">
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-10 pb-4">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-0.5">
             Baca nonstop dari awal sampai akhir
@@ -218,33 +223,84 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
         className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {featured.map(story => (
-          <Link key={story.id} href={`/${story.slug}`}>
-            <div className="group flex-shrink-0 w-[120px] sm:w-[136px] cursor-pointer">
-              <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted shadow-sm">
-                {story.coverUrl ? (
-                  <img
-                    src={story.coverUrl}
-                    alt={story.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 via-primary/10 to-background">
-                    <BookOpen size={24} className="text-primary/40" />
+        {featured.map((story, i) => {
+          const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+          const updated = isNewlyUpdated(story.lastChapterAt);
+          return (
+            <motion.div
+              key={story.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.3 }}
+              className="flex-shrink-0 w-[148px] sm:w-[165px] lg:w-[185px]"
+            >
+              <Link href={`/${story.slug}`} data-testid={`link-unggulan-${story.id}`}>
+                <div className="group cursor-pointer">
+                  <div className="aspect-[2/3] rounded-xl overflow-hidden mb-3 bg-muted relative shadow-sm">
+                    {story.coverUrl ? (
+                      <img
+                        src={story.coverUrl}
+                        alt={story.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/30 via-primary/10 to-background gap-2">
+                        <BookOpen size={28} className="text-primary/50" />
+                        <span className="text-[10px] text-muted-foreground font-medium px-2 text-center line-clamp-2">{story.title}</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute top-2 left-2">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                        <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                        {story.status}
+                      </span>
+                    </div>
+                    {updated && (
+                      <div className="absolute top-2 right-2">
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500 text-white shadow-lg">
+                          <Sparkles size={8} />
+                          Baru
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="bg-white/10 backdrop-blur-md rounded-lg px-3 py-1.5 text-center">
+                        <span className="text-white text-xs font-semibold">Baca Sekarang</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-              <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors mb-1">
-                {story.title}
-              </p>
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Eye size={9} />
-                {formatViewCount(story.viewCount)}
-              </span>
-            </div>
-          </Link>
-        ))}
+                  <div className="space-y-1">
+                    <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                      {story.title}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground capitalize">
+                        {CATEGORY_ICONS[story.category] ?? "📝"} {story.category}
+                      </span>
+                      {story.totalChapters > 0 && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
+                          <BookMarked size={9} />
+                          {story.totalChapters}
+                        </span>
+                      )}
+                    </div>
+                    {(story.tags ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-0.5">
+                        {(story.tags ?? []).slice(0, 2).map(tag => (
+                          <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
@@ -508,13 +564,6 @@ export default function Novel() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* Novel Unggulan */}
-            {!isLoading && stories && stories.length > 0 && (
-              <div className="pt-8">
-                <NovelUnggulan stories={stories} />
-              </div>
-            )}
-
             <main className="max-w-7xl mx-auto px-5 lg:px-8 py-6">
               {/* Category Filters */}
               <div className="flex gap-2 flex-wrap mb-8">
@@ -581,6 +630,11 @@ export default function Novel() {
                 </div>
               )}
             </main>
+
+            {/* Novel Unggulan — below Semua Cerita */}
+            {!isLoading && stories && stories.length > 0 && (
+              <NovelUnggulan stories={stories} />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
