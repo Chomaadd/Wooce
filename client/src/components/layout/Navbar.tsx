@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, BookOpen, Shield, Search, X } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,9 +22,11 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto flex h-14 items-center gap-3 px-5 lg:px-8">
 
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-              <BookOpen size={16} className="text-primary-foreground" />
-            </div>
+            <img
+              src="/image/icon-navbar.png"
+              alt="WOOCE Novel"
+              className="w-8 h-8 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-105"
+            />
             {!isReading && (
               <span className="font-bold text-base text-foreground tracking-tight hidden sm:block">
                 WOOCE<span className="text-primary">.</span>
