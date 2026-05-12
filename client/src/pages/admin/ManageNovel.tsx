@@ -825,6 +825,17 @@ export default function ManageNovel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"] }),
   });
 
+  const toggleFeatured = useMutation({
+    mutationFn: ({ id, featured }: { id: string; featured: boolean }) =>
+      apiRequest("PUT", `/api/novel/stories/${id}`, { featured }),
+    onSuccess: (_, { featured }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories"] });
+      toast({ title: featured ? "⭐ Ditandai sebagai Novel Unggulan!" : "Dihapus dari Novel Unggulan" });
+    },
+    onError: () => toast({ title: "Gagal mengubah status unggulan", variant: "destructive" }),
+  });
+
   const createBanner = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/banners", data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }); setBannerDialog({ open: false }); toast({ title: "Banner berhasil ditambahkan!" }); },
@@ -1025,6 +1036,17 @@ export default function ManageNovel() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title={story.featured ? "Hapus dari Unggulan" : "Tandai sebagai Unggulan"}
+                        disabled={toggleFeatured.isPending}
+                        onClick={() => toggleFeatured.mutate({ id: story.id, featured: !story.featured })}
+                        className={story.featured ? "text-yellow-500 hover:text-yellow-600" : "text-muted-foreground hover:text-yellow-500"}
+                        data-testid={`button-toggle-featured-${story.id}`}
+                      >
+                        <Star size={15} fill={story.featured ? "currentColor" : "none"} />
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => { setSelectedStory(story); setView("seasons"); }} data-testid={`button-manage-seasons-${story.id}`}>
                         <Layers size={14} className="mr-1" /> {t("admin.novel.season")}
                       </Button>
