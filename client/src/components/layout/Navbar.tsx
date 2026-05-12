@@ -25,7 +25,7 @@ export function Navbar() {
             <img
               src="/image/icon-navbar.png"
               alt="WOOCE Novel"
-              className="w-8 h-8 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-105"
+              className="w-10 h-10 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-105"
             />
           </Link>
 
