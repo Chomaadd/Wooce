@@ -11,7 +11,7 @@ export function Footer() {
         <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3">
           <span>&copy; {new Date().getFullYear()}</span>
           <span className="opacity-30 hidden md:inline">/</span>
-          <span className="text-foreground font-semibold">WOOCE Novel</span>
+          <span className="text-foreground font-semibold">WOOCE</span>
           <span className="opacity-30 hidden md:inline">/</span>
           <span className="italic">{t("footer.rights")}</span>
         </div>
