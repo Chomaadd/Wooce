@@ -232,7 +232,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04, duration: 0.3 }}
-              className="flex-shrink-0 w-[148px] sm:w-[165px] lg:w-[185px]"
+              className="flex-shrink-0 w-[160px] sm:w-[190px] lg:w-[220px]"
             >
               <Link href={`/${story.slug}`} data-testid={`link-unggulan-${story.id}`}>
                 <div className="group cursor-pointer">
@@ -511,7 +511,7 @@ export default function Novel() {
   return (
     <div className="min-h-screen bg-background">
       <SeoHead
-        title="Novel — Perpustakaan"
+        title="Wooce - Perpustakaan Novel"
         description="Kumpulan novel, komik, dan cerita pendek yang kaya dunia dan karakter penuh warna."
         url="/"
       />
@@ -519,35 +519,6 @@ export default function Novel() {
 
       {/* Banner Slideshow */}
       <BannerSlideshow banners={activeBanners} />
-
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background border-b border-border/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 py-10">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <BookOpen size={14} className="text-primary-foreground" />
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-widest text-primary/80">Perpustakaan</span>
-            </div>
-            <h1 className="text-3xl sm:text-5xl font-bold text-foreground mb-3 leading-tight">
-              {t("novel.heading")}
-            </h1>
-            <p className="text-muted-foreground text-base max-w-xl">{t("novel.description")}</p>
-            {!isLoading && stories && (
-              <div className="flex items-center gap-4 mt-5 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <TrendingUp size={14} className="text-primary" />
-                  {stories.length} {language === "id" ? "cerita" : "stories"}
-                </span>
-                <span>·</span>
-                <span>{categories.length} {language === "id" ? "kategori" : "categories"}</span>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </div>
 
       {/* Search Results */}
       <AnimatePresence mode="wait">
