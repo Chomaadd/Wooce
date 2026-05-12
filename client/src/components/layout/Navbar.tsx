@@ -22,11 +22,13 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto flex h-14 items-center gap-3 px-5 lg:px-8">
 
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-            <img
-              src="/image/icon-navbar.png"
-              alt="WOOCE Novel"
-              className="w-10 h-10 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-105"
-            />
+            <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 transition-transform group-hover:scale-105">
+              <img
+                src="/image/icon-navbar.png"
+                alt="WOOCE Novel"
+                className="w-full h-full object-cover scale-[1.4] object-center"
+              />
+            </div>
           </Link>
 
           {isHome ? (
