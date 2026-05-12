@@ -9,8 +9,8 @@ import { useLanguage } from "@/hooks/use-language";
 import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  BookOpen, BookMarked, Sparkles, TrendingUp,
-  ChevronLeft, ChevronRight, Star, Eye, Search,
+  BookOpen, BookMarked, Sparkles,
+  ChevronLeft, ChevronRight, Star, Search,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 
@@ -232,7 +232,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04, duration: 0.3 }}
-              className="flex-shrink-0 w-[160px] sm:w-[190px] lg:w-[220px]"
+              className="flex-shrink-0 w-[calc((100vw-56px)/2)] sm:w-[calc((100vw-72px)/3)] lg:w-[calc((100vw-112px)/4)] xl:w-[230px]"
             >
               <Link href={`/${story.slug}`} data-testid={`link-unggulan-${story.id}`}>
                 <div className="group cursor-pointer">
