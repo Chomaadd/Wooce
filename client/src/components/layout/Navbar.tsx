@@ -27,11 +27,6 @@ export function Navbar() {
               alt="WOOCE Novel"
               className="w-8 h-8 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-105"
             />
-            {!isReading && (
-              <span className="font-bold text-base text-foreground tracking-tight hidden sm:block">
-                WOOCE<span className="text-primary">.</span>
-              </span>
-            )}
           </Link>
 
           {isHome ? (
