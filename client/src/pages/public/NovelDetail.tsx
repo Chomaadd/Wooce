@@ -148,7 +148,7 @@ function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSe
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground/60 shrink-0 ml-2">
                       <Clock size={10} />
-                      <span>{ch.createdAt ? timeAgo(ch.createdAt, language) : "—"}</span>
+                      <span>{(ch.updatedAt ?? ch.createdAt) ? timeAgo((ch.updatedAt ?? ch.createdAt)!, language) : "—"}</span>
                     </div>
                   </div>
                 </Link>

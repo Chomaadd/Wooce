@@ -192,12 +192,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateNovelChapter(id: string, updates: UpdateNovelChapterRequest): Promise<NovelChapter> {
-    const patch: any = { ...updates, updatedAt: new Date() };
+    const now = new Date();
+    const patch: any = { ...updates, updatedAt: now };
     // When manually publishing, reset scheduledAt so publish time = now
     if (updates.published === true) {
       patch.scheduledAt = null;
     }
-    const doc = await NovelChapterModel.findByIdAndUpdate(id, patch, { new: true });
+    // Use $set explicitly and timestamps:false so our manual updatedAt is preserved
+    const doc = await NovelChapterModel.findByIdAndUpdate(
+      id,
+      { $set: patch },
+      { new: true, timestamps: false }
+    );
     if (!doc) throw new Error('Chapter not found');
     return { ...mapId<NovelChapter>(doc), storyId: doc.storyId?.toString(), seasonId: doc.seasonId?.toString() };
   }
