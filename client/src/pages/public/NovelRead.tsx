@@ -1,17 +1,18 @@
 import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Navbar } from "@/components/layout/Navbar";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ArrowRight, BookOpen, Clock, ChevronLeft, Settings2, X, Share2, Check, List } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, BookOpen, Clock,
+  Settings2, X, Share2, Check, List,
+} from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { renderRichContent } from "@/components/ui/rich-text-editor";
 import { useLanguage } from "@/hooks/use-language";
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ── Reading Settings ────────────────────────────────────────────────────────
-
+// ── Reading Settings ──────────────────────────────────────────────────────────
 type ReadingMode = "light" | "sepia" | "night";
 type FontFamily = "sans" | "serif";
 
@@ -23,10 +24,10 @@ interface ReadingSettings {
 
 const DEFAULT_SETTINGS: ReadingSettings = { fontSize: 17, fontFamily: "sans", mode: "light" };
 
-const MODE_STYLES: Record<ReadingMode, { bg: string; text: string; border: string }> = {
-  light: { bg: "transparent", text: "inherit", border: "transparent" },
-  sepia: { bg: "#faf3e8", text: "#5c3d1e", border: "#e8d9c0" },
-  night: { bg: "#161b22", text: "#c9d1d9", border: "#21262d" },
+const MODE_STYLES: Record<ReadingMode, { bg: string; text: string; border: string; panelBg: string }> = {
+  light:  { bg: "transparent",  text: "inherit",  border: "transparent", panelBg: "#ffffff" },
+  sepia:  { bg: "#faf3e8",       text: "#5c3d1e",  border: "#e8d9c0",     panelBg: "#f5e9d5" },
+  night:  { bg: "#0f1117",       text: "#c9d1d9",  border: "#21262d",     panelBg: "#161b22" },
 };
 
 function useReadingSettings() {
@@ -37,7 +38,6 @@ function useReadingSettings() {
     } catch {}
     return DEFAULT_SETTINGS;
   });
-
   const update = useCallback((patch: Partial<ReadingSettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...patch };
@@ -45,11 +45,8 @@ function useReadingSettings() {
       return next;
     });
   }, []);
-
   return { settings, update };
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function estimateReadTime(content: string) {
   const text = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -57,10 +54,7 @@ function estimateReadTime(content: string) {
 }
 
 // ── Settings Panel ────────────────────────────────────────────────────────────
-
-function SettingsPanel({
-  settings, update, onClose,
-}: {
+function SettingsPanel({ settings, update, onClose }: {
   settings: ReadingSettings;
   update: (p: Partial<ReadingSettings>) => void;
   onClose: () => void;
@@ -68,75 +62,75 @@ function SettingsPanel({
   const { t } = useLanguage();
   const modes: ReadingMode[] = ["light", "sepia", "night"];
   const fonts: FontFamily[] = ["sans", "serif"];
-  const modeKey: Record<ReadingMode, string> = {
-    light: "novel.read.modeLight",
-    sepia: "novel.read.modeSepia",
-    night: "novel.read.modeNight",
-  };
-  const fontKey: Record<FontFamily, string> = {
-    sans: "novel.read.fontSans",
-    serif: "novel.read.fontSerif",
-  };
-  const fontPreview: Record<FontFamily, string> = {
-    sans: "font-sans",
-    serif: "font-serif",
+  const modeMeta: Record<ReadingMode, { label: string; icon: string; preview: string }> = {
+    light: { label: t("novel.read.modeLight"), icon: "☀", preview: "bg-white border-slate-200 text-slate-800" },
+    sepia: { label: t("novel.read.modeSepia"), icon: "📖", preview: "bg-[#faf3e8] border-[#e8d9c0] text-[#5c3d1e]" },
+    night: { label: t("novel.read.modeNight"), icon: "🌙", preview: "bg-[#0f1117] border-[#21262d] text-[#c9d1d9]" },
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 16 }}
-      transition={{ duration: 0.18 }}
-      className="fixed bottom-20 right-5 z-50 w-72 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden"
+      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.96 }}
+      transition={{ duration: 0.15 }}
+      className="fixed bottom-20 right-4 z-50 w-72 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden"
       data-testid="panel-reading-settings"
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <span className="font-semibold text-sm text-foreground">{t("novel.read.settings")}</span>
         <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-settings">
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
 
       <div className="p-4 space-y-5">
         {/* Font Size */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("novel.read.fontSize")}</span>
-            <span className="text-xs font-mono text-foreground bg-muted px-2 py-0.5 rounded-md">{settings.fontSize}px</span>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("novel.read.fontSize")}</span>
+            <span className="text-xs font-mono font-bold text-foreground bg-muted/60 px-2 py-0.5 rounded-md">{settings.fontSize}px</span>
           </div>
-          <input
-            type="range"
-            min={14}
-            max={22}
-            step={1}
-            value={settings.fontSize}
-            onChange={e => update({ fontSize: Number(e.target.value) })}
-            className="w-full accent-primary h-1.5 rounded-full"
-            data-testid="slider-font-size"
-          />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>A</span>
-            <span className="text-sm">A</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => update({ fontSize: Math.max(14, settings.fontSize - 1) })}
+              className="w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors flex items-center justify-center text-muted-foreground font-bold text-sm flex-shrink-0"
+            >
+              A
+            </button>
+            <input
+              type="range" min={14} max={22} step={1}
+              value={settings.fontSize}
+              onChange={e => update({ fontSize: Number(e.target.value) })}
+              className="flex-1 accent-primary h-1.5 rounded-full"
+              data-testid="slider-font-size"
+            />
+            <button
+              onClick={() => update({ fontSize: Math.min(22, settings.fontSize + 1) })}
+              className="w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors flex items-center justify-center text-muted-foreground font-bold text-base flex-shrink-0"
+            >
+              A
+            </button>
           </div>
         </div>
 
         {/* Font Family */}
         <div>
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">{t("novel.read.fontFamily")}</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-3">{t("novel.read.fontFamily")}</span>
           <div className="grid grid-cols-2 gap-2">
             {fonts.map(f => (
               <button
                 key={f}
                 onClick={() => update({ fontFamily: f })}
-                className={`py-2 rounded-xl border text-sm transition-all ${fontPreview[f]} ${
+                className={`py-2.5 rounded-xl border text-sm transition-all ${f === "serif" ? "font-serif" : "font-sans"} ${
                   settings.fontFamily === f
-                    ? "border-primary bg-primary/10 text-primary font-medium"
-                    : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
                 }`}
                 data-testid={`button-font-${f}`}
               >
-                {t(fontKey[f])}
+                {t(f === "sans" ? "novel.read.fontSans" : "novel.read.fontSerif")}
               </button>
             ))}
           </div>
@@ -144,25 +138,21 @@ function SettingsPanel({
 
         {/* Reading Mode */}
         <div>
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">{t("novel.read.readingMode")}</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-3">{t("novel.read.readingMode")}</span>
           <div className="grid grid-cols-3 gap-2">
             {modes.map(m => (
               <button
                 key={m}
                 onClick={() => update({ mode: m })}
-                className={`py-2 rounded-xl border text-xs font-medium transition-all ${
+                className={`py-2.5 rounded-xl border text-xs font-medium transition-all flex flex-col items-center gap-1 ${
                   settings.mode === m
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-muted/60"
-                }`}
-                style={m !== "light" ? {
-                  background: settings.mode === m ? undefined : MODE_STYLES[m].bg,
-                  color: settings.mode === m ? undefined : MODE_STYLES[m].text,
-                  borderColor: settings.mode === m ? undefined : MODE_STYLES[m].border,
-                } : {}}
+                    ? "border-primary ring-1 ring-primary/30"
+                    : ""
+                } ${modeMeta[m].preview}`}
                 data-testid={`button-mode-${m}`}
               >
-                {t(modeKey[m])}
+                <span className="text-base leading-none">{modeMeta[m].icon}</span>
+                <span>{modeMeta[m].label}</span>
               </button>
             ))}
           </div>
@@ -173,43 +163,42 @@ function SettingsPanel({
 }
 
 // ── TOC Panel ─────────────────────────────────────────────────────────────────
-
-function TOCPanel({
-  chapters, currentChapterNum, slug, seasonNum, onClose,
-}: {
+function TOCPanel({ chapters, currentChapterNum, slug, seasonNum, onClose }: {
   chapters: NovelChapter[];
   currentChapterNum: number;
   slug: string;
   seasonNum: number;
   onClose: () => void;
 }) {
-  const { t } = useLanguage();
+  const activeRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, []);
+
   return (
     <>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
       <motion.div
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
+        initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
         className="fixed right-0 top-0 bottom-0 z-50 w-72 sm:w-80 bg-background border-l border-border shadow-2xl flex flex-col"
         data-testid="panel-toc"
       >
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0 bg-muted/20">
           <div className="flex items-center gap-2">
-            <List size={15} className="text-muted-foreground" />
-            <span className="font-semibold text-sm text-foreground">{t("novel.read.tocTitle")}</span>
+            <List size={15} className="text-primary" />
+            <span className="font-bold text-sm text-foreground">Daftar Bab</span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-toc">
             <X size={16} />
           </button>
+        </div>
+        <div className="text-xs text-muted-foreground px-4 py-2 border-b border-border/50 bg-muted/10">
+          {chapters.length} chapter · Bab {currentChapterNum} sedang dibaca
         </div>
         <div className="overflow-y-auto flex-1 py-2">
           {chapters.map(ch => {
@@ -217,18 +206,19 @@ function TOCPanel({
             return (
               <a
                 key={ch.id}
+                ref={isCurrent ? activeRef : undefined}
                 href={`/${slug}/season-${seasonNum}/bab-${ch.chapterNumber}`}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-4 py-2.5 transition-colors group ${isCurrent ? "bg-primary/10" : "hover:bg-muted/60"}`}
+                className={`flex items-start gap-3 px-4 py-3 transition-colors group ${isCurrent ? "bg-primary/10" : "hover:bg-muted/60"}`}
                 data-testid={`toc-chapter-${ch.chapterNumber}`}
               >
-                <span className={`text-xs font-mono w-7 flex-shrink-0 ${isCurrent ? "text-primary font-bold" : "text-muted-foreground/50"}`}>
+                <span className={`text-[11px] font-mono w-7 flex-shrink-0 pt-0.5 ${isCurrent ? "text-primary font-bold" : "text-muted-foreground/40"}`}>
                   {ch.chapterNumber}
                 </span>
                 <span className={`text-sm leading-snug line-clamp-2 ${isCurrent ? "text-primary font-semibold" : "text-foreground/80 group-hover:text-foreground"}`}>
                   {ch.title}
                 </span>
-                {isCurrent && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />}
+                {isCurrent && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
               </a>
             );
           })}
@@ -238,8 +228,63 @@ function TOCPanel({
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Reader Header ─────────────────────────────────────────────────────────────
+function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, settingsOpen, tocOpen }: {
+  story?: NovelStory;
+  chapter?: NovelChapter;
+  chapterNum: number;
+  slug: string;
+  onTOC: () => void;
+  onSettings: () => void;
+  settingsOpen: boolean;
+  tocOpen: boolean;
+}) {
+  return (
+    <header className="fixed top-0.5 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/50">
+      <div className="max-w-3xl mx-auto px-3 sm:px-5 h-11 flex items-center gap-2 sm:gap-3">
+        {/* Back */}
+        <Link href={`/${slug}`}>
+          <button
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors flex-shrink-0 text-muted-foreground hover:text-foreground"
+            data-testid="button-reader-back"
+          >
+            <ArrowLeft size={17} />
+          </button>
+        </Link>
 
+        {/* Title info */}
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] text-muted-foreground truncate leading-none">{story?.title ?? slug}</div>
+          <div className="text-xs font-semibold text-foreground truncate leading-tight">
+            Bab {chapterNum}{chapter?.title ? `: ${chapter.title}` : ""}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={onTOC}
+            className={`p-1.5 rounded-lg transition-colors ${tocOpen ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
+            data-testid="button-reader-toc"
+            title="Daftar bab"
+          >
+            <List size={16} />
+          </button>
+          <button
+            onClick={onSettings}
+            className={`p-1.5 rounded-lg transition-colors ${settingsOpen ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
+            data-testid="button-reader-settings"
+            title="Pengaturan baca"
+          >
+            <Settings2 size={16} />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function NovelRead() {
   const { t } = useLanguage();
   const [, params] = useRoute("/:slug/:seasonSlug/:chapterSlug");
@@ -253,19 +298,6 @@ export default function NovelRead() {
   const [shareCopied, setShareCopied] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const restoredRef = useRef(false);
-
-  const handleShare = async (title: string, storyTitle?: string) => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${title} — ${storyTitle ?? ""}`, url }); } catch {}
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2000);
-      } catch {}
-    }
-  };
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -294,18 +326,16 @@ export default function NovelRead() {
     enabled: !!chapter?.seasonId,
   });
 
-  const currentSeason = seasons?.find(s => s.seasonNumber === seasonNum);
-  const currentIndex  = chapterList?.findIndex(c => c.chapterNumber === chapterNum) ?? -1;
-  const prevChapter   = currentIndex > 0 ? chapterList?.[currentIndex - 1] : null;
-  const nextChapter   = currentIndex >= 0 && chapterList && currentIndex < chapterList.length - 1 ? chapterList[currentIndex + 1] : null;
-  const prevSeason    = seasons?.find(s => s.seasonNumber === seasonNum - 1);
-  const nextSeason    = seasons?.find(s => s.seasonNumber === seasonNum + 1);
+  const currentSeason  = seasons?.find(s => s.seasonNumber === seasonNum);
+  const currentIndex   = chapterList?.findIndex(c => c.chapterNumber === chapterNum) ?? -1;
+  const prevChapter    = currentIndex > 0 ? chapterList?.[currentIndex - 1] : null;
+  const nextChapter    = currentIndex >= 0 && chapterList && currentIndex < chapterList.length - 1 ? chapterList[currentIndex + 1] : null;
 
-  // Scroll progress bar
+  // Scroll progress
   useEffect(() => {
     const handler = () => {
-      const scrollY    = window.scrollY;
-      const docHeight  = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollY   = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       setScrollPercent(docHeight > 0 ? Math.min(100, (scrollY / docHeight) * 100) : 0);
     };
     window.addEventListener("scroll", handler, { passive: true });
@@ -320,8 +350,7 @@ export default function NovelRead() {
       clearTimeout(timer);
       timer = setTimeout(() => {
         localStorage.setItem(`novel-progress-${slug}`, JSON.stringify({
-          seasonNum,
-          chapterNum,
+          seasonNum, chapterNum,
           chapterTitle: chapter.title,
           scrollY: window.scrollY,
           updatedAt: new Date().toISOString(),
@@ -332,7 +361,7 @@ export default function NovelRead() {
     return () => { window.removeEventListener("scroll", handler); clearTimeout(timer); };
   }, [chapter, slug, seasonNum, chapterNum]);
 
-  // Restore scroll position on mount
+  // Restore scroll position
   useEffect(() => {
     if (!chapter || restoredRef.current) return;
     restoredRef.current = true;
@@ -355,14 +384,22 @@ export default function NovelRead() {
     return () => window.removeEventListener("scroll", handler);
   }, [settingsOpen]);
 
-  const modeStyle = MODE_STYLES[settings.mode];
-  const fontClass = settings.fontFamily === "serif" ? "font-serif" : "font-sans";
+  const handleShare = async (title: string, storyTitle?: string) => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: `${title} — ${storyTitle ?? ""}`, url }); } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch {}
+    }
+  };
 
-  // Override prose CSS variables per reading mode so bold/headings/etc
-  // stay in sync regardless of the global dark mode toggle on the navbar.
-  const proseInvertClass =
-    settings.mode === "light" ? "dark:prose-invert" :
-    settings.mode === "night" ? "prose-invert" : "";
+  const modeStyle   = MODE_STYLES[settings.mode];
+  const fontClass   = settings.fontFamily === "serif" ? "font-serif" : "font-sans";
+  const proseInvert = settings.mode === "light" ? "dark:prose-invert" : settings.mode === "night" ? "prose-invert" : "";
 
   const proseColorVars: React.CSSProperties =
     settings.mode === "sepia" ? {
@@ -388,31 +425,38 @@ export default function NovelRead() {
       "--tw-prose-hr":            "#21262d",
     } as React.CSSProperties : {};
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="fixed top-0 left-0 right-0 h-0.5 bg-muted z-50" />
-        <Navbar />
-        <main className="max-w-2xl mx-auto px-6 py-12 space-y-4">
-          <Skeleton className="h-8 w-1/2" />
-          <Skeleton className="h-4 w-1/3" />
-          <div className="space-y-3 pt-4">
-            {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
+        <div className="fixed top-0.5 left-0 right-0 z-40 bg-background/90 border-b border-border/50 h-11" />
+        <div className="max-w-2xl mx-auto px-5 pt-24 pb-12 space-y-4">
+          <Skeleton className="h-5 w-1/4 rounded-full" />
+          <Skeleton className="h-9 w-3/4" />
+          <Skeleton className="h-4 w-1/5 rounded-full" />
+          <div className="pt-8 space-y-3">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <Skeleton key={i} className="h-4" style={{ width: `${75 + (i % 5) * 5}%` }} />
+            ))}
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
+  // ── Not found ─────────────────────────────────────────────────────────────
   if (!chapter) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="max-w-2xl mx-auto px-6 py-20 text-center">
-          <BookOpen size={48} className="mx-auto mb-4 text-muted-foreground opacity-30" />
-          <p className="text-muted-foreground">{t("novel.read.notFound")}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center px-6 py-20 max-w-sm">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-5">
+            <BookOpen size={28} className="text-muted-foreground opacity-40" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2">{t("novel.read.notFound")}</h2>
+          <p className="text-sm text-muted-foreground mb-6">Bab ini tidak ditemukan atau belum tersedia.</p>
           <Link href={`/${slug}`}>
-            <button className="mt-6 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity" data-testid="button-back-to-story">
+            <button className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity" data-testid="button-back-to-story">
               {t("novel.read.backToStory")}
             </button>
           </Link>
@@ -421,6 +465,7 @@ export default function NovelRead() {
     );
   }
 
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
     <div
       className="min-h-screen transition-colors duration-300"
@@ -437,7 +482,7 @@ export default function NovelRead() {
       />
 
       {/* Reading progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-0.5 z-50 bg-border/30">
+      <div className="fixed top-0 left-0 right-0 h-0.5 z-50 bg-border/20">
         <div
           className="h-full bg-primary transition-all duration-100 ease-out"
           style={{ width: `${scrollPercent}%` }}
@@ -445,47 +490,95 @@ export default function NovelRead() {
         />
       </div>
 
-      <Navbar />
+      {/* Custom reader header */}
+      <ReaderHeader
+        story={story}
+        chapter={chapter}
+        chapterNum={chapterNum}
+        slug={slug}
+        onTOC={() => { setTocOpen(v => !v); setSettingsOpen(false); }}
+        onSettings={() => { setSettingsOpen(v => !v); setTocOpen(false); }}
+        settingsOpen={settingsOpen}
+        tocOpen={tocOpen}
+      />
 
-      <main className="max-w-2xl mx-auto px-6 lg:px-8 py-12">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-8 flex-wrap">
-          <Link href="/"><span className="hover:text-foreground transition-colors cursor-pointer">Novel</span></Link>
-          <ChevronLeft size={12} className="rotate-180" />
-          <Link href={`/${slug}`}><span className="hover:text-foreground transition-colors cursor-pointer">{story?.title ?? slug}</span></Link>
-          <ChevronLeft size={12} className="rotate-180" />
-          <span>Season {seasonNum}</span>
-          <ChevronLeft size={12} className="rotate-180" />
-          <span className="text-foreground font-medium">{t("novel.read.chapter")} {chapterNum}</span>
-        </div>
+      {/* Main content */}
+      <main className="max-w-2xl mx-auto px-5 sm:px-8 pt-20 pb-24">
 
-        {/* Chapter Header */}
+        {/* Chapter header */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 pb-6 border-b"
-          style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
+          className="mb-10"
         >
-          <p className="text-sm text-muted-foreground mb-1">Season {seasonNum} — {currentSeason?.title}</p>
-          <h1
-            className="text-2xl lg:text-3xl font-bold mb-3"
-            style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
-            data-testid="text-chapter-title"
+          {/* Cover + metadata */}
+          <div
+            className="relative rounded-2xl overflow-hidden mb-8"
+            style={{
+              background: modeStyle.bg !== "transparent"
+                ? `color-mix(in srgb, ${modeStyle.bg} 85%, transparent)`
+                : undefined,
+            }}
           >
-            {t("novel.read.chapter")} {chapter.chapterNumber}: {chapter.title}
-          </h1>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Clock size={14} />
-            <span>~{estimateReadTime(chapter.content)} {t("novel.read.minRead")}</span>
+            {/* Blurred cover bg */}
+            {story?.coverUrl && (
+              <div className="absolute inset-0 opacity-[0.12]">
+                <img src={story.coverUrl} alt="" className="w-full h-full object-cover blur-2xl scale-110" />
+              </div>
+            )}
+
+            <div className="relative flex gap-4 p-5 sm:p-7">
+              {/* Cover art */}
+              {story?.coverUrl && (
+                <div className="flex-shrink-0 w-16 sm:w-20 aspect-[2/3] rounded-xl overflow-hidden shadow-lg ring-1 ring-border/20">
+                  <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              {/* Info */}
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <Link href={`/${slug}`}>
+                  <p className="text-xs text-primary font-semibold mb-0.5 hover:underline cursor-pointer truncate">
+                    {story?.title ?? slug}
+                  </p>
+                </Link>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Season {seasonNum}{currentSeason?.title ? ` — ${currentSeason.title}` : ""}
+                </p>
+                <h1
+                  className={`text-xl sm:text-2xl font-bold leading-snug mb-3 ${fontClass}`}
+                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
+                  data-testid="text-chapter-title"
+                >
+                  Bab {chapter.chapterNumber}: {chapter.title}
+                </h1>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Clock size={11} />
+                    ~{estimateReadTime(chapter.content)} menit baca
+                  </span>
+                  {chapterList && (
+                    <span className="flex items-center gap-1">
+                      <BookOpen size={11} />
+                      Bab {chapterNum} / {chapterList.length}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
 
-        {/* Content */}
+        {/* Chapter content */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className={`prose prose-gray max-w-none prose-p:leading-[1.95] prose-headings:font-bold prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic prose-p:my-4 prose-hr:my-8 ${proseInvertClass} ${fontClass}`}
+          transition={{ delay: 0.08 }}
+          className={`prose prose-gray max-w-none
+            prose-p:leading-[2] prose-headings:font-bold
+            prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground
+            prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic
+            prose-p:my-5 prose-hr:my-10 ${proseInvert} ${fontClass}`}
           style={{
             fontSize: `${settings.fontSize}px`,
             color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
@@ -495,93 +588,109 @@ export default function NovelRead() {
           dangerouslySetInnerHTML={{ __html: renderRichContent(chapter.content) }}
         />
 
-        {/* Navigation */}
-        <div
-          className="mt-12 pt-8 border-t flex items-center justify-between gap-4"
-          style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
-        >
+        {/* End of chapter divider */}
+        <div className="flex items-center gap-4 my-16">
+          <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
+          <span className="text-xs text-muted-foreground px-3">— Selesai —</span>
+          <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
+        </div>
+
+        {/* Chapter navigation cards */}
+        <div className="grid grid-cols-2 gap-3 mb-8" data-testid="section-chapter-nav">
+          {/* Prev */}
           {prevChapter ? (
             <Link href={`/${slug}/season-${seasonNum}/bab-${prevChapter.chapterNumber}`}>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/60 transition-colors text-sm" data-testid="button-prev-chapter">
-                <ArrowLeft size={16} />
-                <div className="text-left hidden sm:block">
-                  <div className="text-xs text-muted-foreground">{t("novel.read.prev")}</div>
-                  <div className="font-medium line-clamp-1">{t("novel.read.chapter")} {prevChapter.chapterNumber}</div>
+              <div
+                className="p-4 rounded-2xl border hover:border-primary/40 transition-all group cursor-pointer h-full"
+                style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
+                data-testid="button-prev-chapter"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2">
+                  <ArrowLeft size={11} />
+                  <span>Sebelumnya</span>
                 </div>
-              </button>
-            </Link>
-          ) : prevSeason ? (
-            <Link href={`/${slug}`}>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/60 transition-colors text-sm" data-testid="button-prev-season">
-                <ArrowLeft size={16} />
-                <span className="hidden sm:inline">{t("novel.read.prev")}</span>
-              </button>
+                <div className={`text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors ${fontClass}`}
+                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
+                >
+                  Bab {prevChapter.chapterNumber}: {prevChapter.title}
+                </div>
+              </div>
             </Link>
           ) : (
             <Link href={`/${slug}`}>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/60 transition-colors text-sm" data-testid="button-back-story">
-                <ArrowLeft size={16} />
-                <span className="hidden sm:inline">{t("novel.detail.tableOfContents")}</span>
-              </button>
+              <div
+                className="p-4 rounded-2xl border border-dashed hover:border-primary/40 hover:bg-muted/20 transition-all cursor-pointer h-full flex flex-col justify-center"
+                data-testid="button-back-story"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">
+                  <ArrowLeft size={11} />
+                  <span>Kembali</span>
+                </div>
+                <div className="text-sm font-medium text-muted-foreground">Halaman Novel</div>
+              </div>
             </Link>
           )}
 
-          <Link href={`/${slug}`}>
-            <button className="p-2.5 rounded-xl border border-border hover:bg-muted/60 transition-colors" title={t("novel.read.chapterList")} data-testid="button-chapter-list">
-              <BookOpen size={18} />
-            </button>
-          </Link>
-
+          {/* Next */}
           {nextChapter ? (
             <Link href={`/${slug}/season-${seasonNum}/bab-${nextChapter.chapterNumber}`}>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/60 transition-colors text-sm" data-testid="button-next-chapter">
-                <div className="text-right hidden sm:block">
-                  <div className="text-xs text-muted-foreground">{t("novel.read.next")}</div>
-                  <div className="font-medium line-clamp-1">{t("novel.read.chapter")} {nextChapter.chapterNumber}</div>
+              <div
+                className="p-4 rounded-2xl border hover:border-primary/40 transition-all group cursor-pointer h-full text-right"
+                style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
+                data-testid="button-next-chapter"
+              >
+                <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground mb-2">
+                  <span>Selanjutnya</span>
+                  <ArrowRight size={11} />
                 </div>
-                <ArrowRight size={16} />
-              </button>
-            </Link>
-          ) : nextSeason ? (
-            <Link href={`/${slug}`}>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/60 transition-colors text-sm" data-testid="button-next-season">
-                <span className="hidden sm:inline">{t("novel.read.next")}</span>
-                <ArrowRight size={16} />
-              </button>
+                <div className={`text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors ${fontClass}`}
+                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
+                >
+                  Bab {nextChapter.chapterNumber}: {nextChapter.title}
+                </div>
+              </div>
             </Link>
           ) : (
-            <div className="w-28" />
+            <div
+              className="p-4 rounded-2xl border border-dashed flex flex-col items-end justify-center"
+              style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
+            >
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">
+                <span>Selesai</span>
+                <ArrowRight size={11} />
+              </div>
+              <div className="text-sm text-muted-foreground">Bab terakhir</div>
+            </div>
           )}
+        </div>
+
+        {/* Back to story button */}
+        <div className="text-center">
+          <Link href={`/${slug}`}>
+            <button
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border text-sm font-medium hover:bg-muted/50 transition-colors"
+              style={{
+                borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined,
+                color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+              }}
+              data-testid="button-back-to-detail"
+            >
+              <BookOpen size={15} />
+              Kembali ke Halaman Novel
+            </button>
+          </Link>
         </div>
       </main>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-2">
+      {/* Floating action buttons */}
+      <div className="fixed bottom-5 right-4 z-50 flex flex-col items-center gap-2">
         <button
           onClick={() => handleShare(chapter.title, story?.title)}
           className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
           data-testid="button-share-chapter"
           title={t("novel.share")}
         >
-          {shareCopied ? <Check size={16} className="text-green-500" /> : <Share2 size={16} />}
-        </button>
-        {chapterList && chapterList.length > 1 && (
-          <button
-            onClick={() => { setTocOpen(v => !v); setSettingsOpen(false); }}
-            className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
-            data-testid="button-toc"
-            title={t("novel.read.toc")}
-          >
-            <List size={16} />
-          </button>
-        )}
-        <button
-          onClick={() => { setSettingsOpen(v => !v); setTocOpen(false); }}
-          className="w-11 h-11 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-          data-testid="button-reading-settings"
-          title={t("novel.read.settings")}
-        >
-          <Settings2 size={18} />
+          {shareCopied ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
         </button>
       </div>
 

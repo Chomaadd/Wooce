@@ -370,12 +370,14 @@ function BannerForm({
         <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Judul yang muncul di banner..." />
       </div>
       <div>
-        <label className="text-sm font-medium mb-1 block">Subjudul <span className="text-muted-foreground font-normal">(opsional)</span></label>
-        <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} placeholder="Deskripsi singkat..." />
+        <label className="text-sm font-medium mb-1 block">Label Badge <span className="text-muted-foreground font-normal">(opsional · cth: Eksklusif, Baru, Hot)</span></label>
+        <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} placeholder="Eksklusif..." />
+        <p className="text-[11px] text-muted-foreground mt-1">Tampil sebagai badge hijau di banner. Kosongkan jika tidak perlu.</p>
       </div>
       <div>
-        <label className="text-sm font-medium mb-1 block">Link <span className="text-muted-foreground font-normal">(opsional)</span></label>
-        <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} placeholder="https://..." />
+        <label className="text-sm font-medium mb-1 block">Link Novel <span className="text-muted-foreground font-normal">(opsional · cth: /judul-novel)</span></label>
+        <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} placeholder="/judul-novel" />
+        <p className="text-[11px] text-muted-foreground mt-1">Isi dengan slug novel (cth: <code>/ruang-di-antara-kita</code>) agar banner tampilkan badge &amp; sampul novel unggulan secara otomatis.</p>
       </div>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} className="rounded" />

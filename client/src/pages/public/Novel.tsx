@@ -142,6 +142,16 @@ function BannerSlideshow({ banners, featuredStory }: { banners: BannerSlide[]; f
 }
 
 function BannerCard({ banner, featuredStory }: { banner: BannerSlide; featuredStory?: StoryWithStats }) {
+  const isFeaturedBanner = !!(
+    featuredStory &&
+    banner.link &&
+    (
+      banner.link === `/${featuredStory.slug}` ||
+      banner.link === featuredStory.slug ||
+      banner.link.endsWith(`/${featuredStory.slug}`)
+    )
+  );
+
   return (
     <div className="relative my-5 rounded-2xl overflow-hidden aspect-[16/5] shadow-xl">
       {/* Background image */}
@@ -155,10 +165,23 @@ function BannerCard({ banner, featuredStory }: { banner: BannerSlide; featuredSt
       <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
+      {/* Featured novel cover — right side */}
+      {isFeaturedBanner && featuredStory?.coverUrl && (
+        <div className="absolute right-6 sm:right-10 top-1/2 -translate-y-1/2 z-10">
+          <div className="w-16 sm:w-20 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-2 ring-white/20">
+            <img
+              src={featuredStory.coverUrl}
+              alt={featuredStory.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-8 z-10">
         <div className="flex items-center gap-2 mb-2">
-          {featuredStory && (
+          {isFeaturedBanner && featuredStory && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary text-primary-foreground shadow">
               <Star size={9} fill="currentColor" /> {featuredStory.title}
             </span>
