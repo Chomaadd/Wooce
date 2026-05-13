@@ -451,7 +451,7 @@ export async function registerRoutes(
         let totalChapters = 0;
         let lastChapterAt: string | null = null;
         for (const season of seasons) {
-          const chapters = await storage.getNovelChapters(season.id, false);
+          const chapters = await storage.getNovelChapters(season.id);
           totalChapters += chapters.length;
           for (const ch of chapters) {
             const chDate = ch.updatedAt ?? ch.createdAt;
