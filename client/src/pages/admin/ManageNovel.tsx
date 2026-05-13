@@ -759,7 +759,9 @@ export default function ManageNovel() {
 
   const { data: adminStats } = useQuery<{
     totalViews: number; totalStories: number; totalChapters: number; totalFeatured: number;
+    totalRatings: number; avgRating: number;
     topStories: Array<{ id: string; title: string; coverUrl?: string; viewCount: number; totalChapters: number; category: string; }>;
+    topChapters: Array<{ id: string; title: string; chapterNumber: number; viewCount: number; storyTitle: string; storySlug: string; }>;
   }>({
     queryKey: ["/api/admin/stats"],
     queryFn: () => fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
@@ -1005,8 +1007,8 @@ export default function ManageNovel() {
 
         {/* ── STATS VIEW ── */}
         {view === "stats" && (
-          <div>
-            <div className="mb-6">
+          <div className="space-y-6">
+            <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <TrendingUp size={22} /> Statistik
               </h1>
@@ -1014,54 +1016,91 @@ export default function ManageNovel() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
-                { label: "Total Views", value: adminStats?.totalViews ?? 0, icon: <Eye size={16} />, color: "text-blue-500" },
-                { label: "Total Novel", value: adminStats?.totalStories ?? 0, icon: <BookOpen size={16} />, color: "text-emerald-500" },
-                { label: "Total Chapter", value: adminStats?.totalChapters ?? 0, icon: <FileText size={16} />, color: "text-violet-500" },
-                { label: "Novel Unggulan", value: adminStats?.totalFeatured ?? 0, icon: <Star size={16} fill="currentColor" />, color: "text-yellow-500" },
-              ].map(({ label, value, icon, color }) => (
-                <div key={label} className="rounded-xl border border-border p-4 bg-muted/20">
-                  <div className={`mb-2 ${color}`}>{icon}</div>
-                  <div className="text-2xl font-bold text-foreground">{value.toLocaleString()}</div>
+                { label: "Total Views", value: (adminStats?.totalViews ?? 0).toLocaleString(), icon: <Eye size={15} />, color: "text-blue-500", bg: "bg-blue-500/10" },
+                { label: "Total Novel", value: adminStats?.totalStories ?? 0, icon: <BookOpen size={15} />, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                { label: "Total Chapter", value: adminStats?.totalChapters ?? 0, icon: <FileText size={15} />, color: "text-violet-500", bg: "bg-violet-500/10" },
+                { label: "Novel Unggulan", value: adminStats?.totalFeatured ?? 0, icon: <Star size={15} fill="currentColor" />, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+                { label: "Total Rating", value: adminStats?.totalRatings ?? 0, icon: <Star size={15} />, color: "text-orange-500", bg: "bg-orange-500/10" },
+                { label: "Rata-rata Rating", value: adminStats?.avgRating ? adminStats.avgRating.toFixed(1) + "★" : "—", icon: <TrendingUp size={15} />, color: "text-pink-500", bg: "bg-pink-500/10" },
+              ].map(({ label, value, icon, color, bg }) => (
+                <div key={label} className="rounded-xl border border-border p-4 bg-card hover:bg-muted/30 transition-colors">
+                  <div className={`w-8 h-8 rounded-lg ${bg} ${color} flex items-center justify-center mb-3`}>{icon}</div>
+                  <div className="text-xl font-bold text-foreground">{value}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
                 </div>
               ))}
             </div>
 
-            {/* Top Stories */}
-            <div className="rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
-                <BarChart2 size={15} className="text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">Top 5 Novel (Views Tertinggi)</span>
-              </div>
-              {!adminStats?.topStories?.length ? (
-                <div className="py-10 text-center text-muted-foreground text-sm">Belum ada data</div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {adminStats.topStories.map((story, i) => (
-                    <div key={story.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
-                      <span className={`text-xs font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
-                        {i + 1}
-                      </span>
-                      <div className="w-8 aspect-[2/3] rounded-md overflow-hidden bg-muted flex-shrink-0">
-                        {story.coverUrl
-                          ? <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center"><BookOpen size={10} className="text-muted-foreground" /></div>
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-foreground truncate">{story.title}</div>
-                        <div className="text-xs text-muted-foreground capitalize">{story.category} · {story.totalChapters} chapter</div>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                        <Eye size={11} />
-                        {(story.viewCount ?? 0).toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Top Stories */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+                  <BarChart2 size={15} className="text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">Top 5 Novel</span>
+                  <span className="ml-auto text-xs text-muted-foreground">Views tertinggi</span>
                 </div>
-              )}
+                {!adminStats?.topStories?.length ? (
+                  <div className="py-10 text-center text-muted-foreground text-sm">Belum ada data</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {adminStats.topStories.map((story, i) => (
+                      <div key={story.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
+                        <span className={`text-xs font-bold w-5 text-center shrink-0 ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+                          {i + 1}
+                        </span>
+                        <div className="w-8 aspect-[2/3] rounded-md overflow-hidden bg-muted flex-shrink-0">
+                          {story.coverUrl
+                            ? <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center"><BookOpen size={10} className="text-muted-foreground" /></div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm text-foreground truncate">{story.title}</div>
+                          <div className="text-xs text-muted-foreground capitalize">{story.category} · {story.totalChapters} ch</div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0 bg-muted/60 px-2 py-1 rounded-full">
+                          <Eye size={10} />
+                          {(story.viewCount ?? 0).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Top Chapters */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+                  <FileText size={15} className="text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">Top 10 Chapter</span>
+                  <span className="ml-auto text-xs text-muted-foreground">Views tertinggi per chapter</span>
+                </div>
+                {!adminStats?.topChapters?.length ? (
+                  <div className="py-10 text-center text-muted-foreground text-sm">Belum ada data chapter views</div>
+                ) : (
+                  <div className="divide-y divide-border max-h-72 overflow-y-auto">
+                    {adminStats.topChapters.map((ch, i) => (
+                      <div key={ch.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors">
+                        <span className={`text-xs font-bold w-5 text-center shrink-0 ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-foreground font-medium truncate">
+                            Bab {ch.chapterNumber}: {ch.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">{ch.storyTitle}</div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0 bg-muted/60 px-2 py-1 rounded-full">
+                          <Eye size={10} />
+                          {(ch.viewCount ?? 0).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1233,7 +1272,14 @@ export default function ManageNovel() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{(ch.content ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length} {t("admin.novel.form.words")}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>{(ch.content ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length} {t("admin.novel.form.words")}</span>
+                        {(ch as any).viewCount > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            <Eye size={9} /> {((ch as any).viewCount).toLocaleString()} views
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button

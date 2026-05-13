@@ -240,6 +240,23 @@ export async function registerRoutes(
     } catch { res.status(404).json({ message: "Story not found" }); }
   });
 
+  app.post("/api/novel/stories/:slug/rate", async (req, res) => {
+    try {
+      const { rating } = req.body;
+      const r = Number(rating);
+      if (!r || r < 1 || r > 5) return res.status(400).json({ message: "Rating harus 1-5" });
+      const result = await storage.rateNovelStory(req.params.slug, r);
+      res.json(result);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/novel/chapters/:id/view", async (req, res) => {
+    try {
+      await storage.incrementChapterViewCount(req.params.id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   app.get("/api/novel/stories/:storyId/seasons", async (req, res) => {
     try {
       const seasons = await storage.getNovelSeasons(req.params.storyId);
@@ -467,7 +484,12 @@ export async function registerRoutes(
       const totalChapters = storyStats.reduce((acc, s) => acc + s.totalChapters, 0);
       const totalFeatured = storyStats.filter(s => s.featured).length;
       const topStories = [...storyStats].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
-      res.json({ totalViews, totalStories: stories.length, totalChapters, totalFeatured, topStories });
+      const topChapters = await storage.getTopChaptersByViews(10);
+      const totalRatings = storyStats.reduce((acc, s) => acc + (s.ratingCount || 0), 0);
+      const avgRating = totalRatings > 0
+        ? storyStats.reduce((acc, s) => acc + (s.ratingSum || 0), 0) / totalRatings
+        : 0;
+      res.json({ totalViews, totalStories: stories.length, totalChapters, totalFeatured, topStories, topChapters, totalRatings, avgRating });
     } catch (err) {
       console.error("Stats error:", err);
       res.status(500).json({ message: "Failed to fetch stats" });

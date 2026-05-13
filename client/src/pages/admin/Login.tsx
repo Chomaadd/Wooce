@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, BookOpen, Lock } from "lucide-react";
+import { Loader2, Eye, EyeOff, BookOpen, ShieldCheck } from "lucide-react";
 import { Redirect } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -25,53 +25,82 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-
-      {/* Background decoration */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-primary/4 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-muted/30 blur-3xl" />
+    <div className="min-h-screen flex bg-background">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-primary/60 items-center justify-center p-12 flex-col">
+        {/* Abstract shapes */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
+          <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-black/10" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-white/10" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full border border-white/10" />
+          {/* Dot grid */}
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }}
+          />
+        </div>
+        <div className="relative text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/15 backdrop-blur-sm border border-white/20 mb-6 shadow-2xl">
+            <BookOpen size={36} className="text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">WOOCE Novel</h1>
+          <p className="text-white/70 text-base leading-relaxed max-w-xs">
+            Platform baca novel, komik, dan cerita pendek — dibangun dengan cinta untuk pembaca.
+          </p>
+          <div className="mt-10 flex flex-col gap-3 text-left">
+            {[
+              "Kelola cerita & chapter dengan mudah",
+              "Statistik views & rating real-time",
+              "Upload & crop cover langsung dari browser",
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3">
+                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-white" />
+                </div>
+                <span className="text-white/90 text-sm">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Grid pattern overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.025] dark:opacity-[0.04]"
-        style={{
-          backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      {/* Card */}
-      <div className="relative w-full max-w-sm mx-4">
-
-        {/* Logo + Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4 shadow-lg shadow-primary/25">
-            <BookOpen size={26} className="text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">WOOCE Novel</h1>
-          <p className="text-sm text-muted-foreground mt-1">Admin Dashboard</p>
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 relative overflow-hidden">
+        {/* Subtle background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full bg-primary/5 blur-3xl" />
+          <div className="absolute -bottom-32 -left-32 w-64 h-64 rounded-full bg-primary/5 blur-3xl" />
         </div>
 
-        {/* Form card */}
-        <div className="bg-background/80 backdrop-blur-xl border border-border/60 rounded-2xl p-8 shadow-xl shadow-black/5 dark:shadow-black/30">
-
-          <div className="mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 mb-4">
-              <Lock size={11} className="text-primary" />
-              <span className="text-xs font-semibold text-primary uppercase tracking-widest">{t("admin.login.auth")}</span>
+        <div className="w-full max-w-sm relative">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+              <BookOpen size={18} className="text-primary-foreground" />
             </div>
-            <h2 className="text-xl font-bold text-foreground leading-snug" data-testid="text-login-title">
-              {t("admin.login.welcome")} <span className="text-primary">Mad.</span>
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">{t("admin.login.subtitle")}</p>
+            <span className="font-bold text-foreground">WOOCE Novel</span>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="username" className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-5">
+              <ShieldCheck size={12} className="text-primary" />
+              <span className="text-[11px] font-bold text-primary uppercase tracking-widest">{t("admin.login.auth")}</span>
+            </div>
+            <h2 className="text-2xl font-bold text-foreground leading-tight" data-testid="text-login-title">
+              {t("admin.login.welcome")} <span className="text-primary">Mad.</span>
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2">{t("admin.login.subtitle")}</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label htmlFor="username" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">
                 {t("admin.login.username")}
               </label>
               <input
@@ -80,14 +109,14 @@ export default function Login() {
                 autoComplete="username"
                 value={credentials.username}
                 onChange={e => setCredentials({ ...credentials, username: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-border bg-muted/40 text-sm transition-all outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/50"
-                placeholder="username"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-muted/40 text-sm transition-all outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                placeholder="Masukkan username"
                 data-testid="input-username"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">
                 {t("admin.login.password")}
               </label>
               <div className="relative">
@@ -98,7 +127,7 @@ export default function Login() {
                   autoComplete="current-password"
                   value={credentials.password}
                   onChange={e => setCredentials({ ...credentials, password: e.target.value })}
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-muted/40 text-sm transition-all outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/50"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-muted/40 text-sm transition-all outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
                   placeholder="••••••••"
                   data-testid="input-password"
                 />
@@ -117,7 +146,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-3 rounded-xl font-semibold text-sm tracking-wide transition-all duration-200 flex items-center justify-center gap-2 mt-2 disabled:opacity-60 bg-primary text-primary-foreground hover:opacity-90 shadow-md shadow-primary/20"
+              className="w-full py-3 rounded-xl font-semibold text-sm tracking-wide transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 bg-primary text-primary-foreground hover:opacity-90 shadow-md shadow-primary/25 mt-1"
               data-testid="button-login"
             >
               {isLoggingIn ? (
@@ -127,11 +156,11 @@ export default function Login() {
               )}
             </button>
           </form>
-        </div>
 
-        <p className="text-center text-xs text-muted-foreground/40 mt-6 tracking-wider uppercase">
-          WOOCE Novel &middot; {new Date().getFullYear()}
-        </p>
+          <p className="text-center text-xs text-muted-foreground/40 mt-8 tracking-wider uppercase">
+            WOOCE Novel &middot; Admin Panel &middot; {new Date().getFullYear()}
+          </p>
+        </div>
       </div>
     </div>
   );

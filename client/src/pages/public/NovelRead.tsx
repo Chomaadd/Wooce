@@ -331,6 +331,15 @@ export default function NovelRead() {
   const prevChapter    = currentIndex > 0 ? chapterList?.[currentIndex - 1] : null;
   const nextChapter    = currentIndex >= 0 && chapterList && currentIndex < chapterList.length - 1 ? chapterList[currentIndex + 1] : null;
 
+  // Track chapter view count
+  useEffect(() => {
+    if (!chapter?.id) return;
+    const key = `novel-chapter-viewed-${chapter.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    fetch(`/api/novel/chapters/${chapter.id}/view`, { method: "PATCH" }).catch(() => {});
+  }, [chapter?.id]);
+
   // Scroll progress
   useEffect(() => {
     const handler = () => {

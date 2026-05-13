@@ -222,6 +222,37 @@ export class DatabaseStorage implements IStorage {
     await NovelChapterModel.findByIdAndDelete(id);
   }
 
+  async rateNovelStory(slug: string, rating: number): Promise<{ ratingSum: number; ratingCount: number }> {
+    const doc = await NovelStoryModel.findOneAndUpdate(
+      { slug },
+      { $inc: { ratingSum: rating, ratingCount: 1 } },
+      { new: true }
+    );
+    if (!doc) throw new Error('Story not found');
+    return { ratingSum: doc.ratingSum || 0, ratingCount: doc.ratingCount || 0 };
+  }
+
+  async incrementChapterViewCount(chapterId: string): Promise<void> {
+    await NovelChapterModel.findByIdAndUpdate(chapterId, { $inc: { viewCount: 1 } });
+  }
+
+  async getTopChaptersByViews(limit = 10): Promise<Array<{ id: string; title: string; chapterNumber: number; viewCount: number; storyTitle: string; storySlug: string }>> {
+    const chapters = await NovelChapterModel.find({ published: true }).sort({ viewCount: -1 }).limit(limit);
+    const results = [];
+    for (const ch of chapters) {
+      const story = await NovelStoryModel.findById(ch.storyId);
+      results.push({
+        id: ch._id.toString(),
+        title: ch.title,
+        chapterNumber: ch.chapterNumber,
+        viewCount: ch.viewCount || 0,
+        storyTitle: story?.title ?? "Unknown",
+        storySlug: story?.slug ?? "",
+      });
+    }
+    return results;
+  }
+
   // ── Banner Slides ──────────────────────────────────────────────────────────
   async getBanners(activeOnly?: boolean): Promise<BannerSlide[]> {
     const query = activeOnly ? { active: true } : {};

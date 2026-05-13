@@ -41,6 +41,8 @@ import mongoose from 'mongoose';
     published: { type: Boolean, default: false },
     featured: { type: Boolean, default: false },
     viewCount: { type: Number, default: 0 },
+    ratingSum: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
   }, { timestamps: true });
 
   const novelSeasonSchema = new mongoose.Schema({
@@ -57,6 +59,7 @@ import mongoose from 'mongoose';
     content: { type: String, default: '' },
     published: { type: Boolean, default: false },
     scheduledAt: { type: Date, default: null },
+    viewCount: { type: Number, default: 0 },
   }, { timestamps: true });
 
   export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);

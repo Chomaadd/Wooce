@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
+  Bookmark, BookmarkCheck, Star,
 } from "lucide-react";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
@@ -188,6 +189,119 @@ interface ReadingProgress {
   updatedAt: string;
 }
 
+function useBookmark(slug: string) {
+  const [bookmarked, setBookmarked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("novel-bookmarks") || "[]");
+      setBookmarked(saved.includes(slug));
+    } catch {}
+  }, [slug]);
+
+  const toggle = () => {
+    try {
+      const saved: string[] = JSON.parse(localStorage.getItem("novel-bookmarks") || "[]");
+      let next: string[];
+      if (saved.includes(slug)) {
+        next = saved.filter((s: string) => s !== slug);
+      } else {
+        next = [...saved, slug];
+      }
+      localStorage.setItem("novel-bookmarks", JSON.stringify(next));
+      setBookmarked(!saved.includes(slug));
+    } catch {}
+  };
+
+  return { bookmarked, toggle };
+}
+
+function StarRating({ slug, initialSum, initialCount }: { slug: string; initialSum: number; initialCount: number }) {
+  const [ratingSum, setRatingSum] = useState(initialSum);
+  const [ratingCount, setRatingCount] = useState(initialCount);
+  const [userRating, setUserRating] = useState<number>(0);
+  const [hovered, setHovered] = useState<number>(0);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [voting, setVoting] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`novel-rated-${slug}`);
+      if (saved) {
+        setHasVoted(true);
+        setUserRating(Number(saved));
+      }
+    } catch {}
+  }, [slug]);
+
+  const avgRating = ratingCount > 0 ? ratingSum / ratingCount : 0;
+  const displayRating = hovered || userRating || Math.round(avgRating);
+
+  const handleRate = async (star: number) => {
+    if (hasVoted || voting) return;
+    setVoting(true);
+    try {
+      const res = await fetch(`/api/novel/stories/${slug}/rate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: star }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRatingSum(data.ratingSum);
+        setRatingCount(data.ratingCount);
+        setUserRating(star);
+        setHasVoted(true);
+        localStorage.setItem(`novel-rated-${slug}`, String(star));
+      }
+    } catch {}
+    setVoting(false);
+  };
+
+  return (
+    <div className="flex items-center gap-3" data-testid="star-rating">
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map(star => (
+          <button
+            key={star}
+            disabled={hasVoted || voting}
+            onClick={() => handleRate(star)}
+            onMouseEnter={() => !hasVoted && setHovered(star)}
+            onMouseLeave={() => !hasVoted && setHovered(0)}
+            className={`transition-all duration-100 disabled:cursor-default ${hasVoted ? "" : "hover:scale-110 cursor-pointer"}`}
+            data-testid={`button-star-${star}`}
+            aria-label={`Beri ${star} bintang`}
+          >
+            <Star
+              size={18}
+              className={`transition-colors ${
+                star <= displayRating
+                  ? "fill-amber-400 text-amber-400"
+                  : "fill-muted text-muted-foreground/30"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+      <div className="text-sm">
+        {ratingCount > 0 ? (
+          <span className="text-muted-foreground">
+            <span className="font-semibold text-foreground">{avgRating.toFixed(1)}</span>
+            {" "}({ratingCount.toLocaleString()} rating)
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs">Belum ada rating</span>
+        )}
+      </div>
+      {hasVoted && (
+        <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
+          Kamu: {userRating}★
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function NovelDetail() {
   const [, params] = useRoute("/:slug");
   const { t } = useLanguage();
@@ -195,6 +309,7 @@ export default function NovelDetail() {
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const { bookmarked, toggle: toggleBookmark } = useBookmark(slug);
 
   const handleShare = async (title: string, description?: string | null) => {
     const url = window.location.href;
@@ -313,7 +428,7 @@ export default function NovelDetail() {
           </button>
         </Link>
 
-        {/* Story Header — floats over banner */}
+        {/* Story Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -352,6 +467,16 @@ export default function NovelDetail() {
             {story.description && (
               <p className="text-muted-foreground text-sm leading-relaxed mb-4 max-w-xl">{story.description}</p>
             )}
+
+            {/* Rating */}
+            <div className="mb-4">
+              <StarRating
+                slug={slug}
+                initialSum={(story as any).ratingSum ?? 0}
+                initialCount={(story as any).ratingCount ?? 0}
+              />
+            </div>
+
             <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-5">
               <span className="flex items-center gap-1.5">
                 <BookMarked size={13} className="text-primary/60" />
@@ -397,6 +522,18 @@ export default function NovelDetail() {
                 </button>
               </a>
               <button
+                onClick={toggleBookmark}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                  bookmarked
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border hover:bg-muted"
+                }`}
+                data-testid="button-bookmark"
+              >
+                {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                {bookmarked ? "Tersimpan" : "Simpan"}
+              </button>
+              <button
                 onClick={() => handleShare(story.title, story.description)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
                 data-testid="button-share-story"
@@ -408,7 +545,7 @@ export default function NovelDetail() {
           </div>
         </motion.div>
 
-        {/* Continue Reading banner (if progress) */}
+        {/* Continue Reading banner */}
         {readingProgress && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}

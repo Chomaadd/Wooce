@@ -206,6 +206,8 @@ export const novelStorySchema = z.object({
   published: z.boolean().default(false),
   featured: z.boolean().default(false),
   viewCount: z.number().default(0),
+  ratingSum: z.number().default(0),
+  ratingCount: z.number().default(0),
   createdAt: z.union([z.date(), z.string()]).optional(),
   updatedAt: z.union([z.date(), z.string()]).optional(),
 });
@@ -237,6 +239,7 @@ export const novelChapterSchema = z.object({
   content: z.string().default(""),
   published: z.boolean().default(false),
   scheduledAt: z.union([z.date(), z.string()]).nullable().optional(),
+  viewCount: z.number().default(0),
   createdAt: z.union([z.date(), z.string()]).optional(),
   updatedAt: z.union([z.date(), z.string()]).optional(),
 });
