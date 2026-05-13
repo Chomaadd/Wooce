@@ -98,9 +98,9 @@ function BannerSlideshow({ banners, featuredStory }: { banners: BannerSlide[]; f
             className="relative"
           >
             {cur.link ? (
-              <a href={cur.link} className="block">
+              <Link href={cur.link.startsWith("/") ? cur.link : `/${cur.link}`} className="block">
                 <BannerCard banner={cur} featuredStory={featuredStory} />
-              </a>
+              </Link>
             ) : (
               <BannerCard banner={cur} featuredStory={featuredStory} />
             )}
@@ -167,15 +167,19 @@ function BannerCard({ banner, featuredStory }: { banner: BannerSlide; featuredSt
 
       {/* Featured novel cover — right side */}
       {isFeaturedBanner && featuredStory?.coverUrl && (
-        <div className="absolute right-6 sm:right-10 top-1/2 -translate-y-1/2 z-10">
-          <div className="w-16 sm:w-20 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-2 ring-white/20">
+        <Link
+          href={`/${featuredStory.slug}`}
+          className="absolute right-6 sm:right-10 top-1/2 -translate-y-1/2 z-20"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="w-16 sm:w-20 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-2 ring-white/20 hover:ring-white/60 hover:scale-105 transition-all duration-200">
             <img
               src={featuredStory.coverUrl}
               alt={featuredStory.title}
               className="w-full h-full object-cover"
             />
           </div>
-        </div>
+        </Link>
       )}
 
       {/* Content */}
