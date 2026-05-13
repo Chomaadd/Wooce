@@ -445,7 +445,7 @@ export async function registerRoutes(
   // ── Admin Stats ───────────────────────────────────────────────────────────
   app.get("/api/admin/stats", requireAuth, async (_req, res) => {
     try {
-      const stories = await storage.getNovelStories(false);
+      const stories = await storage.getNovelStories();
       const storyStats = await Promise.all(stories.map(async (story) => {
         const seasons = await storage.getNovelSeasons(story.id);
         let totalChapters = 0;
