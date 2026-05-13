@@ -18,14 +18,14 @@ import {
   BookOpen, Plus, Pencil, Trash2, ChevronRight, ChevronUp, ChevronDown,
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
-  LogOut, ExternalLink, Settings,
+  LogOut, ExternalLink, Settings, TrendingUp, BarChart2,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats";
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -755,6 +755,15 @@ export default function ManageNovel() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; name: string } | null>(null);
   const [bannerDialog, setBannerDialog] = useState<{ open: boolean; banner?: BannerSlide }>({ open: false });
 
+  const { data: adminStats } = useQuery<{
+    totalViews: number; totalStories: number; totalChapters: number; totalFeatured: number;
+    topStories: Array<{ id: string; title: string; coverUrl?: string; viewCount: number; totalChapters: number; category: string; }>;
+  }>({
+    queryKey: ["/api/admin/stats"],
+    queryFn: () => fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user,
+  });
+
   const { data: banners, isLoading: bannersLoading } = useQuery<BannerSlide[]>({
     queryKey: ["/api/banners/all"],
     queryFn: () => fetch("/api/banners/all", { credentials: "include" }).then(r => r.json()),
@@ -949,9 +958,15 @@ export default function ManageNovel() {
         <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
           <button
             onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Cerita
+          </button>
+          <button
+            onClick={() => setView("stats")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "stats" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <BarChart2 size={13} /> Statistik
           </button>
           <button
             onClick={() => setView("settings")}
@@ -962,7 +977,7 @@ export default function ManageNovel() {
         </div>
 
         {/* Breadcrumb Nav */}
-        {view !== "settings" && (
+        {view !== "settings" && view !== "stats" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
@@ -984,6 +999,69 @@ export default function ManageNovel() {
             </>
           )}
         </div>
+        )}
+
+        {/* ── STATS VIEW ── */}
+        {view === "stats" && (
+          <div>
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <TrendingUp size={22} /> Statistik
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">Ringkasan data platform WOOCE Novel</p>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+              {[
+                { label: "Total Views", value: adminStats?.totalViews ?? 0, icon: <Eye size={16} />, color: "text-blue-500" },
+                { label: "Total Novel", value: adminStats?.totalStories ?? 0, icon: <BookOpen size={16} />, color: "text-emerald-500" },
+                { label: "Total Chapter", value: adminStats?.totalChapters ?? 0, icon: <FileText size={16} />, color: "text-violet-500" },
+                { label: "Novel Unggulan", value: adminStats?.totalFeatured ?? 0, icon: <Star size={16} fill="currentColor" />, color: "text-yellow-500" },
+              ].map(({ label, value, icon, color }) => (
+                <div key={label} className="rounded-xl border border-border p-4 bg-muted/20">
+                  <div className={`mb-2 ${color}`}>{icon}</div>
+                  <div className="text-2xl font-bold text-foreground">{value.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Top Stories */}
+            <div className="rounded-xl border border-border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+                <BarChart2 size={15} className="text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Top 5 Novel (Views Tertinggi)</span>
+              </div>
+              {!adminStats?.topStories?.length ? (
+                <div className="py-10 text-center text-muted-foreground text-sm">Belum ada data</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {adminStats.topStories.map((story, i) => (
+                    <div key={story.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
+                      <span className={`text-xs font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+                        {i + 1}
+                      </span>
+                      <div className="w-8 aspect-[2/3] rounded-md overflow-hidden bg-muted flex-shrink-0">
+                        {story.coverUrl
+                          ? <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center"><BookOpen size={10} className="text-muted-foreground" /></div>
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-foreground truncate">{story.title}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{story.category} · {story.totalChapters} chapter</div>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                        <Eye size={11} />
+                        {(story.viewCount ?? 0).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* ── STORIES VIEW ── */}

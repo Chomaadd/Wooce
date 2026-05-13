@@ -442,6 +442,38 @@ export async function registerRoutes(
     }
   });
 
+  // ── Admin Stats ───────────────────────────────────────────────────────────
+  app.get("/api/admin/stats", requireAuth, async (_req, res) => {
+    try {
+      const stories = await storage.getNovelStories(false);
+      const storyStats = await Promise.all(stories.map(async (story) => {
+        const seasons = await storage.getNovelSeasons(story.id);
+        let totalChapters = 0;
+        let lastChapterAt: string | null = null;
+        for (const season of seasons) {
+          const chapters = await storage.getNovelChapters(season.id, false);
+          totalChapters += chapters.length;
+          for (const ch of chapters) {
+            const chDate = ch.updatedAt ?? ch.createdAt;
+            if (chDate) {
+              const d = typeof chDate === "string" ? chDate : (chDate as Date).toISOString();
+              if (!lastChapterAt || d > lastChapterAt) lastChapterAt = d;
+            }
+          }
+        }
+        return { ...story, totalChapters, lastChapterAt };
+      }));
+      const totalViews = storyStats.reduce((acc, s) => acc + (s.viewCount || 0), 0);
+      const totalChapters = storyStats.reduce((acc, s) => acc + s.totalChapters, 0);
+      const totalFeatured = storyStats.filter(s => s.featured).length;
+      const topStories = [...storyStats].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
+      res.json({ totalViews, totalStories: stories.length, totalChapters, totalFeatured, topStories });
+    } catch (err) {
+      console.error("Stats error:", err);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
   // ── Social Bot OG Middleware ──────────────────────────────────────────────
   const SITE_URL = "https://wooce.novel";
   const SITE_NAME = "WOOCE Novel";

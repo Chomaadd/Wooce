@@ -9,7 +9,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  BookOpen, BookMarked, Sparkles,
+  BookOpen, BookMarked, Sparkles, Eye,
   ChevronLeft, ChevronRight, Star, Search,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
@@ -49,7 +49,7 @@ function formatViewCount(n: number): string {
 }
 
 // ── Banner Slideshow ──────────────────────────────────────────────────────────
-function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
+function BannerSlideshow({ banners, featuredStory }: { banners: BannerSlide[]; featuredStory?: StoryWithStats }) {
   const [idx, setIdx] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const dragStartRef = useRef<number | null>(null);
@@ -99,10 +99,10 @@ function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
           >
             {cur.link ? (
               <a href={cur.link} className="block">
-                <BannerCard banner={cur} />
+                <BannerCard banner={cur} featuredStory={featuredStory} />
               </a>
             ) : (
-              <BannerCard banner={cur} />
+              <BannerCard banner={cur} featuredStory={featuredStory} />
             )}
           </motion.div>
         </AnimatePresence>
@@ -141,9 +141,9 @@ function BannerSlideshow({ banners }: { banners: BannerSlide[] }) {
   );
 }
 
-function BannerCard({ banner }: { banner: BannerSlide }) {
+function BannerCard({ banner, featuredStory }: { banner: BannerSlide; featuredStory?: StoryWithStats }) {
   return (
-    <div className="relative my-5 rounded-2xl overflow-hidden aspect-[16/4] shadow-xl">
+    <div className="relative my-5 rounded-2xl overflow-hidden aspect-[16/5] shadow-xl">
       {/* Background image */}
       <img
         src={banner.imageUrl}
@@ -158,9 +158,11 @@ function BannerCard({ banner }: { banner: BannerSlide }) {
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-8 z-10">
         <div className="flex items-center gap-2 mb-2">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary text-primary-foreground shadow">
-            <Star size={9} fill="currentColor" /> Featured
-          </span>
+          {featuredStory && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary text-primary-foreground shadow">
+              <Star size={9} fill="currentColor" /> {featuredStory.title}
+            </span>
+          )}
           {banner.subtitle && (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/90 text-white">
               {banner.subtitle}
@@ -276,8 +278,9 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                       {story.title}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground capitalize">
-                        {CATEGORY_ICONS[story.category] ?? "📝"} {story.category}
+                      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                        <Eye size={9} />
+                        {formatViewCount(story.viewCount)}
                       </span>
                       {story.totalChapters > 0 && (
                         <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
@@ -448,8 +451,9 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
               {story.title}
             </h3>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground capitalize">
-                {CATEGORY_ICONS[story.category] ?? "📝"} {story.category}
+              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                <Eye size={9} />
+                {formatViewCount(story.viewCount)}
               </span>
               {story.totalChapters > 0 && (
                 <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
@@ -494,6 +498,11 @@ export default function Novel() {
     [banners]
   );
 
+  const featuredStory = useMemo(
+    () => stories?.find(s => s.featured) ?? undefined,
+    [stories]
+  );
+
   const categories = useMemo(() => {
     const cats = new Set<string>();
     stories?.forEach(s => cats.add(s.category));
@@ -518,7 +527,7 @@ export default function Novel() {
       <Navbar />
 
       {/* Banner Slideshow */}
-      <BannerSlideshow banners={activeBanners} />
+      <BannerSlideshow banners={activeBanners} featuredStory={featuredStory} />
 
       {/* Search Results */}
       <AnimatePresence mode="wait">
