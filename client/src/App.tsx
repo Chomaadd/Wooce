@@ -14,6 +14,7 @@ import NovelRead from "./pages/public/NovelRead";
 import Bookmarks from "./pages/public/Bookmarks";
 import Terms from "./pages/public/Terms";
 import Privacy from "./pages/public/Privacy";
+import AuthorProfile from "./pages/public/AuthorProfile";
 import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
 import NotFound from "@/pages/public/Not-Found";
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/bookmarks" component={Bookmarks} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/penulis/:slug" component={AuthorProfile} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />

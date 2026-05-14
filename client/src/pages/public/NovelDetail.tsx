@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
-  Bookmark, BookmarkCheck, Star, X, ImageDown,
+  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User,
 } from "lucide-react";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
@@ -716,7 +716,34 @@ export default function NovelDetail() {
                 <ImageDown size={14} />
                 {t("novel.shareCard.title")}
               </button>
+              {(story as any).donationUrl && (
+                <a
+                  href={(story as any).donationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/8 text-primary text-sm font-semibold hover:bg-primary/15 transition-colors"
+                  data-testid="button-donate-story"
+                >
+                  <Heart size={13} fill="currentColor" />
+                  Dukung Penulis
+                </a>
+              )}
             </div>
+            {(story as any).author && (
+              <div className="mt-4 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                  {(story as any).author.photoUrl
+                    ? <img src={(story as any).author.photoUrl} alt={(story as any).author.name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center bg-primary/10"><User size={12} className="text-primary/60" /></div>
+                  }
+                </div>
+                <Link href={`/penulis/${(story as any).author.slug}`}>
+                  <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer" data-testid="link-story-author">
+                    oleh <span className="font-medium text-foreground">{(story as any).author.name}</span>
+                  </span>
+                </Link>
+              </div>
+            )}
           </div>
         </motion.div>
 

@@ -229,7 +229,11 @@ export async function registerRoutes(
     try {
       const story = await storage.getNovelStory(req.params.slug);
       if (!story) return res.status(404).json({ message: "Story not found" });
-      res.json(story);
+      let author = null;
+      if (story.authorId) {
+        try { author = await storage.getAuthorById(story.authorId); } catch {}
+      }
+      res.json({ ...story, author });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
@@ -439,6 +443,29 @@ export async function registerRoutes(
   });
   app.delete("/api/announcements/:id", requireAuth, async (req, res) => {
     try { await storage.deleteAnnouncement(req.params.id); res.status(204).send(); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Authors ───────────────────────────────────────────────────────────────
+  app.get("/api/authors", async (_req, res) => {
+    try { res.json(await storage.getAuthors()); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.get("/api/authors/:slug", async (req, res) => {
+    try {
+      const author = await storage.getAuthorBySlug(req.params.slug);
+      if (!author) return res.status(404).json({ message: "Author not found" });
+      const allStories = await storage.getNovelStories(true);
+      const stories = allStories.filter(s => s.authorId === author.id);
+      res.json({ ...author, stories });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.post("/api/authors", requireAuth, async (req, res) => {
+    try { res.status(201).json(await storage.createAuthor(req.body)); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.put("/api/authors/:id", requireAuth, async (req, res) => {
+    try { res.json(await storage.updateAuthor(req.params.id, req.body)); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.delete("/api/authors/:id", requireAuth, async (req, res) => {
+    try { await storage.deleteAuthor(req.params.id); res.status(204).send(); } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   // ── Translation API ───────────────────────────────────────────────────────

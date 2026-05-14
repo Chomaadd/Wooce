@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+// ── Author ────────────────────────────────────────────────────────────────────
+export const authorSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  bio: z.string().nullable().optional(),
+  photoUrl: z.string().nullable().optional(),
+  tiktok: z.string().nullable().optional(),
+  instagram: z.string().nullable().optional(),
+  facebook: z.string().nullable().optional(),
+  twitter: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+  saweria: z.string().nullable().optional(),
+  trakteer: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  createdAt: z.union([z.date(), z.string()]).optional(),
+});
+export const insertAuthorSchema = authorSchema.omit({ id: true, createdAt: true });
+export type Author = z.infer<typeof authorSchema>;
+export type InsertAuthor = z.infer<typeof insertAuthorSchema>;
+
 export const adminSchema = z.object({
   id: z.string(),
   username: z.string(),
@@ -26,6 +47,8 @@ export const novelStorySchema = z.object({
   viewCount: z.number().default(0),
   ratingSum: z.number().default(0),
   ratingCount: z.number().default(0),
+  donationUrl: z.string().nullable().optional(),
+  authorId: z.string().nullable().optional(),
   createdAt: z.union([z.date(), z.string()]).optional(),
   updatedAt: z.union([z.date(), z.string()]).optional(),
 });

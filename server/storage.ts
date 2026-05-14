@@ -1,5 +1,7 @@
 import {
   type Admin,
+  type Author,
+  type InsertAuthor,
   type NovelStory,
   type CreateNovelStoryRequest,
   type UpdateNovelStoryRequest,
@@ -17,6 +19,7 @@ import {
 } from "@shared/schema";
 import {
   AdminModel,
+  AuthorModel,
   NovelStoryModel,
   NovelSeasonModel,
   NovelChapterModel,
@@ -27,6 +30,13 @@ import {
 export interface IStorage {
   getAdminByUsername(username: string): Promise<Admin | undefined>;
   getAdminById(id: string): Promise<Admin | undefined>;
+
+  getAuthors(): Promise<Author[]>;
+  getAuthorBySlug(slug: string): Promise<Author | undefined>;
+  getAuthorById(id: string): Promise<Author | undefined>;
+  createAuthor(data: InsertAuthor): Promise<Author>;
+  updateAuthor(id: string, updates: Partial<InsertAuthor>): Promise<Author>;
+  deleteAuthor(id: string): Promise<void>;
 
   getNovelStories(published?: boolean): Promise<NovelStory[]>;
   getNovelStory(slug: string): Promise<NovelStory | undefined>;
@@ -73,6 +83,12 @@ function mapId<T>(doc: any): T {
   return obj as T;
 }
 
+function mapStory(doc: any): NovelStory {
+  const obj = mapId<NovelStory>(doc);
+  if (obj.authorId) (obj as any).authorId = obj.authorId.toString();
+  return obj;
+}
+
 export class DatabaseStorage implements IStorage {
   async getAdminByUsername(username: string): Promise<Admin | undefined> {
     const admin = await AdminModel.findOne({ username });
@@ -83,33 +99,59 @@ export class DatabaseStorage implements IStorage {
     return admin ? mapId(admin) : undefined;
   }
 
+  // ── Authors ────────────────────────────────────────────────────────────────
+  async getAuthors(): Promise<Author[]> {
+    const docs = await AuthorModel.find().sort({ name: 1 });
+    return docs.map((d: any) => mapId<Author>(d));
+  }
+  async getAuthorBySlug(slug: string): Promise<Author | undefined> {
+    const doc = await AuthorModel.findOne({ slug });
+    return doc ? mapId<Author>(doc) : undefined;
+  }
+  async getAuthorById(id: string): Promise<Author | undefined> {
+    const doc = await AuthorModel.findById(id);
+    return doc ? mapId<Author>(doc) : undefined;
+  }
+  async createAuthor(data: InsertAuthor): Promise<Author> {
+    const doc = await AuthorModel.create(data);
+    return mapId<Author>(doc);
+  }
+  async updateAuthor(id: string, updates: Partial<InsertAuthor>): Promise<Author> {
+    const doc = await AuthorModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
+    if (!doc) throw new Error('Author not found');
+    return mapId<Author>(doc);
+  }
+  async deleteAuthor(id: string): Promise<void> {
+    await AuthorModel.findByIdAndDelete(id);
+  }
+
   // ── Novel Stories ──────────────────────────────────────────────────────────
   async getNovelStories(published?: boolean): Promise<NovelStory[]> {
     const query = published !== undefined ? { published } : {};
     const docs = await NovelStoryModel.find(query).sort({ createdAt: -1 });
-    return docs.map((d: any) => mapId<NovelStory>(d));
+    return docs.map((d: any) => mapStory(d));
   }
   async getNovelStory(slug: string): Promise<NovelStory | undefined> {
     const doc = await NovelStoryModel.findOne({ slug });
-    return doc ? mapId<NovelStory>(doc) : undefined;
+    return doc ? mapStory(doc) : undefined;
   }
   async getNovelStoryById(id: string): Promise<NovelStory | undefined> {
     const doc = await NovelStoryModel.findById(id);
-    return doc ? mapId<NovelStory>(doc) : undefined;
+    return doc ? mapStory(doc) : undefined;
   }
   async createNovelStory(data: CreateNovelStoryRequest): Promise<NovelStory> {
     const doc = await NovelStoryModel.create(data);
-    return mapId<NovelStory>(doc);
+    return mapStory(doc);
   }
   async updateNovelStory(id: string, updates: UpdateNovelStoryRequest): Promise<NovelStory> {
     const doc = await NovelStoryModel.findByIdAndUpdate(id, { ...updates, updatedAt: new Date() }, { new: true });
     if (!doc) throw new Error('Story not found');
-    return mapId<NovelStory>(doc);
+    return mapStory(doc);
   }
   async incrementNovelViewCount(slug: string): Promise<NovelStory> {
     const doc = await NovelStoryModel.findOneAndUpdate({ slug }, { $inc: { viewCount: 1 } }, { new: true });
     if (!doc) throw new Error('Story not found');
-    return mapId<NovelStory>(doc);
+    return mapStory(doc);
   }
   async deleteNovelStory(id: string): Promise<void> {
     await NovelStoryModel.findByIdAndDelete(id);

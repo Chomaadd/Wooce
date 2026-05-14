@@ -19,14 +19,14 @@ import {
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
-  Info, AlertTriangle, CheckCircle2,
+  Info, AlertTriangle, CheckCircle2, User,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement } from "@shared/schema";
+import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "authors";
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -410,6 +410,8 @@ function StoryForm({
     tags: (initial?.tags ?? []).join(", "),
     published: initial?.published ?? false,
     featured: initial?.featured ?? false,
+    donationUrl: (initial as any)?.donationUrl ?? "",
+    authorId: (initial as any)?.authorId ?? "",
   });
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
@@ -480,6 +482,19 @@ function StoryForm({
           </Select>
         </div>
       </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Link Donasi <span className="text-muted-foreground font-normal text-xs">(opsional)</span></label>
+        <Input
+          value={form.donationUrl}
+          onChange={e => set("donationUrl", e.target.value)}
+          placeholder="https://saweria.co/username atau https://trakteer.id/username"
+          data-testid="input-story-donation-url"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Penulis <span className="text-muted-foreground font-normal text-xs">(opsional)</span></label>
+        <StoryAuthorSelect value={form.authorId} onChange={v => set("authorId", v)} />
+      </div>
       <div className="flex gap-4">
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={form.published} onChange={e => set("published", e.target.checked)} className="rounded" data-testid="checkbox-story-published" />
@@ -492,7 +507,118 @@ function StoryForm({
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel} data-testid="button-cancel-story">{t("admin.novel.form.cancel")}</Button>
-        <Button onClick={() => onSave({ ...form, tags: parsedTags })} disabled={!form.title || !form.slug} data-testid="button-save-story">{t("admin.novel.form.save")}</Button>
+        <Button onClick={() => onSave({ ...form, tags: parsedTags, donationUrl: form.donationUrl || null, authorId: form.authorId || null })} disabled={!form.title || !form.slug} data-testid="button-save-story">{t("admin.novel.form.save")}</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function StoryAuthorSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { data: authors } = useQuery<Author[]>({
+    queryKey: ["/api/authors"],
+    queryFn: () => fetch("/api/authors").then(r => r.json()),
+  });
+  return (
+    <Select value={value || "__none__"} onValueChange={v => onChange(v === "__none__" ? "" : v)}>
+      <SelectTrigger data-testid="select-story-author"><SelectValue placeholder="Pilih penulis..." /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">— Tidak ada —</SelectItem>
+        {(authors ?? []).map(a => (
+          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function AuthorForm({ initial, onSave, onCancel }: {
+  initial?: Partial<Author>;
+  onSave: (data: any) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: initial?.name ?? "",
+    slug: initial?.slug ?? "",
+    bio: initial?.bio ?? "",
+    photoUrl: initial?.photoUrl ?? "",
+    tiktok: initial?.tiktok ?? "",
+    instagram: initial?.instagram ?? "",
+    facebook: initial?.facebook ?? "",
+    twitter: initial?.twitter ?? "",
+    website: initial?.website ?? "",
+    saweria: initial?.saweria ?? "",
+    trakteer: initial?.trakteer ?? "",
+    email: initial?.email ?? "",
+  });
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  return (
+    <div className="space-y-4 pt-1">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-medium mb-1 block">Nama Penulis *</label>
+          <Input value={form.name} onChange={e => { set("name", e.target.value); if (!initial?.slug) set("slug", slugify(e.target.value)); }} placeholder="Nama penulis" data-testid="input-author-name" />
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-1 block">Slug *</label>
+          <Input value={form.slug} onChange={e => set("slug", e.target.value)} placeholder="nama-penulis" data-testid="input-author-slug" />
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Bio</label>
+        <Textarea value={form.bio} onChange={e => set("bio", e.target.value)} rows={2} placeholder="Deskripsi singkat penulis..." data-testid="input-author-bio" />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Foto URL</label>
+        <Input value={form.photoUrl} onChange={e => set("photoUrl", e.target.value)} placeholder="https://..." data-testid="input-author-photo" />
+      </div>
+      <div className="border border-border rounded-xl p-3 space-y-2.5">
+        <p className="text-xs font-medium text-muted-foreground">Sosial Media</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {[
+            { k: "tiktok", label: "TikTok", ph: "@username" },
+            { k: "instagram", label: "Instagram", ph: "@username" },
+            { k: "facebook", label: "Facebook", ph: "username / URL" },
+            { k: "twitter", label: "Twitter / X", ph: "@username" },
+            { k: "website", label: "Website", ph: "https://..." },
+            { k: "email", label: "Email", ph: "email@..." },
+          ].map(({ k, label, ph }) => (
+            <div key={k}>
+              <label className="text-xs mb-1 block">{label}</label>
+              <Input className="h-8 text-xs" value={(form as any)[k]} onChange={e => set(k, e.target.value)} placeholder={ph} data-testid={`input-author-${k}`} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="border border-border rounded-xl p-3 space-y-2.5">
+        <p className="text-xs font-medium text-muted-foreground">Link Donasi</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          <div>
+            <label className="text-xs mb-1 block">Saweria (username)</label>
+            <Input className="h-8 text-xs" value={form.saweria} onChange={e => set("saweria", e.target.value)} placeholder="username" data-testid="input-author-saweria" />
+          </div>
+          <div>
+            <label className="text-xs mb-1 block">Trakteer (username)</label>
+            <Input className="h-8 text-xs" value={form.trakteer} onChange={e => set("trakteer", e.target.value)} placeholder="username" data-testid="input-author-trakteer" />
+          </div>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>Batal</Button>
+        <Button
+          disabled={!form.name || !form.slug}
+          onClick={() => onSave({
+            name: form.name, slug: form.slug,
+            bio: form.bio || null, photoUrl: form.photoUrl || null,
+            tiktok: form.tiktok || null, instagram: form.instagram || null,
+            facebook: form.facebook || null, twitter: form.twitter || null,
+            website: form.website || null, email: form.email || null,
+            saweria: form.saweria || null, trakteer: form.trakteer || null,
+          })}
+          data-testid="button-save-author"
+        >
+          Simpan Penulis
+        </Button>
       </DialogFooter>
     </div>
   );
@@ -856,6 +982,7 @@ export default function ManageNovel() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; name: string } | null>(null);
   const [bannerDialog, setBannerDialog] = useState<{ open: boolean; banner?: BannerSlide }>({ open: false });
   const [announcementDialog, setAnnouncementDialog] = useState<{ open: boolean; ann?: Announcement }>({ open: false });
+  const [authorDialog, setAuthorDialog] = useState<{ open: boolean; author?: Author }>({ open: false });
 
   const { data: adminStats } = useQuery<{
     totalViews: number; totalStories: number; totalChapters: number; totalFeatured: number;
@@ -994,6 +1121,28 @@ export default function ManageNovel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }),
   });
 
+  const { data: authors } = useQuery<Author[]>({
+    queryKey: ["/api/authors"],
+    queryFn: () => fetch("/api/authors", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user,
+  });
+
+  const createAuthor = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/authors", data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/authors"] }); setAuthorDialog({ open: false }); toast({ title: "Penulis berhasil ditambahkan!" }); },
+    onError: () => toast({ title: "Gagal menambah penulis", variant: "destructive" }),
+  });
+  const updateAuthor = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PUT", `/api/authors/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/authors"] }); setAuthorDialog({ open: false }); toast({ title: "Penulis diperbarui!" }); },
+    onError: () => toast({ title: "Gagal memperbarui penulis", variant: "destructive" }),
+  });
+  const deleteAuthor = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/authors/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/authors"] }); setDeleteDialog(null); toast({ title: "Penulis dihapus!" }); },
+    onError: () => toast({ title: "Gagal menghapus penulis", variant: "destructive" }),
+  });
+
   const handleBannerMove = (bannerId: string, direction: "up" | "down") => {
     if (!banners) return;
     const sorted = [...banners].sort((a, b) => a.order - b.order);
@@ -1027,6 +1176,7 @@ export default function ManageNovel() {
     if (deleteDialog.type === "chapter") deleteChapter.mutate(deleteDialog.id);
     if (deleteDialog.type === "banner") deleteBanner.mutate(deleteDialog.id);
     if (deleteDialog.type === "announcement") deleteAnnouncement.mutate(deleteDialog.id);
+    if (deleteDialog.type === "author") deleteAuthor.mutate(deleteDialog.id);
   };
 
   const AdminHeader = () => (
@@ -1107,10 +1257,16 @@ export default function ManageNovel() {
           >
             <Bell size={13} /> Pengumuman
           </button>
+          <button
+            onClick={() => setView("authors")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "authors" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <User size={13} /> Penulis
+          </button>
         </div>
 
         {/* Breadcrumb Nav */}
-        {view !== "settings" && view !== "stats" && view !== "announcements" && (
+        {view !== "settings" && view !== "stats" && view !== "announcements" && view !== "authors" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
@@ -1552,6 +1708,56 @@ export default function ManageNovel() {
           </div>
         )}
 
+        {/* ── AUTHORS VIEW ── */}
+        {view === "authors" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <User size={22} /> Profil Penulis
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">Kelola halaman publik profil penulis cerita</p>
+              </div>
+              <Button onClick={() => setAuthorDialog({ open: true })} data-testid="button-add-author">
+                <Plus size={16} className="mr-1.5" /> Tambah Penulis
+              </Button>
+            </div>
+
+            {!authors?.length ? (
+              <div className="text-center py-16 border border-dashed border-border rounded-xl">
+                <User size={36} className="mx-auto mb-3 text-muted-foreground opacity-40" />
+                <p className="text-muted-foreground">Belum ada penulis. Tambah penulis pertama!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {authors.map(author => (
+                  <div key={author.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                      {author.photoUrl
+                        ? <img src={author.photoUrl} alt={author.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-sm">{author.name.charAt(0).toUpperCase()}</div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground text-sm">{author.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{author.bio ?? <span className="italic opacity-60">Belum ada bio</span>}</p>
+                      <a href={`/penulis/${author.slug}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">/penulis/{author.slug}</a>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => setAuthorDialog({ open: true, author })} data-testid={`button-edit-author-${author.id}`}>
+                        <Pencil size={14} />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteDialog({ open: true, type: "author", id: author.id, name: author.name })} data-testid={`button-delete-author-${author.id}`}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Banner Dialog ── */}
         <Dialog open={bannerDialog.open} onOpenChange={open => setBannerDialog({ open })}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1582,6 +1788,23 @@ export default function ManageNovel() {
                 : createAnnouncement.mutate(data)
               }
               onCancel={() => setAnnouncementDialog({ open: false })}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Author Dialog ── */}
+        <Dialog open={authorDialog.open} onOpenChange={open => setAuthorDialog({ open })}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{authorDialog.author ? "Edit Penulis" : "Tambah Penulis Baru"}</DialogTitle>
+            </DialogHeader>
+            <AuthorForm
+              initial={authorDialog.author}
+              onSave={(data) => authorDialog.author
+                ? updateAuthor.mutate({ id: authorDialog.author.id, data })
+                : createAuthor.mutate(data)
+              }
+              onCancel={() => setAuthorDialog({ open: false })}
             />
           </DialogContent>
         </Dialog>

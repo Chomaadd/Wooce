@@ -1,6 +1,21 @@
 import mongoose from 'mongoose';
 import { log } from './logger';
 
+const authorMongoSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  slug: { type: String, required: true, unique: true },
+  bio: { type: String, default: '' },
+  photoUrl: { type: String, default: null },
+  tiktok: { type: String, default: null },
+  instagram: { type: String, default: null },
+  facebook: { type: String, default: null },
+  twitter: { type: String, default: null },
+  website: { type: String, default: null },
+  saweria: { type: String, default: null },
+  trakteer: { type: String, default: null },
+  email: { type: String, default: null },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+
 if (!process.env.MONGODB_URI && !process.env.MONGODB_URI_NEW) {
   console.warn("MONGODB_URI must be set in production.");
 }
@@ -36,6 +51,8 @@ const novelStorySchema = new mongoose.Schema({
   viewCount: { type: Number, default: 0 },
   ratingSum: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },
+  donationUrl: { type: String, default: null },
+  authorId: { type: mongoose.Schema.Types.ObjectId, default: null, ref: 'Author' },
 }, { timestamps: true });
 
 const novelSeasonSchema = new mongoose.Schema({
@@ -74,6 +91,7 @@ const announcementMongoSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
+export const AuthorModel = mongoose.models.Author || mongoose.model('Author', authorMongoSchema);
 export const NovelStoryModel = mongoose.models.NovelStory || mongoose.model('NovelStory', novelStorySchema);
 export const NovelSeasonModel = mongoose.models.NovelSeason || mongoose.model('NovelSeason', novelSeasonSchema);
 export const NovelChapterModel = mongoose.models.NovelChapter || mongoose.model('NovelChapter', novelChapterSchema);
