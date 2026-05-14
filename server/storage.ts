@@ -49,6 +49,7 @@ export interface IStorage {
   deleteAuthor(id: string): Promise<void>;
 
   getNovelStories(published?: boolean): Promise<NovelStory[]>;
+  getNovelStoriesByAuthor(authorId: string): Promise<NovelStory[]>;
   getNovelStory(slug: string): Promise<NovelStory | undefined>;
   getNovelStoryById(id: string): Promise<NovelStory | undefined>;
   createNovelStory(data: CreateNovelStoryRequest): Promise<NovelStory>;
@@ -175,6 +176,10 @@ export class DatabaseStorage implements IStorage {
   async getNovelStories(published?: boolean): Promise<NovelStory[]> {
     const query = published !== undefined ? { published } : {};
     const docs = await NovelStoryModel.find(query).sort({ createdAt: -1 });
+    return docs.map((d: any) => mapStory(d));
+  }
+  async getNovelStoriesByAuthor(authorId: string): Promise<NovelStory[]> {
+    const docs = await NovelStoryModel.find({ authorId }).sort({ createdAt: -1 });
     return docs.map((d: any) => mapStory(d));
   }
   async getNovelStory(slug: string): Promise<NovelStory | undefined> {

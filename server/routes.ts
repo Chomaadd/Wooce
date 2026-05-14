@@ -144,7 +144,24 @@ export async function registerRoutes(
     return new mongoose.mongo.GridFSBucket(db, { bucketName: "uploads" });
   }
 
-  app.post("/api/upload", requireAuth, upload.single("file"), async (req: any, res: any) => {
+  const requireWriter = async (req: any, res: any, next: any) => {
+    if (!req.session.userId) return res.status(401).json({ message: "Login diperlukan" });
+    try {
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "writer" || user.status !== "active") {
+        return res.status(403).json({ message: "Akses ditolak. Hanya penulis aktif yang dapat mengakses." });
+      }
+      req.writerUser = user;
+      next();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  };
+
+  const requireAuthOrWriter = (req: any, res: any, next: any) => {
+    if (req.session.adminId || req.session.userId) return next();
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+
+  app.post("/api/upload", requireAuthOrWriter, upload.single("file"), async (req: any, res: any) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const bucket = getGridFSBucket();
@@ -260,8 +277,21 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id/approve", requireAuth, async (req, res) => {
     try {
-      const user = await storage.updateUser(req.params.id, { status: "active" });
-      res.json(user);
+      const user = await storage.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      let authorId = user.authorId;
+      if (!authorId) {
+        const baseSlug = user.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const slug = `${baseSlug}-${Date.now().toString(36)}`;
+        const author = await storage.createAuthor({
+          name: user.name, slug, bio: "", photoUrl: user.photoUrl ?? null,
+          tiktok: null, instagram: null, facebook: null, twitter: null,
+          website: null, saweria: null, trakteer: null, email: user.email,
+        });
+        authorId = author.id;
+      }
+      const updated = await storage.updateUser(req.params.id, { status: "active", authorId });
+      res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
@@ -602,6 +632,119 @@ export async function registerRoutes(
   });
   app.delete("/api/authors/:id", requireAuth, async (req, res) => {
     try { await storage.deleteAuthor(req.params.id); res.status(204).send(); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Writer API ────────────────────────────────────────────────────────────
+  app.get("/api/writer/me", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      let author = null;
+      if (user.authorId) {
+        try { author = await storage.getAuthorById(user.authorId); } catch {}
+      }
+      res.json({ ...user, author });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/writer/stories", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      if (!user.authorId) return res.json([]);
+      const stories = await storage.getNovelStoriesByAuthor(user.authorId);
+      const storiesWithStats = await Promise.all(stories.map(async (story) => {
+        const seasons = await storage.getNovelSeasons(story.id);
+        let totalChapters = 0;
+        for (const s of seasons) {
+          const chs = await storage.getNovelChapters(s.id);
+          totalChapters += chs.length;
+        }
+        return { ...story, totalChapters };
+      }));
+      res.json(storiesWithStats);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/writer/stories", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      if (!user.authorId) return res.status(400).json({ message: "Profil penulis belum dibuat" });
+      const story = await storage.createNovelStory({ ...req.body, authorId: user.authorId });
+      res.status(201).json(story);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/writer/stories/:id", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const story = await storage.getNovelStoryById(req.params.id);
+      if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+      if (story.authorId !== user.authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+      const updated = await storage.updateNovelStory(req.params.id, req.body);
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/writer/stories/:id", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const story = await storage.getNovelStoryById(req.params.id);
+      if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+      if (story.authorId !== user.authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+      await storage.deleteNovelStory(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/writer/seasons", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const story = await storage.getNovelStoryById(req.body.storyId);
+      if (!story || story.authorId !== user.authorId) return res.status(403).json({ message: "Akses ditolak" });
+      const season = await storage.createNovelSeason(req.body);
+      res.status(201).json(season);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/writer/seasons/:id", requireWriter, async (req: any, res) => {
+    try {
+      const season = await storage.updateNovelSeason(req.params.id, req.body);
+      res.json(season);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/writer/seasons/:id", requireWriter, async (req: any, res) => {
+    try {
+      await storage.deleteNovelSeason(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/writer/seasons/:seasonId/chapters", requireWriter, async (req, res) => {
+    try {
+      const chapters = await storage.getNovelChapters(req.params.seasonId);
+      res.json(chapters);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/writer/chapters", requireWriter, async (req: any, res) => {
+    try {
+      const chapter = await storage.createNovelChapter(req.body);
+      res.status(201).json(chapter);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/writer/chapters/:id", requireWriter, async (req: any, res) => {
+    try {
+      const chapter = await storage.updateNovelChapter(req.params.id, req.body);
+      res.json(chapter);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/writer/chapters/:id", requireWriter, async (req: any, res) => {
+    try {
+      await storage.deleteNovelChapter(req.params.id);
+      res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   // ── Translation API ───────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -253,6 +253,18 @@ export function Navbar() {
                 </button>
               </Link>
             )}
+            {user && !user.isAdmin && user.role === "writer" && user.status === "active" && (
+              <Link href="/writer/cerita">
+                <button
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  data-testid="button-writer-dashboard-nav"
+                  aria-label="Dapur Cerita"
+                >
+                  <PenLine size={13} />
+                  <span className="hidden sm:inline">Cerita</span>
+                </button>
+              </Link>
+            )}
             {user && !user.isAdmin && (
               <div className="relative group">
                 {user.photoUrl ? (
@@ -262,7 +274,7 @@ export function Navbar() {
                     {(user.name ?? "U").charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="absolute right-0 top-full mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-background border border-border rounded-xl shadow-xl overflow-hidden opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50">
                   <div className="px-3 py-2.5 border-b border-border">
                     <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
@@ -273,7 +285,19 @@ export function Navbar() {
                       <span className="text-[10px] text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-full mt-1 inline-block">Penulis Aktif</span>
                     )}
                   </div>
-                  {(user.role === "reader") && (
+                  <Link href="/profile">
+                    <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-profile-menu">
+                      <LogIn size={12} /> Profil Saya
+                    </button>
+                  </Link>
+                  {user.role === "writer" && user.status === "active" && (
+                    <Link href="/writer/cerita">
+                      <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-writer-menu">
+                        <PenLine size={12} /> Dapur Cerita
+                      </button>
+                    </Link>
+                  )}
+                  {user.role === "reader" && (
                     <Link href="/daftar-penulis">
                       <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-become-writer-menu">
                         <PenLine size={12} /> Daftar sebagai Penulis
