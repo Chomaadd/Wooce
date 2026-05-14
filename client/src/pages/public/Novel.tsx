@@ -269,7 +269,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04, duration: 0.3 }}
-              className="flex-shrink-0 w-[calc((100vw-56px)/2)] sm:w-[calc((100vw-72px)/3)] lg:w-[calc((100vw-112px)/4)] xl:w-[240px]"
+              className="flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px]"
             >
               <Link href={`/${story.slug}`} data-testid={`link-unggulan-${story.id}`}>
                 <div className="group cursor-pointer">
@@ -378,7 +378,7 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="flex-shrink-0 w-[115px] group cursor-pointer"
+              className="flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px] group cursor-pointer"
             >
               <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
                 {story.coverUrl ? (

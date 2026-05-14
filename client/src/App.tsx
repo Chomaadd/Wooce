@@ -8,6 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { SearchProvider } from "@/lib/search-context";
 
 import Novel from "./pages/public/Novel";
+import AllNovels from "./pages/public/AllNovels";
 import NovelDetail from "./pages/public/NovelDetail";
 import NovelRead from "./pages/public/NovelRead";
 import Bookmarks from "./pages/public/Bookmarks";
@@ -19,6 +20,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Novel} />
+      <Route path="/novels" component={AllNovels} />
       <Route path="/bookmarks" component={Bookmarks} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />

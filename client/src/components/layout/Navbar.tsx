@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -147,6 +147,15 @@ export function Navbar() {
           )}
 
           <div className="flex items-center gap-1 shrink-0">
+            <Link href="/novels">
+              <button
+                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                data-testid="button-all-novels"
+                aria-label="Semua Novel"
+              >
+                <Library size={15} />
+              </button>
+            </Link>
             <Link href="/bookmarks">
               <button
                 className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
