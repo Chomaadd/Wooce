@@ -12,10 +12,10 @@ import { useLanguage } from "@/hooks/use-language";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
-const STATUS_CONFIG: Record<string, { color: string; dot: string }> = {
-  ongoing:   { color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400" },
-  completed: { color: "bg-blue-500/20 text-blue-400 border border-blue-500/30",          dot: "bg-blue-400" },
-  hiatus:    { color: "bg-amber-500/20 text-amber-400 border border-amber-500/30",        dot: "bg-amber-400" },
+const STATUS_CONFIG: Record<string, { color: string; dot: string; labelKey: string }> = {
+  ongoing:   { color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400", labelKey: "novel.status.ongoing" },
+  completed: { color: "bg-blue-500/20 text-blue-400 border border-blue-500/30",          dot: "bg-blue-400",   labelKey: "novel.status.completed" },
+  hiatus:    { color: "bg-amber-500/20 text-amber-400 border border-amber-500/30",        dot: "bg-amber-400",  labelKey: "novel.status.hiatus" },
 };
 
 function formatViewCount(n: number): string {
@@ -52,14 +52,17 @@ export default function Bookmarks() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SeoHead title="Bookmark Saya — WOOCE Novel" description="Daftar novel yang kamu simpan di WOOCE Novel." />
+      <SeoHead
+        title={`${t("bookmark.title")} — WOOCE Novel`}
+        description="Daftar novel yang kamu simpan di WOOCE Novel."
+      />
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 lg:px-8 py-8">
         <div className="mb-7">
           <Link href="/">
-            <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
-              <ArrowLeft size={13} /> Kembali
+            <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4" data-testid="button-back-bookmarks">
+              <ArrowLeft size={13} /> {t("bookmark.back")}
             </button>
           </Link>
           <div className="flex items-center gap-3">
@@ -67,9 +70,11 @@ export default function Bookmarks() {
               <Bookmark size={16} className="text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Bookmark Saya</h1>
+              <h1 className="text-xl font-bold text-foreground">{t("bookmark.title")}</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {slugs.length > 0 ? `${bookmarked.length} novel tersimpan` : "Belum ada novel yang disimpan"}
+                {slugs.length > 0
+                  ? `${bookmarked.length} ${t("bookmark.count")}`
+                  : t("bookmark.none")}
               </p>
             </div>
           </div>
@@ -94,13 +99,13 @@ export default function Bookmarks() {
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
               <BookmarkX size={28} className="text-muted-foreground/40" />
             </div>
-            <p className="font-semibold text-foreground mb-1">Belum ada bookmark</p>
-            <p className="text-sm text-muted-foreground mb-5">
-              Simpan novel yang ingin kamu baca nanti dengan menekan tombol "Simpan" di halaman detail.
+            <p className="font-semibold text-foreground mb-1">{t("bookmark.empty.title")}</p>
+            <p className="text-sm text-muted-foreground mb-5 max-w-xs">
+              {t("bookmark.empty.desc")}
             </p>
             <Link href="/">
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
-                <BookOpen size={14} /> Jelajahi Novel
+              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity" data-testid="button-explore-novels">
+                <BookOpen size={14} /> {t("bookmark.explore")}
               </button>
             </Link>
           </motion.div>
@@ -136,7 +141,7 @@ export default function Bookmarks() {
                       <div className="absolute top-1.5 left-1.5">
                         <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                           <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                          {story.status}
+                          {t(cfg.labelKey)}
                         </span>
                       </div>
                     </div>
@@ -154,7 +159,7 @@ export default function Bookmarks() {
                     <button
                       onClick={(e) => { e.preventDefault(); removeBookmark(story.slug); }}
                       className="text-muted-foreground/40 hover:text-destructive transition-colors"
-                      title="Hapus bookmark"
+                      title={t("bookmark.remove")}
                       data-testid={`button-remove-bookmark-${story.id}`}
                     >
                       <BookmarkX size={12} />
@@ -162,7 +167,7 @@ export default function Bookmarks() {
                   </div>
                   {progress && (
                     <div className="mt-1 text-[9px] text-primary font-medium truncate">
-                      Bab {progress.chapterNum} dibaca
+                      {t("bookmark.chapterRead")} {progress.chapterNum}
                     </div>
                   )}
                 </motion.div>

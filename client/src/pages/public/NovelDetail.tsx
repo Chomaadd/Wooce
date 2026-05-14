@@ -217,6 +217,7 @@ function useBookmark(slug: string) {
 }
 
 function StarRating({ slug, initialSum, initialCount }: { slug: string; initialSum: number; initialCount: number }) {
+  const { t } = useLanguage();
   const [ratingSum, setRatingSum] = useState(initialSum);
   const [ratingCount, setRatingCount] = useState(initialCount);
   const [userRating, setUserRating] = useState<number>(0);
@@ -290,12 +291,12 @@ function StarRating({ slug, initialSum, initialCount }: { slug: string; initialS
             {" "}({ratingCount.toLocaleString()} rating)
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs">Belum ada rating</span>
+          <span className="text-muted-foreground text-xs">{t("novel.detail.noRating")}</span>
         )}
       </div>
       {hasVoted && (
         <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
-          Kamu: {userRating}★
+          {t("novel.detail.yourRating")}: {userRating}★
         </span>
       )}
     </div>
@@ -386,7 +387,7 @@ export default function NovelDetail() {
           <BookOpen size={48} className="text-muted-foreground/30 mb-4" />
           <p className="text-muted-foreground">{t("novel.detail.notFound")}</p>
           <Link href="/">
-            <button className="mt-4 text-sm text-primary hover:underline">Kembali ke daftar</button>
+            <button className="mt-4 text-sm text-primary hover:underline">{t("novel.detail.back")}</button>
           </Link>
         </div>
         <Footer />
@@ -424,7 +425,7 @@ export default function NovelDetail() {
         <Link href="/">
           <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6 mt-2" data-testid="button-back-novel">
             <ArrowLeft size={14} />
-            Semua Cerita
+            {t("novel.detail.allStories")}
           </button>
         </Link>
 
@@ -501,7 +502,7 @@ export default function NovelDetail() {
                     data-testid="button-continue-reading"
                   >
                     <Play size={13} fill="currentColor" />
-                    Lanjut Baca — Bab {readingProgress.chapterNum}
+                    {t("novel.detail.continueRead")} {readingProgress.chapterNum}
                   </button>
                 </Link>
               ) : firstChapter ? (
@@ -511,14 +512,14 @@ export default function NovelDetail() {
                     data-testid="button-start-reading"
                   >
                     <Play size={13} fill="currentColor" />
-                    Mulai Baca
+                    {t("novel.detail.startRead")}
                   </button>
                 </Link>
               ) : null}
               <a href="#chapters">
                 <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
                   <List size={14} />
-                  Daftar Isi
+                  {t("novel.detail.tableOfContents")}
                 </button>
               </a>
               <button
@@ -531,7 +532,7 @@ export default function NovelDetail() {
                 data-testid="button-bookmark"
               >
                 {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-                {bookmarked ? "Tersimpan" : "Simpan"}
+                {bookmarked ? t("novel.detail.saved") : t("novel.detail.save")}
               </button>
               <button
                 onClick={() => handleShare(story.title, story.description)}
@@ -554,14 +555,14 @@ export default function NovelDetail() {
             data-testid="banner-continue-reading"
           >
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground mb-0.5">Terakhir dibaca</p>
+              <p className="text-xs text-muted-foreground mb-0.5">{t("novel.detail.lastReadLabel")}</p>
               <p className="font-medium text-foreground text-sm truncate">
                 Bab {readingProgress.chapterNum}: {readingProgress.chapterTitle}
               </p>
             </div>
             <Link href={`/${slug}/season-${readingProgress.seasonNum}/bab-${readingProgress.chapterNum}`}>
               <button className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline" data-testid="button-continue-reading-banner">
-                Lanjut <ChevronRight size={12} />
+                {t("novel.detail.continueBtn")} <ChevronRight size={12} />
               </button>
             </Link>
           </motion.div>
@@ -604,6 +605,7 @@ export default function NovelDetail() {
 
 // ── Recommendations ───────────────────────────────────────────────────────────
 function RecommendationsSection({ currentSlug, category }: { currentSlug: string; category: string }) {
+  const { t } = useLanguage();
   const { data: allStories } = useQuery<(NovelStory & { totalChapters: number; lastChapterAt: string | null })[]>({
     queryKey: ["/api/novel/stories"],
   });
@@ -624,7 +626,7 @@ function RecommendationsSection({ currentSlug, category }: { currentSlug: string
   return (
     <section className="max-w-2xl mx-auto px-5 sm:px-8 border-t border-border/40 pt-8 mt-4 pb-10">
       <div className="flex items-center gap-2 mb-5">
-        <h2 className="text-base font-bold text-foreground">Mungkin Kamu Suka</h2>
+        <h2 className="text-base font-bold text-foreground">{t("novel.detail.mayLike")}</h2>
         <div className="flex-1 h-px bg-border/60" />
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4">

@@ -198,7 +198,7 @@ function TOCPanel({ chapters, currentChapterNum, slug, seasonNum, onClose }: {
           </button>
         </div>
         <div className="text-xs text-muted-foreground px-4 py-2 border-b border-border/50 bg-muted/10">
-          {chapters.length} chapter · Bab {currentChapterNum} sedang dibaca
+          {chapters.length} chapter · {t("novel.read.chapterOf")} {currentChapterNum} {t("novel.read.currentlyReading")}
         </div>
         <div className="overflow-y-auto flex-1 py-2">
           {chapters.map(ch => {
@@ -574,12 +574,12 @@ export default function NovelRead() {
                   style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
                   data-testid="text-chapter-title"
                 >
-                  Bab {chapter.chapterNumber}: {chapter.title}
+                  {t("novel.read.chapterOf")} {chapter.chapterNumber}: {chapter.title}
                 </h1>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1">
                     <Clock size={11} />
-                    ~{estimateReadTime(chapter.content)} menit baca
+                    ~{estimateReadTime(chapter.content)} {t("novel.read.minReadUnit")}
                   </span>
                   {chapterList && (
                     <span className="flex items-center gap-1">
@@ -615,7 +615,7 @@ export default function NovelRead() {
         {/* End of chapter divider */}
         <div className="flex items-center gap-4 my-16">
           <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
-          <span className="text-xs text-muted-foreground px-3">— Selesai —</span>
+          <span className="text-xs text-muted-foreground px-3">— {t("novel.read.finished")} —</span>
           <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
         </div>
 
@@ -631,12 +631,12 @@ export default function NovelRead() {
               >
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2">
                   <ArrowLeft size={11} />
-                  <span>Sebelumnya</span>
+                  <span>{t("novel.read.prevChapter")}</span>
                 </div>
                 <div className={`text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors ${fontClass}`}
                   style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
                 >
-                  Bab {prevChapter.chapterNumber}: {prevChapter.title}
+                  {t("novel.read.chapterOf")} {prevChapter.chapterNumber}: {prevChapter.title}
                 </div>
               </div>
             </Link>
@@ -648,9 +648,9 @@ export default function NovelRead() {
               >
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">
                   <ArrowLeft size={11} />
-                  <span>Kembali</span>
+                  <span>{t("novel.read.backLabel")}</span>
                 </div>
-                <div className="text-sm font-medium text-muted-foreground">Halaman Novel</div>
+                <div className="text-sm font-medium text-muted-foreground">{t("novel.read.novelPage")}</div>
               </div>
             </Link>
           )}
@@ -664,13 +664,13 @@ export default function NovelRead() {
                 data-testid="button-next-chapter"
               >
                 <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground mb-2">
-                  <span>Selanjutnya</span>
+                  <span>{t("novel.read.nextChapter")}</span>
                   <ArrowRight size={11} />
                 </div>
                 <div className={`text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors ${fontClass}`}
                   style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
                 >
-                  Bab {nextChapter.chapterNumber}: {nextChapter.title}
+                  {t("novel.read.chapterOf")} {nextChapter.chapterNumber}: {nextChapter.title}
                 </div>
               </div>
             </Link>
@@ -680,10 +680,10 @@ export default function NovelRead() {
               style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
             >
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-1">
-                <span>Selesai</span>
+                <span>{t("novel.read.finished")}</span>
                 <ArrowRight size={11} />
               </div>
-              <div className="text-sm text-muted-foreground">Bab terakhir</div>
+              <div className="text-sm text-muted-foreground">{t("novel.read.lastChapter")}</div>
             </div>
           )}
         </div>
@@ -700,7 +700,7 @@ export default function NovelRead() {
               data-testid="button-back-to-detail"
             >
               <BookOpen size={15} />
-              Kembali ke Halaman Novel
+              {t("novel.read.backToDetail")}
             </button>
           </Link>
         </div>
