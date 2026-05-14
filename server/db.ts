@@ -90,7 +90,18 @@ const announcementMongoSchema = new mongoose.Schema({
   expiresAt: { type: Date, default: null },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
+const userMongoSchema = new mongoose.Schema({
+  googleId: { type: String, default: null, sparse: true },
+  email: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  photoUrl: { type: String, default: null },
+  role: { type: String, enum: ['reader', 'writer', 'admin'], default: 'reader' },
+  status: { type: String, enum: ['active', 'pending', 'suspended'], default: 'active' },
+  authorId: { type: mongoose.Schema.Types.ObjectId, default: null, ref: 'Author' },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
+export const UserModel = mongoose.models.User || mongoose.model('User', userMongoSchema);
 export const AuthorModel = mongoose.models.Author || mongoose.model('Author', authorMongoSchema);
 export const NovelStoryModel = mongoose.models.NovelStory || mongoose.model('NovelStory', novelStorySchema);
 export const NovelSeasonModel = mongoose.models.NovelSeason || mongoose.model('NovelSeason', novelSeasonSchema);

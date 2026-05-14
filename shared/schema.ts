@@ -121,6 +121,22 @@ export const insertAnnouncementSchema = announcementSchema.omit({ id: true, crea
 export type Announcement = z.infer<typeof announcementSchema>;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 
+// ── User (OAuth + role-based) ─────────────────────────────────────────────────
+export const userSchema = z.object({
+  id: z.string(),
+  googleId: z.string().nullable().optional(),
+  email: z.string(),
+  name: z.string(),
+  photoUrl: z.string().nullable().optional(),
+  role: z.enum(["reader", "writer", "admin"]).default("reader"),
+  status: z.enum(["active", "pending", "suspended"]).default("active"),
+  authorId: z.string().nullable().optional(),
+  createdAt: z.union([z.date(), z.string()]).optional(),
+});
+export const insertUserSchema = userSchema.omit({ id: true, createdAt: true });
+export type User = z.infer<typeof userSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export interface LoginRequest {
   username: string;
