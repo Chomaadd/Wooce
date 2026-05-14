@@ -418,6 +418,124 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
   );
 }
 
+// ── Lanjut Baca ───────────────────────────────────────────────────────────────
+interface ProgressEntry {
+  slug: string;
+  seasonNum: number;
+  chapterNum: number;
+  chapterTitle?: string;
+  updatedAt: string;
+}
+
+function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
+  const { t, language } = useLanguage();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [progressList, setProgressList] = useState<ProgressEntry[]>([]);
+
+  useEffect(() => {
+    const entries: ProgressEntry[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith("novel-progress-")) continue;
+      const slug = key.replace("novel-progress-", "");
+      try {
+        const data = JSON.parse(localStorage.getItem(key)!);
+        entries.push({ slug, ...data });
+      } catch {}
+    }
+    entries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    setProgressList(entries);
+  }, []);
+
+  const items = progressList
+    .map(p => ({ progress: p, story: stories.find(s => s.slug === p.slug) }))
+    .filter((item): item is { progress: ProgressEntry; story: StoryWithStats } => !!item.story);
+
+  if (items.length === 0) return null;
+
+  const scroll = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
+  };
+
+  function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const h = Math.floor(diff / 3_600_000);
+    const d = Math.floor(diff / 86_400_000);
+    if (language === "id") {
+      if (h < 1) return "< 1j";
+      if (h < 24) return `${h}j lalu`;
+      return `${d}h lalu`;
+    }
+    if (h < 1) return "< 1h";
+    if (h < 24) return `${h}h ago`;
+    return `${d}d ago`;
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-2">
+      <SectionHeader
+        icon={<BookOpen size={15} />}
+        subtitle={language === "id" ? "Lanjutkan dari mana kamu berhenti" : "Pick up where you left off"}
+        title={t("novel.lanjutBaca.title")}
+        scrollLeft={() => scroll(-1)}
+        scrollRight={() => scroll(1)}
+      />
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {items.map(({ progress, story }) => {
+          const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+          return (
+            <Link
+              key={progress.slug}
+              href={`/${progress.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}`}
+              data-testid={`link-lanjutbaca-${progress.slug}`}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px] group cursor-pointer"
+              >
+                <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
+                  {story.coverUrl ? (
+                    <img
+                      src={story.coverUrl}
+                      alt={story.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                      <BookOpen size={18} className="text-primary/40" />
+                    </div>
+                  )}
+                  <div className={`absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                    <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                    {story.status}
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pt-4 pb-1.5">
+                    <p className="text-[9px] font-semibold text-white/90">
+                      {t("novel.lanjutBaca.season")} {progress.seasonNum} · {t("novel.lanjutBaca.chapter")} {progress.chapterNum}
+                    </p>
+                  </div>
+                  <div className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                    <span className="text-[8px] text-white/80">{timeAgo(progress.updatedAt)}</span>
+                  </div>
+                </div>
+                <p className="text-[11px] font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                  {story.title}
+                </p>
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Baru Diupdate ─────────────────────────────────────────────────────────────
 function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
   const { t } = useLanguage();
@@ -797,6 +915,7 @@ export default function Novel() {
               <HomeSkeleton />
             ) : stories && stories.length > 0 ? (
               <>
+                <LanjutBaca stories={stories} />
                 <NovelUnggulan stories={stories} />
                 <Trending stories={stories} />
                 <BaruDiupdate stories={stories} />

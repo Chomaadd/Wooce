@@ -1,6 +1,6 @@
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +11,73 @@ import type { NovelStory } from "@shared/schema";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
+
+function WriterModal({ onClose }: { onClose: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ duration: 0.22 }}
+        onClick={e => e.stopPropagation()}
+        className="bg-background border border-border rounded-2xl shadow-2xl max-w-md w-full max-h-[88vh] overflow-y-auto"
+      >
+        <div className="relative px-6 pt-6 pb-4 border-b border-border">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+            data-testid="button-close-writer-modal"
+          >
+            <X size={15} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <PenLine size={18} className="text-primary" />
+            </div>
+            <div>
+              <h2 className="font-bold text-base text-foreground leading-tight">{t("writer.title")}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("writer.subtitle")}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("writer.req.title")}</h3>
+            <ol className="space-y-3">
+              {([1, 2, 3, 4, 5] as const).map(n => (
+                <li key={n} className="flex gap-3">
+                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {n}
+                  </span>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{t(`writer.req.${n}`)}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="bg-muted/50 rounded-xl px-4 py-3 border border-border/50">
+            <p className="text-xs text-muted-foreground leading-relaxed">{t("writer.note")}</p>
+          </div>
+
+          <a href="mailto:wooce.novel@gmail.com" className="block">
+            <button
+              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+              data-testid="button-writer-contact"
+            >
+              {t("writer.contact")}
+            </button>
+          </a>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 export function Navbar() {
   const [location] = useLocation();
@@ -24,6 +91,7 @@ export function Navbar() {
   const parts = location.split("/").filter(Boolean);
   const isReading = parts.length === 3;
   const isHome = location === "/";
+  const [writerModalOpen, setWriterModalOpen] = useState(false);
 
   const { data: stories } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/novel/stories"],
@@ -69,6 +137,15 @@ export function Navbar() {
               />
             </div>
           </Link>
+
+          <button
+            onClick={() => setWriterModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold border border-border/70 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+            data-testid="button-become-writer"
+          >
+            <PenLine size={11} />
+            <span className="hidden sm:inline">{t("writer.button")}</span>
+          </button>
 
           {isHome ? (
             <div className="flex-1 max-w-sm mx-auto relative">
@@ -195,6 +272,9 @@ export function Navbar() {
         </div>
       </div>
     </header>
+      <AnimatePresence>
+        {writerModalOpen && <WriterModal onClose={() => setWriterModalOpen(false)} />}
+      </AnimatePresence>
     </>
   );
 }

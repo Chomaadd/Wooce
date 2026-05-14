@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
-  Bookmark, BookmarkCheck, Star,
+  Bookmark, BookmarkCheck, Star, X, ImageDown,
 } from "lucide-react";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
@@ -303,6 +303,171 @@ function StarRating({ slug, initialSum, initialCount }: { slug: string; initialS
   );
 }
 
+function ShareCardModal({ story, onClose }: { story: NovelStory; onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { t } = useLanguage();
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const W = 540, H = 675;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    function renderCard(coverImg?: HTMLImageElement) {
+      if (!ctx) return;
+      const bg = ctx.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, "#1a1030");
+      bg.addColorStop(0.5, "#0e0b1f");
+      bg.addColorStop(1, "#0a0818");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      if (coverImg) {
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.drawImage(coverImg, -30, -30, W + 60, H * 0.72);
+        ctx.restore();
+        const veil = ctx.createLinearGradient(0, 0, 0, H * 0.72);
+        veil.addColorStop(0, "rgba(14,11,31,0.2)");
+        veil.addColorStop(1, "rgba(14,11,31,1)");
+        ctx.fillStyle = veil;
+        ctx.fillRect(0, 0, W, H * 0.72);
+
+        const cW = 155, cH = 232;
+        const cX = (W - cW) / 2, cY = 48;
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.85)";
+        ctx.shadowBlur = 40;
+        ctx.shadowOffsetY = 16;
+        ctx.beginPath();
+        const r = 10;
+        ctx.moveTo(cX + r, cY);
+        ctx.lineTo(cX + cW - r, cY);
+        ctx.quadraticCurveTo(cX + cW, cY, cX + cW, cY + r);
+        ctx.lineTo(cX + cW, cY + cH - r);
+        ctx.quadraticCurveTo(cX + cW, cY + cH, cX + cW - r, cY + cH);
+        ctx.lineTo(cX + r, cY + cH);
+        ctx.quadraticCurveTo(cX, cY + cH, cX, cY + cH - r);
+        ctx.lineTo(cX, cY + r);
+        ctx.quadraticCurveTo(cX, cY, cX + r, cY);
+        ctx.closePath();
+        ctx.fillStyle = "#000";
+        ctx.fill();
+        ctx.clip();
+        ctx.shadowColor = "transparent";
+        ctx.drawImage(coverImg, cX, cY, cW, cH);
+        ctx.restore();
+      }
+
+      const titleY = coverImg ? 340 : 220;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold 26px Georgia, "Times New Roman", serif`;
+      const words = story.title.split(" ");
+      let line = "";
+      let y = titleY;
+      const maxW = W - 80;
+      for (const word of words) {
+        const test = line + (line ? " " : "") + word;
+        if (ctx.measureText(test).width > maxW && line) {
+          ctx.fillText(line, W / 2, y);
+          line = word;
+          y += 34;
+        } else { line = test; }
+      }
+      ctx.fillText(line, W / 2, y);
+
+      if (story.category) {
+        ctx.fillStyle = "rgba(255,255,255,0.38)";
+        ctx.font = "13px sans-serif";
+        ctx.fillText(story.category.toUpperCase(), W / 2, y + 30);
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(60, H - 96);
+      ctx.lineTo(W - 60, H - 96);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillText("WOOCE NOVEL", W / 2, H - 64);
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
+      ctx.font = "11px sans-serif";
+      ctx.fillText("Dunia novel, tanpa batas imaginasi", W / 2, H - 42);
+    }
+
+    if (story.coverUrl) {
+      const img = new Image();
+      img.onload = () => renderCard(img);
+      img.onerror = () => renderCard();
+      img.src = story.coverUrl;
+    } else {
+      renderCard();
+    }
+  }, [story]);
+
+  useEffect(() => { draw(); }, [draw]);
+
+  const handleDownload = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.download = `${story.slug}-wooce.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        onClick={e => e.stopPropagation()}
+        className="bg-background border border-border rounded-2xl shadow-2xl max-w-xs w-full overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-sm font-semibold">{t("novel.shareCard.title")}</p>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+            data-testid="button-close-sharecard"
+          >
+            <X size={15} />
+          </button>
+        </div>
+        <div className="p-3">
+          <canvas
+            ref={canvasRef}
+            className="w-full rounded-xl"
+            style={{ imageRendering: "auto" }}
+          />
+          <p className="text-[11px] text-muted-foreground text-center mt-2 mb-3">
+            {t("novel.shareCard.note")}
+          </p>
+          <button
+            onClick={handleDownload}
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+            data-testid="button-download-sharecard"
+          >
+            <ImageDown size={15} />
+            {t("novel.shareCard.download")}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function NovelDetail() {
   const [, params] = useRoute("/:slug");
   const { t } = useLanguage();
@@ -310,6 +475,7 @@ export default function NovelDetail() {
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(slug);
 
   const handleShare = async (title: string, description?: string | null) => {
@@ -542,6 +708,14 @@ export default function NovelDetail() {
                 {shareCopied ? <Check size={14} className="text-green-500" /> : <Share2 size={14} />}
                 {shareCopied ? t("novel.share.copied") : t("novel.share")}
               </button>
+              <button
+                onClick={() => setShowShareCard(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+                data-testid="button-open-sharecard"
+              >
+                <ImageDown size={14} />
+                {t("novel.shareCard.title")}
+              </button>
             </div>
           </div>
         </motion.div>
@@ -599,6 +773,12 @@ export default function NovelDetail() {
       <RecommendationsSection currentSlug={slug} category={story.category} />
 
       <Footer />
+
+      <AnimatePresence>
+        {showShareCard && (
+          <ShareCardModal story={story} onClose={() => setShowShareCard(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

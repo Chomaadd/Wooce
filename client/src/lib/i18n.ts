@@ -220,6 +220,34 @@ const translations: Record<Language, Record<string, string>> = {
     "bookmark.chapterRead": "Ch.",
     "bookmark.remove": "Remove bookmark",
 
+    "novel.lanjutBaca.title": "Continue Reading",
+    "novel.lanjutBaca.chapter": "Ch.",
+    "novel.lanjutBaca.season": "Season",
+    "novel.shareCard.title": "Share Card",
+    "novel.shareCard.download": "Download Image",
+    "novel.shareCard.close": "Close",
+    "novel.shareCard.note": "Screenshot or download this card to share on social media.",
+
+    "writer.button": "Become a Writer",
+    "writer.title": "Become a Writer on WOOCE",
+    "writer.subtitle": "Share your stories with thousands of readers",
+    "writer.req.title": "Requirements",
+    "writer.req.1": "Have an active social media account (Instagram / TikTok)",
+    "writer.req.2": "Have at least one original work (short story, novel, etc.)",
+    "writer.req.3": "Able to update regularly — minimum 1 chapter per week",
+    "writer.req.4": "Original story only (no translations or plagiarism)",
+    "writer.req.5": "Contact admin via email or DM with your story title and synopsis",
+    "writer.contact": "Contact Admin",
+    "writer.note": "We'll review your submission and get back to you within 3–5 business days.",
+
+    "footer.terms": "Terms of Service",
+    "footer.privacy": "Privacy Policy",
+
+    "terms.title": "Terms of Service",
+    "terms.updated": "Last updated",
+    "privacy.title": "Privacy Policy",
+    "privacy.updated": "Last updated",
+
     "admin.novel.form.previewChapter": "Preview",
     "admin.novel.form.previewTitle": "Chapter Preview",
 
@@ -1173,6 +1201,34 @@ const translations: Record<Language, Record<string, string>> = {
     "bookmark.back": "Kembali",
     "bookmark.chapterRead": "Bab",
     "bookmark.remove": "Hapus bookmark",
+
+    "novel.lanjutBaca.title": "Lanjut Baca",
+    "novel.lanjutBaca.chapter": "Bab",
+    "novel.lanjutBaca.season": "Season",
+    "novel.shareCard.title": "Kartu Bagikan",
+    "novel.shareCard.download": "Unduh Gambar",
+    "novel.shareCard.close": "Tutup",
+    "novel.shareCard.note": "Screenshot atau unduh kartu ini untuk dibagikan ke media sosial.",
+
+    "writer.button": "Ingin Menjadi Penulis",
+    "writer.title": "Menjadi Penulis di WOOCE",
+    "writer.subtitle": "Bagikan ceritamu kepada ribuan pembaca",
+    "writer.req.title": "Syarat & Ketentuan",
+    "writer.req.1": "Memiliki akun media sosial aktif (Instagram / TikTok)",
+    "writer.req.2": "Memiliki minimal satu karya tulis original (cerpen, novel, dll.)",
+    "writer.req.3": "Mampu update rutin, minimal 1 bab per minggu",
+    "writer.req.4": "Cerita original saja (bukan terjemahan atau plagiat)",
+    "writer.req.5": "Hubungi admin via email atau DM dengan judul cerita dan sinopsis singkat",
+    "writer.contact": "Hubungi Admin",
+    "writer.note": "Kami akan meninjau pengajuanmu dan merespons dalam 3–5 hari kerja.",
+
+    "footer.terms": "Ketentuan Layanan",
+    "footer.privacy": "Kebijakan Privasi",
+
+    "terms.title": "Ketentuan Layanan",
+    "terms.updated": "Terakhir diperbarui",
+    "privacy.title": "Kebijakan Privasi",
+    "privacy.updated": "Terakhir diperbarui",
   },
 };
 
