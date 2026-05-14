@@ -10,7 +10,7 @@ import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, BookMarked, Sparkles, Eye,
-  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame,
+  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 
@@ -418,6 +418,99 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
   );
 }
 
+// ── Baru Diupdate ─────────────────────────────────────────────────────────────
+function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
+  const { t } = useLanguage();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const recent = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return [...stories]
+      .filter(s => s.lastChapterAt && new Date(s.lastChapterAt).getTime() > cutoff)
+      .sort((a, b) => new Date(b.lastChapterAt!).getTime() - new Date(a.lastChapterAt!).getTime())
+      .slice(0, 10);
+  }, [stories]);
+
+  if (recent.length === 0) return null;
+
+  const scroll = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
+  };
+
+  function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const h = Math.floor(diff / 3_600_000);
+    const d = Math.floor(diff / 86_400_000);
+    if (h < 1) return "< 1j";
+    if (h < 24) return `${h}j lalu`;
+    return `${d}h lalu`;
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-2">
+      <SectionHeader
+        icon={<Zap size={15} />}
+        subtitle={t("novel.baruDiupdate.subtitle")}
+        title={t("novel.baruDiupdate.title")}
+        scrollLeft={() => scroll(-1)}
+        scrollRight={() => scroll(1)}
+      />
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {recent.map((story, i) => {
+          const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+          return (
+            <Link key={story.id} href={`/${story.slug}`} data-testid={`link-baru-${story.id}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px] group cursor-pointer"
+              >
+                <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
+                  {story.coverUrl ? (
+                    <img
+                      src={story.coverUrl}
+                      alt={story.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                      <BookOpen size={18} className="text-primary/40" />
+                    </div>
+                  )}
+                  <div className="absolute top-1.5 left-1.5">
+                    <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                      <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                      {story.status}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-violet-600/80 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                    <Zap size={7} className="text-white" />
+                    <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
+                  </div>
+                </div>
+                <p className="text-[11px] font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                  {story.title}
+                </p>
+                {story.totalChapters > 0 && (
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                    <BookMarked size={9} /> {story.totalChapters} bab
+                  </p>
+                )}
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Rekomendasi ───────────────────────────────────────────────────────────────
 function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
   const { t } = useLanguage();
@@ -706,6 +799,7 @@ export default function Novel() {
               <>
                 <NovelUnggulan stories={stories} />
                 <Trending stories={stories} />
+                <BaruDiupdate stories={stories} />
                 <Rekomendasi stories={stories} />
               </>
             ) : (
