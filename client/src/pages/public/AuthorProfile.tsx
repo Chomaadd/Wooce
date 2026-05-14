@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Globe, Mail, ArrowLeft } from "lucide-react";
-import { SiTiktok, SiFacebook, SiInstagram, SiTwitter, SiSaweria } from "react-icons/si";
+import { BookOpen, Globe, Mail, ArrowLeft, Heart } from "lucide-react";
+import { SiTiktok, SiFacebook, SiInstagram, SiX } from "react-icons/si";
 import type { Author, NovelStory } from "@shared/schema";
 
 type AuthorWithStories = Author & { stories: NovelStory[] };
@@ -59,7 +59,7 @@ export default function AuthorProfile() {
     { key: "tiktok",    href: author.tiktok ? `https://tiktok.com/@${author.tiktok.replace(/^@/, "")}` : null, icon: <SiTiktok size={16} />, label: "TikTok" },
     { key: "instagram", href: author.instagram ? `https://instagram.com/${author.instagram.replace(/^@/, "")}` : null, icon: <SiInstagram size={16} />, label: "Instagram" },
     { key: "facebook",  href: author.facebook ? (author.facebook.startsWith("http") ? author.facebook : `https://facebook.com/${author.facebook}`) : null, icon: <SiFacebook size={16} />, label: "Facebook" },
-    { key: "twitter",   href: author.twitter ? `https://twitter.com/${author.twitter.replace(/^@/, "")}` : null, icon: <SiTwitter size={16} />, label: "Twitter / X" },
+    { key: "twitter",   href: author.twitter ? `https://twitter.com/${author.twitter.replace(/^@/, "")}` : null, icon: <SiX size={14} />, label: "Twitter / X" },
     { key: "website",   href: author.website ?? null, icon: <Globe size={16} />, label: "Website" },
     { key: "email",     href: author.email ? `mailto:${author.email}` : null, icon: <Mail size={16} />, label: "Email" },
   ].filter(l => !!l.href);
@@ -123,7 +123,7 @@ export default function AuthorProfile() {
                     rel="noopener noreferrer"
                     className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-sm font-semibold transition-all duration-200 ${color}`}
                   >
-                    <SiSaweria size={14} />
+                    <Heart size={14} fill="currentColor" />
                     Dukung via {label}
                   </a>
                 ))}
