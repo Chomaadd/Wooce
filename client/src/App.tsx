@@ -10,6 +10,7 @@ import { SearchProvider } from "@/lib/search-context";
 import Novel from "./pages/public/Novel";
 import NovelDetail from "./pages/public/NovelDetail";
 import NovelRead from "./pages/public/NovelRead";
+import Bookmarks from "./pages/public/Bookmarks";
 import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
 import NotFound from "@/pages/public/Not-Found";
@@ -18,6 +19,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Novel} />
+      <Route path="/bookmarks" component={Bookmarks} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />

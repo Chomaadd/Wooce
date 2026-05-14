@@ -433,7 +433,7 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
     >
       <Link href={`/${story.slug}`} data-testid={`link-story-${story.id}`}>
         <div className="group cursor-pointer">
-          <div className="aspect-[2/3] rounded-xl overflow-hidden mb-3 bg-muted relative shadow-sm">
+          <div className="aspect-[2/3] rounded-lg overflow-hidden mb-2 bg-muted relative shadow-sm">
             {story.coverUrl ? (
               <img
                 src={story.coverUrl}
@@ -442,35 +442,30 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/30 via-primary/10 to-background gap-2">
-                <BookOpen size={28} className="text-primary/50" />
-                <span className="text-[10px] text-muted-foreground font-medium px-2 text-center line-clamp-2">{story.title}</span>
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/30 via-primary/10 to-background gap-1">
+                <BookOpen size={18} className="text-primary/50" />
+                <span className="text-[9px] text-muted-foreground font-medium px-1.5 text-center line-clamp-2">{story.title}</span>
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="absolute top-2 left-2">
-              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+            <div className="absolute top-1.5 left-1.5">
+              <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                 <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
                 {STATUS_LABEL[story.status] ?? story.status}
               </span>
             </div>
             {updated && (
-              <div className="absolute top-2 right-2">
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500 text-white shadow-lg">
-                  <Sparkles size={8} />
+              <div className="absolute top-1.5 right-1.5">
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 rounded-full bg-orange-500 text-white shadow-lg">
+                  <Sparkles size={7} />
                   Baru
                 </span>
               </div>
             )}
-            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-              <div className="bg-white/10 backdrop-blur-md rounded-lg px-3 py-1.5 text-center">
-                <span className="text-white text-xs font-semibold">Baca Sekarang</span>
-              </div>
-            </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <h3
-              className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug"
+              className="font-semibold text-[11px] text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug"
               data-testid={`text-story-title-${story.id}`}
             >
               {story.title}
@@ -500,6 +495,132 @@ function StoryCard({ story, index }: { story: StoryWithStats; index: number }) {
         </div>
       </Link>
     </motion.div>
+  );
+}
+
+// ── Recently Read Strip ───────────────────────────────────────────────────────
+function RecentlyRead({ stories }: { stories: StoryWithStats[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const slugs = useMemo(() => {
+    try {
+      return Object.keys(localStorage)
+        .filter(k => k.startsWith("novel-progress-"))
+        .map(k => ({ slug: k.replace("novel-progress-", ""), data: JSON.parse(localStorage.getItem(k) ?? "{}") }))
+        .filter(x => x.slug);
+    } catch { return []; }
+  }, []);
+
+  const recent = useMemo(
+    () => slugs
+      .map(({ slug, data }) => ({ story: stories.find(s => s.slug === slug), data }))
+      .filter(x => x.story)
+      .slice(0, 10) as Array<{ story: StoryWithStats; data: any }>,
+    [slugs, stories]
+  );
+
+  if (recent.length === 0) return null;
+
+  return (
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-4 pb-2">
+      <div className="flex items-center gap-2 mb-3">
+        <BookMarked size={12} className="text-primary" />
+        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Terakhir Dibaca</h3>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {recent.map(({ story, data }) => (
+          <Link
+            key={story.id}
+            href={data?.chapterNum ? `/${story.slug}/season-${data.seasonNum ?? 1}/bab-${data.chapterNum}` : `/${story.slug}`}
+            data-testid={`link-recent-${story.id}`}
+          >
+            <div className="flex-shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-muted/60 hover:bg-muted border border-border/50 transition-colors group">
+              <div className="w-8 aspect-[2/3] rounded-lg overflow-hidden bg-muted/80 flex-shrink-0">
+                {story.coverUrl ? (
+                  <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"><BookOpen size={10} className="text-primary/40" /></div>
+                )}
+              </div>
+              <div className="min-w-0 max-w-[120px]">
+                <p className="text-[11px] font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">{story.title}</p>
+                {data?.chapterNum && (
+                  <p className="text-[10px] text-muted-foreground">Bab {data.chapterNum}</p>
+                )}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Trending ──────────────────────────────────────────────────────────────────
+function Trending({ stories }: { stories: StoryWithStats[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const trending = useMemo(
+    () => [...stories].sort((a, b) => b.viewCount - a.viewCount).slice(0, 8),
+    [stories]
+  );
+
+  if (trending.length === 0) return null;
+
+  const scroll = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-6 pb-2">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Eye size={12} className="text-primary" />
+          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Trending</h3>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={() => scroll(-1)} className="w-6 h-6 rounded-full border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft size={11} />
+          </button>
+          <button onClick={() => scroll(1)} className="w-6 h-6 rounded-full border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronRight size={11} />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {trending.map((story, i) => (
+          <Link key={story.id} href={`/${story.slug}`} data-testid={`link-trending-${story.id}`}>
+            <div className="flex-shrink-0 w-[100px] group cursor-pointer">
+              <div className="aspect-[2/3] rounded-lg overflow-hidden mb-1.5 bg-muted relative shadow-sm">
+                {story.coverUrl ? (
+                  <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                    <BookOpen size={16} className="text-primary/40" />
+                  </div>
+                )}
+                <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white">{i + 1}</span>
+                </div>
+                <div className="absolute bottom-1 right-1 flex items-center gap-0.5 bg-black/50 rounded-full px-1 py-0.5">
+                  <Eye size={7} className="text-white" />
+                  <span className="text-[8px] font-medium text-white">{formatViewCount(story.viewCount)}</span>
+                </div>
+              </div>
+              <p className="text-[10px] font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                {story.title}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -574,6 +695,16 @@ export default function Novel() {
               <NovelUnggulan stories={stories} />
             )}
 
+            {/* Recently Read strip */}
+            {!isLoading && stories && stories.length > 0 && (
+              <RecentlyRead stories={stories} />
+            )}
+
+            {/* Trending */}
+            {!isLoading && stories && stories.length > 0 && (
+              <Trending stories={stories} />
+            )}
+
             <main className="max-w-7xl mx-auto px-5 lg:px-8 py-6">
               {/* Category Filters + section header */}
               <div className="flex items-center gap-3 mb-6 flex-wrap">
@@ -610,7 +741,7 @@ export default function Novel() {
 
               {/* Grid */}
               {isLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                   {Array.from({ length: 10 }).map((_, i) => (
                     <div key={i} className="space-y-2">
                       <Skeleton className="aspect-[2/3] rounded-xl" />
@@ -635,7 +766,7 @@ export default function Novel() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                   {filtered.map((story, i) => (
                     <StoryCard key={story.id} story={story} index={i} />
                   ))}

@@ -1,4 +1,4 @@
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -292,6 +292,7 @@ export default function NovelRead() {
   const seasonNum = Number(params?.seasonSlug?.replace("season-", "") ?? 1);
   const chapterNum = Number(params?.chapterSlug?.replace("bab-", "") ?? 1);
 
+  const [, navigate] = useLocation();
   const { settings, update } = useReadingSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
@@ -392,6 +393,20 @@ export default function NovelRead() {
     window.addEventListener("scroll", handler, { passive: true, once: true });
     return () => window.removeEventListener("scroll", handler);
   }, [settingsOpen]);
+
+  // Keyboard navigation (← prev, → next)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowLeft" && prevChapter) {
+        navigate(`/${slug}/season-${seasonNum}/bab-${prevChapter.chapterNumber}`);
+      } else if (e.key === "ArrowRight" && nextChapter) {
+        navigate(`/${slug}/season-${seasonNum}/bab-${nextChapter.chapterNumber}`);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [prevChapter, nextChapter, slug, seasonNum, navigate]);
 
   const handleShare = async (title: string, storyTitle?: string) => {
     const url = window.location.href;

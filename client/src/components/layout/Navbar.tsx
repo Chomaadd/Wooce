@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,6 +8,7 @@ import { useSearchContext } from "@/lib/search-context";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import type { NovelStory } from "@shared/schema";
+import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
@@ -53,6 +54,8 @@ export function Navbar() {
   }, [setSearch]);
 
   return (
+    <>
+    <AnnouncementBanner />
     <header className="sticky top-0 z-40 w-full">
       <div className="glass border-b border-border/40">
         <div className="max-w-7xl mx-auto flex h-14 items-center gap-3 px-5 lg:px-8">
@@ -144,6 +147,15 @@ export function Navbar() {
           )}
 
           <div className="flex items-center gap-1 shrink-0">
+            <Link href="/bookmarks">
+              <button
+                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                data-testid="button-bookmarks"
+                aria-label="Bookmark"
+              >
+                <Bookmark size={15} />
+              </button>
+            </Link>
             {user && (
               <Link href="/admin/novel">
                 <button
@@ -174,5 +186,6 @@ export function Navbar() {
         </div>
       </div>
     </header>
+    </>
   );
 }

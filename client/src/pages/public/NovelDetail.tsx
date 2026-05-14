@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -595,7 +595,67 @@ export default function NovelDetail() {
         </motion.div>
       </main>
 
+      <RecommendationsSection currentSlug={slug} category={story.category} />
+
       <Footer />
     </div>
+  );
+}
+
+// ── Recommendations ───────────────────────────────────────────────────────────
+function RecommendationsSection({ currentSlug, category }: { currentSlug: string; category: string }) {
+  const { data: allStories } = useQuery<(NovelStory & { totalChapters: number; lastChapterAt: string | null })[]>({
+    queryKey: ["/api/novel/stories"],
+  });
+
+  const recs = useMemo(
+    () => (allStories ?? []).filter(s => s.slug !== currentSlug && s.category === category).slice(0, 6),
+    [allStories, currentSlug, category]
+  );
+
+  if (recs.length === 0) return null;
+
+  const STATUS_CONFIG: Record<string, { color: string; dot: string }> = {
+    ongoing:   { color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400" },
+    completed: { color: "bg-blue-500/20 text-blue-400 border border-blue-500/30",          dot: "bg-blue-400" },
+    hiatus:    { color: "bg-amber-500/20 text-amber-400 border border-amber-500/30",        dot: "bg-amber-400" },
+  };
+
+  return (
+    <section className="max-w-2xl mx-auto px-5 sm:px-8 border-t border-border/40 pt-8 mt-4 pb-10">
+      <div className="flex items-center gap-2 mb-5">
+        <h2 className="text-base font-bold text-foreground">Mungkin Kamu Suka</h2>
+        <div className="flex-1 h-px bg-border/60" />
+      </div>
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4">
+        {recs.map((story, i) => {
+          const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+          return (
+            <motion.div key={story.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <Link href={`/${story.slug}`} data-testid={`link-rec-${story.id}`}>
+                <div className="group cursor-pointer">
+                  <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
+                    {story.coverUrl ? (
+                      <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <BookOpen size={18} className="text-primary/40" />
+                      </div>
+                    )}
+                    <div className="absolute top-1.5 left-1.5">
+                      <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                        <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                        {story.status}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">{story.title}</p>
+                </div>
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

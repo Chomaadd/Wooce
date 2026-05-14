@@ -18,14 +18,15 @@ import {
   BookOpen, Plus, Pencil, Trash2, ChevronRight, ChevronUp, ChevronDown,
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
-  LogOut, ExternalLink, Settings, TrendingUp, BarChart2,
+  LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
+  Info, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { NovelStory, NovelSeason, NovelChapter, BannerSlide } from "@shared/schema";
+import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements";
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -742,6 +743,104 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
   );
 }
 
+function AnnouncementForm({ initial, onSave, onCancel }: {
+  initial?: { message: string; type: string; link?: string | null; linkText?: string | null; active: boolean; expiresAt?: string | Date | null };
+  onSave: (data: any) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState({
+    message: initial?.message ?? "",
+    type: (initial?.type ?? "info") as "info" | "warning" | "success",
+    link: initial?.link ?? "",
+    linkText: initial?.linkText ?? "",
+    active: initial?.active ?? true,
+    expiresAt: initial?.expiresAt ? new Date(initial.expiresAt as string).toISOString().slice(0, 16) : "",
+  });
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Pesan *</label>
+        <Textarea
+          value={form.message}
+          onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+          placeholder="Tulis pesan pengumuman..."
+          rows={3}
+          data-testid="input-announcement-message"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Tipe</label>
+        <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as any }))}>
+          <SelectTrigger data-testid="select-announcement-type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="info">Info (biru)</SelectItem>
+            <SelectItem value="warning">Peringatan (kuning)</SelectItem>
+            <SelectItem value="success">Sukses (hijau)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Link (opsional)</label>
+        <Input
+          value={form.link}
+          onChange={e => setForm(f => ({ ...f, link: e.target.value }))}
+          placeholder="https://... atau /slug"
+          data-testid="input-announcement-link"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Teks Link (opsional)</label>
+        <Input
+          value={form.linkText}
+          onChange={e => setForm(f => ({ ...f, linkText: e.target.value }))}
+          placeholder="Selengkapnya"
+          data-testid="input-announcement-linktext"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Berakhir pada (opsional)</label>
+        <Input
+          type="datetime-local"
+          value={form.expiresAt}
+          onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
+          data-testid="input-announcement-expires"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setForm(f => ({ ...f, active: !f.active }))}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.active ? "bg-primary" : "bg-muted-foreground/30"}`}
+          data-testid="toggle-announcement-active"
+        >
+          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.active ? "translate-x-4" : "translate-x-0.5"}`} />
+        </button>
+        <span className="text-sm text-muted-foreground">Aktifkan pengumuman</span>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>Batal</Button>
+        <Button
+          disabled={!form.message.trim()}
+          onClick={() => onSave({
+            message: form.message.trim(),
+            type: form.type,
+            link: form.link.trim() || null,
+            linkText: form.linkText.trim() || null,
+            active: form.active,
+            expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+          })}
+          data-testid="button-save-announcement"
+        >
+          Simpan
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
 export default function ManageNovel() {
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -756,6 +855,7 @@ export default function ManageNovel() {
   const [seasonDialog, setSeasonDialog] = useState<{ open: boolean; season?: NovelSeason }>({ open: false });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; name: string } | null>(null);
   const [bannerDialog, setBannerDialog] = useState<{ open: boolean; banner?: BannerSlide }>({ open: false });
+  const [announcementDialog, setAnnouncementDialog] = useState<{ open: boolean; ann?: Announcement }>({ open: false });
 
   const { data: adminStats } = useQuery<{
     totalViews: number; totalStories: number; totalChapters: number; totalFeatured: number;
@@ -765,6 +865,12 @@ export default function ManageNovel() {
   }>({
     queryKey: ["/api/admin/stats"],
     queryFn: () => fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user,
+  });
+
+  const { data: announcements } = useQuery<Announcement[]>({
+    queryKey: ["/api/announcements/all"],
+    queryFn: () => fetch("/api/announcements/all", { credentials: "include" }).then(r => r.json()),
     enabled: !!user,
   });
 
@@ -867,6 +973,22 @@ export default function ManageNovel() {
     onError: () => toast({ title: "Gagal menghapus banner", variant: "destructive" }),
   });
 
+  const createAnnouncement = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/announcements", data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/announcements/all"] }); queryClient.invalidateQueries({ queryKey: ["/api/announcements"] }); setAnnouncementDialog({ open: false }); toast({ title: "Pengumuman ditambahkan!" }); },
+    onError: () => toast({ title: "Gagal menambah pengumuman", variant: "destructive" }),
+  });
+  const updateAnnouncement = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PUT", `/api/announcements/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/announcements/all"] }); queryClient.invalidateQueries({ queryKey: ["/api/announcements"] }); setAnnouncementDialog({ open: false }); toast({ title: "Pengumuman diperbarui!" }); },
+    onError: () => toast({ title: "Gagal memperbarui pengumuman", variant: "destructive" }),
+  });
+  const deleteAnnouncement = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/announcements/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/announcements/all"] }); queryClient.invalidateQueries({ queryKey: ["/api/announcements"] }); setDeleteDialog(null); toast({ title: "Pengumuman dihapus!" }); },
+    onError: () => toast({ title: "Gagal menghapus pengumuman", variant: "destructive" }),
+  });
+
   const reorderBanner = useMutation({
     mutationFn: (ids: string[]) => apiRequest("PATCH", "/api/banners/reorder", { ids }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }),
@@ -904,6 +1026,7 @@ export default function ManageNovel() {
     if (deleteDialog.type === "season") deleteSeason.mutate(deleteDialog.id);
     if (deleteDialog.type === "chapter") deleteChapter.mutate(deleteDialog.id);
     if (deleteDialog.type === "banner") deleteBanner.mutate(deleteDialog.id);
+    if (deleteDialog.type === "announcement") deleteAnnouncement.mutate(deleteDialog.id);
   };
 
   const AdminHeader = () => (
@@ -962,7 +1085,7 @@ export default function ManageNovel() {
         <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
           <button
             onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" && view !== "announcements" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Cerita
           </button>
@@ -978,10 +1101,16 @@ export default function ManageNovel() {
           >
             <Settings size={13} /> Settings
           </button>
+          <button
+            onClick={() => setView("announcements")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "announcements" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Bell size={13} /> Pengumuman
+          </button>
         </div>
 
         {/* Breadcrumb Nav */}
-        {view !== "settings" && view !== "stats" && (
+        {view !== "settings" && view !== "stats" && view !== "announcements" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
@@ -1366,6 +1495,63 @@ export default function ManageNovel() {
           </div>
         )}
 
+        {/* ── ANNOUNCEMENTS VIEW ── */}
+        {view === "announcements" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Bell size={22} /> Pengumuman
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">Tampilkan pesan penting ke pengunjung</p>
+              </div>
+              <Button onClick={() => setAnnouncementDialog({ open: true })}>
+                <Plus size={16} className="mr-1.5" /> Tambah
+              </Button>
+            </div>
+
+            {!announcements?.length ? (
+              <div className="text-center py-16 border border-dashed border-border rounded-xl">
+                <Bell size={36} className="mx-auto mb-3 text-muted-foreground opacity-40" />
+                <p className="text-muted-foreground">Belum ada pengumuman. Buat yang pertama!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {announcements.map(ann => {
+                  const TYPE_ICON = { info: Info, warning: AlertTriangle, success: CheckCircle2 }[ann.type] ?? Info;
+                  const TYPE_COLOR = { info: "text-blue-500", warning: "text-amber-500", success: "text-emerald-500" }[ann.type] ?? "text-blue-500";
+                  const isExpired = ann.expiresAt && new Date(ann.expiresAt) < new Date();
+                  return (
+                    <div key={ann.id} className="flex items-start gap-3 p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors">
+                      <TYPE_ICON size={16} className={`${TYPE_COLOR} mt-0.5 flex-shrink-0`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground font-medium">{ann.message}</p>
+                        {ann.link && <p className="text-xs text-blue-500 truncate mt-0.5">{ann.link}</p>}
+                        {ann.expiresAt && (
+                          <p className={`text-xs mt-0.5 ${isExpired ? "text-destructive" : "text-muted-foreground"}`}>
+                            {isExpired ? "Sudah kedaluwarsa" : `Berakhir: ${new Date(ann.expiresAt).toLocaleDateString("id-ID")}`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ann.active && !isExpired ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                          {ann.active && !isExpired ? "Aktif" : "Nonaktif"}
+                        </span>
+                        <Button size="icon" variant="ghost" onClick={() => setAnnouncementDialog({ open: true, ann })}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteDialog({ open: true, type: "announcement", id: ann.id, name: ann.message.slice(0, 40) })}>
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Banner Dialog ── */}
         <Dialog open={bannerDialog.open} onOpenChange={open => setBannerDialog({ open })}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1379,6 +1565,23 @@ export default function ManageNovel() {
                 : createBanner.mutate(data)
               }
               onCancel={() => setBannerDialog({ open: false })}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Announcement Dialog ── */}
+        <Dialog open={announcementDialog.open} onOpenChange={open => setAnnouncementDialog({ open })}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{announcementDialog.ann ? "Edit Pengumuman" : "Tambah Pengumuman"}</DialogTitle>
+            </DialogHeader>
+            <AnnouncementForm
+              initial={announcementDialog.ann}
+              onSave={(data) => announcementDialog.ann
+                ? updateAnnouncement.mutate({ id: announcementDialog.ann.id, data })
+                : createAnnouncement.mutate(data)
+              }
+              onCancel={() => setAnnouncementDialog({ open: false })}
             />
           </DialogContent>
         </Dialog>

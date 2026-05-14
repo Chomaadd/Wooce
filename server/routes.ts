@@ -424,6 +424,23 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── Announcements ─────────────────────────────────────────────────────────
+  app.get("/api/announcements", async (_req, res) => {
+    try { res.json(await storage.getAnnouncements(true)); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.get("/api/announcements/all", requireAuth, async (_req, res) => {
+    try { res.json(await storage.getAnnouncements()); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.post("/api/announcements", requireAuth, async (req, res) => {
+    try { res.status(201).json(await storage.createAnnouncement(req.body)); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.put("/api/announcements/:id", requireAuth, async (req, res) => {
+    try { res.json(await storage.updateAnnouncement(req.params.id, req.body)); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+  app.delete("/api/announcements/:id", requireAuth, async (req, res) => {
+    try { await storage.deleteAnnouncement(req.params.id); res.status(204).send(); } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // ── Translation API ───────────────────────────────────────────────────────
   const LINGVA_INSTANCES = [
     "https://lingva.ml",
