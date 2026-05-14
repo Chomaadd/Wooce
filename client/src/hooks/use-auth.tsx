@@ -9,24 +9,29 @@ interface AuthUser extends Partial<User> {
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
+  isLoggingIn: boolean;
   refetch: () => Promise<void>;
+  login: (credentials: { username: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
+  isLoggingIn: false,
   refetch: async () => {},
+  login: async () => {},
   logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const refetch = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data);
@@ -40,9 +45,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const login = useCallback(async (credentials: { username: string; password: string }) => {
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Login gagal");
+      }
+      await refetch();
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }, [refetch]);
+
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch {}
     setUser(null);
     window.location.href = "/";
@@ -53,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, refetch, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isLoggingIn, refetch, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
