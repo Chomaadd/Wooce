@@ -42,7 +42,7 @@ export async function registerRoutes(
     store = new session.MemoryStore();
   }
 
-  if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+  app.set("trust proxy", 1);
 
   app.use(session({
     store,
@@ -77,6 +77,7 @@ export async function registerRoutes(
       clientID: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       callbackURL: CALLBACK_URL,
+      proxy: true,
     },
     async (_accessToken, _refreshToken, profile, done) => {
       try {
