@@ -19,14 +19,14 @@ import {
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
-  Info, AlertTriangle, CheckCircle2, User,
+  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author } from "@shared/schema";
+import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUser } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "authors";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "authors" | "approvals";
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -1230,6 +1230,7 @@ export default function ManageNovel() {
     <div className="min-h-screen bg-background">
       <AdminHeader />
       <div className="max-w-5xl mx-auto px-6 py-8">
+        {view !== "approvals" && <>
 
         {/* Tab Nav */}
         <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
@@ -1263,10 +1264,16 @@ export default function ManageNovel() {
           >
             <User size={13} /> Penulis
           </button>
+          <button
+            onClick={() => setView("approvals")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <ShieldCheck size={13} /> Approval
+          </button>
         </div>
 
         {/* Breadcrumb Nav */}
-        {view !== "settings" && view !== "stats" && view !== "announcements" && view !== "authors" && (
+        {view !== "settings" && view !== "stats" && view !== "announcements" && view !== "authors" && view !== "approvals" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
@@ -1862,6 +1869,153 @@ export default function ManageNovel() {
           </DialogContent>
         </Dialog>
 
+      </>}
+
+      {view === "approvals" && <ApprovalsView />}
+
+      </div>
+    </div>
+  );
+}
+
+// ── ApprovalsView ─────────────────────────────────────────────────────────────
+function ApprovalsView() {
+  const { toast } = useToast();
+
+  const { data: pendingUsers, isLoading, refetch } = useQuery<AppUser[]>({
+    queryKey: ["/api/admin/users", "writer", "pending"],
+    queryFn: () => fetch("/api/admin/users?role=writer&status=pending").then(r => r.json()),
+  });
+
+  const { data: activeWriters } = useQuery<AppUser[]>({
+    queryKey: ["/api/admin/users", "writer", "active"],
+    queryFn: () => fetch("/api/admin/users?role=writer&status=active").then(r => r.json()),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/approve`),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Penulis disetujui!" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/reject`),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Permohonan ditolak." });
+    },
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/suspend`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Akun disuspend." });
+    },
+  });
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <ShieldCheck size={22} /> Approval Penulis
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Tinjau dan kelola permohonan bergabung sebagai penulis</p>
+      </div>
+
+      {/* Pending */}
+      <div>
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+          <Clock size={14} className="text-yellow-500" /> Menunggu Persetujuan
+          {!!pendingUsers?.length && (
+            <span className="bg-yellow-500/10 text-yellow-600 text-xs font-bold px-2 py-0.5 rounded-full">{pendingUsers.length}</span>
+          )}
+        </h2>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1,2].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-xl" />)}
+          </div>
+        ) : !pendingUsers?.length ? (
+          <div className="text-center py-10 border border-dashed border-border rounded-xl">
+            <CheckCircle2 size={28} className="mx-auto mb-2 text-muted-foreground opacity-30" />
+            <p className="text-sm text-muted-foreground">Tidak ada permohonan yang menunggu</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pendingUsers.map(u => (
+              <div key={u.id} className="flex items-center gap-3 p-4 border border-yellow-500/20 bg-yellow-500/5 rounded-xl">
+                {u.photoUrl
+                  ? <img src={u.photoUrl} alt={u.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  : <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-bold text-sm">{u.name.charAt(0).toUpperCase()}</div>
+                }
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground">{u.name}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => approveMutation.mutate(u.id)}
+                    disabled={approveMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    data-testid={`button-approve-${u.id}`}
+                  >
+                    <UserCheck size={13} /> Setujui
+                  </button>
+                  <button
+                    onClick={() => rejectMutation.mutate(u.id)}
+                    disabled={rejectMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    data-testid={`button-reject-${u.id}`}
+                  >
+                    <UserX size={13} /> Tolak
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Active Writers */}
+      <div>
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+          <UserCheck size={14} className="text-green-500" /> Penulis Aktif
+          {!!activeWriters?.length && (
+            <span className="bg-green-500/10 text-green-600 text-xs font-bold px-2 py-0.5 rounded-full">{activeWriters.length}</span>
+          )}
+        </h2>
+        {!activeWriters?.length ? (
+          <div className="text-center py-8 border border-dashed border-border rounded-xl">
+            <p className="text-sm text-muted-foreground">Belum ada penulis aktif</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {activeWriters.map(u => (
+              <div key={u.id} className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-muted/20 transition-colors">
+                {u.photoUrl
+                  ? <img src={u.photoUrl} alt={u.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  : <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-bold text-sm">{u.name.charAt(0).toUpperCase()}</div>
+                }
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground">{u.name}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </div>
+                <button
+                  onClick={() => suspendMutation.mutate(u.id)}
+                  disabled={suspendMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-red-500/10 hover:text-red-600 transition-colors text-xs font-semibold disabled:opacity-50"
+                  data-testid={`button-suspend-${u.id}`}
+                >
+                  <UserX size={13} /> Suspend
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

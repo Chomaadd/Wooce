@@ -2,6 +2,8 @@ import {
   type Admin,
   type Author,
   type InsertAuthor,
+  type User,
+  type InsertUser,
   type NovelStory,
   type CreateNovelStoryRequest,
   type UpdateNovelStoryRequest,
@@ -19,6 +21,7 @@ import {
 } from "@shared/schema";
 import {
   AdminModel,
+  UserModel,
   AuthorModel,
   NovelStoryModel,
   NovelSeasonModel,
@@ -30,6 +33,13 @@ import {
 export interface IStorage {
   getAdminByUsername(username: string): Promise<Admin | undefined>;
   getAdminById(id: string): Promise<Admin | undefined>;
+
+  getUserById(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  createUser(data: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+  getUsers(role?: string, status?: string): Promise<User[]>;
 
   getAuthors(): Promise<Author[]>;
   getAuthorBySlug(slug: string): Promise<Author | undefined>;
@@ -89,6 +99,12 @@ function mapStory(doc: any): NovelStory {
   return obj;
 }
 
+function mapUser(doc: any): User {
+  const obj = mapId<User>(doc);
+  if (obj.authorId) (obj as any).authorId = obj.authorId.toString();
+  return obj;
+}
+
 export class DatabaseStorage implements IStorage {
   async getAdminByUsername(username: string): Promise<Admin | undefined> {
     const admin = await AdminModel.findOne({ username });
@@ -97,6 +113,36 @@ export class DatabaseStorage implements IStorage {
   async getAdminById(id: string): Promise<Admin | undefined> {
     const admin = await AdminModel.findById(id);
     return admin ? mapId(admin) : undefined;
+  }
+
+  // ── Users ──────────────────────────────────────────────────────────────────
+  async getUserById(id: string): Promise<User | undefined> {
+    const doc = await UserModel.findById(id);
+    return doc ? mapUser(doc) : undefined;
+  }
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const doc = await UserModel.findOne({ email });
+    return doc ? mapUser(doc) : undefined;
+  }
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const doc = await UserModel.findOne({ googleId });
+    return doc ? mapUser(doc) : undefined;
+  }
+  async createUser(data: InsertUser): Promise<User> {
+    const doc = await UserModel.create(data);
+    return mapUser(doc);
+  }
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const doc = await UserModel.findByIdAndUpdate(id, { $set: updates }, { new: true });
+    if (!doc) throw new Error('User not found');
+    return mapUser(doc);
+  }
+  async getUsers(role?: string, status?: string): Promise<User[]> {
+    const query: any = {};
+    if (role) query.role = role;
+    if (status) query.status = status;
+    const docs = await UserModel.find(query).sort({ createdAt: -1 });
+    return docs.map((d: any) => mapUser(d));
   }
 
   // ── Authors ────────────────────────────────────────────────────────────────

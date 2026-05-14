@@ -2,6 +2,8 @@ import type { Express } from "express";
 import type { Server } from "http";
 import session from "express-session";
 import mongoose from "mongoose";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { storage } from "./storage";
 import { log } from "./logger";
 import { z } from "zod";
@@ -13,6 +15,8 @@ import express from "express";
 declare module "express-session" {
   interface SessionData {
     adminId?: string;
+    userId?: string;
+    userRole?: string;
   }
 }
 
@@ -57,6 +61,78 @@ export async function registerRoutes(
     if (!req.session.adminId) return res.status(401).json({ message: "Unauthorized" });
     next();
   };
+
+  const requireUser = (req: any, res: any, next: any) => {
+    if (!req.session.userId) return res.status(401).json({ message: "Login diperlukan" });
+    next();
+  };
+
+  // ── Passport / Google OAuth ───────────────────────────────────────────────
+  const CALLBACK_URL = process.env.NODE_ENV === "production"
+    ? `https://${process.env.REPLIT_DEV_DOMAIN || ""}/auth/google/callback`
+    : `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
+
+  passport.use(new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      callbackURL: CALLBACK_URL,
+    },
+    async (_accessToken, _refreshToken, profile, done) => {
+      try {
+        const email = profile.emails?.[0]?.value;
+        if (!email) return done(new Error("No email from Google"));
+
+        let user = await storage.getUserByGoogleId(profile.id);
+        if (!user) {
+          user = await storage.getUserByEmail(email);
+          if (user) {
+            user = await storage.updateUser(user.id, { googleId: profile.id, photoUrl: profile.photos?.[0]?.value ?? null });
+          } else {
+            user = await storage.createUser({
+              googleId: profile.id,
+              email,
+              name: profile.displayName || email.split("@")[0],
+              photoUrl: profile.photos?.[0]?.value ?? null,
+              role: "reader",
+              status: "active",
+            });
+          }
+        }
+        return done(null, user);
+      } catch (err) {
+        return done(err as Error);
+      }
+    }
+  ));
+
+  passport.serializeUser((user: any, done) => done(null, user.id));
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUserById(id);
+      done(null, user ?? false);
+    } catch (err) { done(err); }
+  });
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+  app.get("/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/?auth=error" }),
+    (req: any, res) => {
+      const user = req.user;
+      if (user) {
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+      }
+      if (user?.role === "writer" && user?.status === "pending") {
+        return res.redirect("/?auth=pending");
+      }
+      res.redirect("/?auth=success");
+    }
+  );
 
   // ── File Upload (GridFS) ──────────────────────────────────────────────────
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -133,14 +209,73 @@ export async function registerRoutes(
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) return res.status(500).json({ success: false });
+      res.clearCookie("connect.sid");
       res.json({ success: true });
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
-    if (!req.session.adminId) return res.json(null);
-    const adminUsername = process.env.ADMIN_USERNAME || "admin";
-    res.json({ id: "1", username: adminUsername, name: "Admin" });
+  app.get("/api/auth/me", async (req, res) => {
+    if (req.session.userId) {
+      try {
+        const user = await storage.getUserById(req.session.userId);
+        if (user) return res.json({ ...user, isAdmin: false });
+      } catch {}
+    }
+    if (req.session.adminId) {
+      const adminUsername = process.env.ADMIN_USERNAME || "admin";
+      return res.json({ id: "admin-1", username: adminUsername, name: "Admin", role: "admin", status: "active", isAdmin: true });
+    }
+    res.json(null);
+  });
+
+  // ── User (self) ────────────────────────────────────────────────────────────
+  app.patch("/api/auth/me", requireUser, async (req: any, res) => {
+    try {
+      const user = await storage.updateUser(req.session.userId, req.body);
+      res.json(user);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/auth/request-writer", requireUser, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.role === "writer") return res.json({ message: "Sudah menjadi penulis", user });
+      if (user.role === "admin") return res.json({ message: "Anda adalah admin", user });
+      const updated = await storage.updateUser(user.id, { role: "writer", status: "pending" });
+      req.session.userRole = "writer";
+      res.json({ success: true, user: updated });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Admin — User management ────────────────────────────────────────────────
+  app.get("/api/admin/users", requireAuth, async (req, res) => {
+    try {
+      const { role, status } = req.query as { role?: string; status?: string };
+      const users = await storage.getUsers(role, status);
+      res.json(users);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/users/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.params.id, { status: "active" });
+      res.json(user);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/users/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.params.id, { role: "reader", status: "active" });
+      res.json(user);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/users/:id/suspend", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.params.id, { status: "suspended" });
+      res.json(user);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   // ── Settings (minimal — for SeoHead/frontend) ─────────────────────────────

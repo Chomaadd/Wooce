@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -83,7 +83,7 @@ export function Navbar() {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { search, setSearch } = useSearchContext();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -242,7 +242,7 @@ export function Navbar() {
                 <Bookmark size={15} />
               </button>
             </Link>
-            {user && (
+            {user?.isAdmin && (
               <Link href="/admin/novel">
                 <button
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors mr-1"
@@ -252,6 +252,54 @@ export function Navbar() {
                   <span className="hidden sm:inline">Admin</span>
                 </button>
               </Link>
+            )}
+            {user && !user.isAdmin && (
+              <div className="relative group">
+                {user.photoUrl ? (
+                  <img src={user.photoUrl} alt={user.name ?? ""} className="w-7 h-7 rounded-full object-cover cursor-pointer ring-2 ring-primary/20" data-testid="img-user-avatar" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs cursor-pointer" data-testid="img-user-avatar-fallback">
+                    {(user.name ?? "U").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50">
+                  <div className="px-3 py-2.5 border-b border-border">
+                    <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                    {user.role === "writer" && user.status === "pending" && (
+                      <span className="text-[10px] text-yellow-600 bg-yellow-500/10 px-1.5 py-0.5 rounded-full mt-1 inline-block">Menunggu approval</span>
+                    )}
+                    {user.role === "writer" && user.status === "active" && (
+                      <span className="text-[10px] text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-full mt-1 inline-block">Penulis Aktif</span>
+                    )}
+                  </div>
+                  {(user.role === "reader") && (
+                    <Link href="/daftar-penulis">
+                      <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-become-writer-menu">
+                        <PenLine size={12} /> Daftar sebagai Penulis
+                      </button>
+                    </Link>
+                  )}
+                  <button
+                    onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/"; }}
+                    className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
+                    data-testid="button-user-logout"
+                  >
+                    <LogOut size={12} /> Keluar
+                  </button>
+                </div>
+              </div>
+            )}
+            {!user && !isLoading && (
+              <a href="/auth/google">
+                <button
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  data-testid="button-google-login"
+                >
+                  <LogIn size={13} />
+                  <span className="hidden sm:inline">Login</span>
+                </button>
+              </a>
             )}
             <button
               onClick={() => setLanguage(language === "id" ? "en" : "id")}
