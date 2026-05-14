@@ -170,6 +170,7 @@ function TOCPanel({ chapters, currentChapterNum, slug, seasonNum, onClose }: {
   seasonNum: number;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   const activeRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
