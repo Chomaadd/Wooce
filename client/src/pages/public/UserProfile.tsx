@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
-  PenLine, LogOut, User, Star,
+  PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
@@ -27,10 +29,25 @@ function fmtViews(n: number) {
   return String(n);
 }
 
+type AuthorData = {
+  id: string;
+  slug: string;
+  name: string;
+  bio?: string;
+  photoUrl?: string;
+  socialLinks?: Record<string, string>;
+  donationLinks?: Record<string, string>;
+};
+
 export default function UserProfile() {
   const { user, isLoading: authLoading, logout } = useAuth();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [bookmarkSlugs, setBookmarkSlugs] = useState<string[]>([]);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [bioVal, setBioVal] = useState("");
+  const [socialVals, setSocialVals] = useState<Record<string, string>>({});
+  const [donationVals, setDonationVals] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!authLoading && (!user || user.isAdmin)) navigate("/");
@@ -54,6 +71,28 @@ export default function UserProfile() {
     enabled: !!user && user.role === "writer" && user.status === "active",
   });
 
+  const { data: authorData } = useQuery<AuthorData>({
+    queryKey: ["/api/writer/me"],
+    queryFn: () => fetch("/api/writer/me", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user && user.role === "writer" && user.status === "active",
+  });
+
+  const updateProfile = useMutation({
+    mutationFn: (data: any) =>
+      fetch("/api/writer/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      }).then(r => { if (!r.ok) throw new Error("Gagal menyimpan"); return r.json(); }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/writer/me"] });
+      setEditingProfile(false);
+      toast({ title: "Profil berhasil disimpan!" });
+    },
+    onError: () => toast({ title: "Gagal menyimpan profil", variant: "destructive" }),
+  });
+
   const bookmarked = useMemo(
     () => (allStories ?? []).filter(s => bookmarkSlugs.includes(s.slug)),
     [allStories, bookmarkSlugs],
@@ -63,6 +102,19 @@ export default function UserProfile() {
     const next = bookmarkSlugs.filter(s => s !== slug);
     setBookmarkSlugs(next);
     try { localStorage.setItem("novel-bookmarks", JSON.stringify(next)); } catch {}
+  };
+
+  const openEdit = () => {
+    setBioVal(authorData?.bio ?? "");
+    setSocialVals({ ...authorData?.socialLinks });
+    setDonationVals({ ...authorData?.donationLinks });
+    setEditingProfile(true);
+  };
+
+  const saveProfile = () => {
+    const cleanSocial = Object.fromEntries(Object.entries(socialVals).filter(([, v]) => v.trim()));
+    const cleanDonation = Object.fromEntries(Object.entries(donationVals).filter(([, v]) => v.trim()));
+    updateProfile.mutate({ bio: bioVal, socialLinks: cleanSocial, donationLinks: cleanDonation });
   };
 
   if (authLoading) {
@@ -81,12 +133,25 @@ export default function UserProfile() {
 
   const isWriter = user.role === "writer" && user.status === "active";
 
+  const SOCIAL_FIELDS = [
+    { key: "tiktok", label: "TikTok" },
+    { key: "instagram", label: "Instagram" },
+    { key: "facebook", label: "Facebook" },
+    { key: "twitter", label: "X / Twitter" },
+    { key: "website", label: "Website" },
+  ];
+
+  const DONATION_FIELDS = [
+    { key: "saweria", label: "Saweria" },
+    { key: "trakteer", label: "Trakteer" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
-      <SeoHead title={`Profil — WOOCE Novel`} description="Halaman profil pembaca WOOCE Novel." />
+      <SeoHead title={`Profil — WOOCE Novel`} description="Halaman profil WOOCE Novel." />
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 lg:px-6 py-8 space-y-8">
+      <main className="max-w-3xl mx-auto px-4 lg:px-6 py-8 space-y-6">
 
         {/* Profile card */}
         <motion.div
@@ -133,7 +198,7 @@ export default function UserProfile() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                   data-testid="button-go-writer-dashboard"
                 >
-                  <PenLine size={12} /> Cerita Saya
+                  <PenLine size={12} /> Kelola Cerita
                 </button>
               </Link>
             )}
@@ -146,6 +211,160 @@ export default function UserProfile() {
             </button>
           </div>
         </motion.div>
+
+        {/* Writer public profile section */}
+        {isWriter && authorData && (
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card border border-border rounded-2xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <User size={13} className="text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm text-foreground">Profil Publik Penulis</h2>
+                  <p className="text-[11px] text-muted-foreground">Yang dilihat pembaca di halaman profilmu</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/penulis/${authorData.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border"
+                  data-testid="link-view-author-profile"
+                >
+                  <ExternalLink size={11} /> Lihat
+                </a>
+                {!editingProfile && (
+                  <button
+                    onClick={openEdit}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    data-testid="button-edit-profile"
+                  >
+                    <Edit2 size={11} /> Edit
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 space-y-1.5">
+              <p className="text-[11px] text-muted-foreground">
+                URL Profil: <span className="font-mono text-primary">/penulis/{authorData.slug}</span>
+              </p>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {editingProfile ? (
+                <motion.div
+                  key="edit"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="px-5 pb-5 space-y-4"
+                >
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Bio</label>
+                    <textarea
+                      value={bioVal}
+                      onChange={e => setBioVal(e.target.value)}
+                      rows={3}
+                      placeholder="Ceritakan sedikit tentang dirimu sebagai penulis..."
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                      data-testid="input-bio"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Media Sosial</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {SOCIAL_FIELDS.map(f => (
+                        <div key={f.key} className="space-y-1">
+                          <span className="text-[10px] text-muted-foreground">{f.label}</span>
+                          <input
+                            type="url"
+                            value={socialVals[f.key] ?? ""}
+                            onChange={e => setSocialVals(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            placeholder={`https://...`}
+                            className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
+                            data-testid={`input-social-${f.key}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Donasi</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {DONATION_FIELDS.map(f => (
+                        <div key={f.key} className="space-y-1">
+                          <span className="text-[10px] text-muted-foreground">{f.label}</span>
+                          <input
+                            type="url"
+                            value={donationVals[f.key] ?? ""}
+                            onChange={e => setDonationVals(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            placeholder={`https://...`}
+                            className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
+                            data-testid={`input-donation-${f.key}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={saveProfile}
+                      disabled={updateProfile.isPending}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+                      data-testid="button-save-profile"
+                    >
+                      <Check size={12} /> {updateProfile.isPending ? "Menyimpan..." : "Simpan"}
+                    </button>
+                    <button
+                      onClick={() => setEditingProfile(false)}
+                      disabled={updateProfile.isPending}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      data-testid="button-cancel-edit"
+                    >
+                      <X size={12} /> Batal
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="view"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="px-5 pb-5 space-y-3"
+                >
+                  {authorData.bio ? (
+                    <p className="text-sm text-muted-foreground leading-relaxed">{authorData.bio}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/50 italic">Belum ada bio. Klik Edit untuk menambahkan.</p>
+                  )}
+                  {authorData.socialLinks && Object.keys(authorData.socialLinks).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(authorData.socialLinks).map(([k, v]) => v && (
+                        <a key={k} href={v} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors capitalize"
+                          data-testid={`link-social-${k}`}
+                        >
+                          {k}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
 
         {/* Writer stories section */}
         {isWriter && (
@@ -317,7 +536,7 @@ export default function UserProfile() {
           )}
         </section>
 
-        {/* Rating activity */}
+        {/* Reading activity */}
         <section className="pb-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">

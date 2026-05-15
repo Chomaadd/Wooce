@@ -85,7 +85,7 @@ function WriterModal({ onClose }: { onClose: () => void }) {
                 className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                 data-testid="button-go-writer-dashboard"
               >
-                Buka Dapur Cerita →
+                Kelola Cerita →
               </button>
             </Link>
           ) : isLoggedIn ? (
@@ -374,45 +374,30 @@ export function Navbar() {
                           onClick={() => setUserMenuOpen(false)}
                           data-testid="button-profile-menu"
                         >
-                          <User size={12} /> Profil Saya
+                          <User size={12} /> Profil
                         </button>
                       </Link>
 
                       {user.role === "writer" && user.status === "active" && (
-                        <>
-                          <Link href="/writer/cerita">
-                            <button
-                              className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
-                              onClick={() => setUserMenuOpen(false)}
-                              data-testid="button-writer-menu"
-                            >
-                              <PenLine size={12} /> Dapur Cerita
-                            </button>
-                          </Link>
-                          <Link href="/writer/profil">
-                            <button
-                              className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
-                              onClick={() => setUserMenuOpen(false)}
-                              data-testid="button-writer-profile-menu"
-                            >
-                              <User size={12} /> Profil Penulis
-                            </button>
-                          </Link>
-                        </>
+                        <Link href="/writer/cerita">
+                          <button
+                            className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                            onClick={() => setUserMenuOpen(false)}
+                            data-testid="button-writer-menu"
+                          >
+                            <PenLine size={12} /> Kelola Cerita
+                          </button>
+                        </Link>
                       )}
 
-                      {(user.role === "reader" || (user.role === "writer" && user.status === "pending")) && (
+                      {user.role === "reader" && (
                         <Link href="/daftar-penulis">
                           <button
                             className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
                             onClick={() => setUserMenuOpen(false)}
                             data-testid="button-become-writer-menu"
                           >
-                            <PenLine size={12} />
-                            {user.role === "writer" && user.status === "pending"
-                              ? "Status Pendaftaran"
-                              : "Daftar sebagai Penulis"
-                            }
+                            <PenLine size={12} /> Daftar sebagai Penulis
                           </button>
                         </Link>
                       )}

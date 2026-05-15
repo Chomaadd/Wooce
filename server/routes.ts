@@ -244,10 +244,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/auth/me", async (req, res) => {
-    if (req.session.adminId) {
-      const adminUsername = process.env.ADMIN_USERNAME || "admin";
-      return res.json({ id: "admin-1", username: adminUsername, name: "Admin", role: "admin", status: "active", isAdmin: true });
-    }
     if (req.session.userId) {
       try {
         const user = await storage.getUserById(req.session.userId);
@@ -255,6 +251,19 @@ export async function registerRoutes(
       } catch {}
     }
     res.json(null);
+  });
+
+  app.get("/api/auth/admin-verify", (req, res) => {
+    if (req.session.adminId) {
+      const adminUsername = process.env.ADMIN_USERNAME || "admin";
+      return res.json({ ok: true, name: "Admin", username: adminUsername, isAdmin: true });
+    }
+    res.status(401).json({ ok: false });
+  });
+
+  app.post("/api/auth/admin-logout", (req, res) => {
+    delete req.session.adminId;
+    res.json({ success: true });
   });
 
   // ── User (self) ────────────────────────────────────────────────────────────

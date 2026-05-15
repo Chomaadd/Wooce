@@ -22,9 +22,8 @@ import {
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUser } from "@shared/schema";
+import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
-import { useAuth } from "@/hooks/use-auth";
 
 type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals";
 
@@ -970,8 +969,18 @@ function AnnouncementForm({ initial, onSave, onCancel }: {
 export default function ManageNovel() {
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { user, isLoading: authLoading, logout } = useAuth();
   const [, navigate] = useLocation();
+  const [adminVerified, setAdminVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/admin-verify", { credentials: "include" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) setAdminVerified(true);
+        else { setAdminVerified(false); window.location.href = "/login"; }
+      })
+      .catch(() => { setAdminVerified(false); window.location.href = "/login"; });
+  }, []);
   const [view, setView] = useState<View>("stories");
   const [selectedStory, setSelectedStory] = useState<NovelStory | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
@@ -991,36 +1000,36 @@ export default function ManageNovel() {
   }>({
     queryKey: ["/api/admin/stats"],
     queryFn: () => fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
-    enabled: !!user,
+    enabled: adminVerified === true,
   });
 
   const { data: announcements } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements/all"],
     queryFn: () => fetch("/api/announcements/all", { credentials: "include" }).then(r => r.json()),
-    enabled: !!user,
+    enabled: adminVerified === true,
   });
 
   const { data: banners, isLoading: bannersLoading } = useQuery<BannerSlide[]>({
     queryKey: ["/api/banners/all"],
     queryFn: () => fetch("/api/banners/all", { credentials: "include" }).then(r => r.json()),
-    enabled: !!user,
+    enabled: adminVerified === true,
   });
 
   const { data: stories, isLoading: storiesLoading } = useQuery<NovelStory[]>({
     queryKey: ["/api/novel/stories/all"],
-    enabled: !!user,
+    enabled: adminVerified === true,
   });
 
   const { data: seasons, isLoading: seasonsLoading } = useQuery<NovelSeason[]>({
     queryKey: ["/api/novel/stories", selectedStory?.id, "seasons"],
     queryFn: () => fetch(`/api/novel/stories/${selectedStory!.id}/seasons`, { credentials: "include" }).then(r => r.json()),
-    enabled: !!selectedStory?.id && !!user,
+    enabled: !!selectedStory?.id && adminVerified === true,
   });
 
   const { data: chapters, isLoading: chaptersLoading } = useQuery<NovelChapter[]>({
     queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"],
     queryFn: () => fetch(`/api/novel/seasons/${selectedSeason!.id}/chapters/all`, { credentials: "include" }).then(r => r.json()),
-    enabled: !!selectedSeason?.id && !!user,
+    enabled: !!selectedSeason?.id && adminVerified === true,
   });
 
   const createStory = useMutation({
@@ -1133,13 +1142,7 @@ export default function ManageNovel() {
     reorderBanner.mutate(newOrder.map(b => b.id));
   };
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/login");
-    }
-  }, [authLoading, user, navigate]);
-
-  if (authLoading || !user) {
+  if (adminVerified !== true) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -1172,16 +1175,17 @@ export default function ManageNovel() {
               Lihat Situs
             </button>
           </Link>
-          {user && (
-            <button
-              onClick={() => logout()}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1.5 rounded-full hover:bg-destructive/10"
-              data-testid="button-logout"
-            >
-              <LogOut size={13} />
-              Logout
-            </button>
-          )}
+          <button
+            onClick={async () => {
+              await fetch("/api/auth/admin-logout", { method: "POST", credentials: "include" });
+              window.location.href = "/login";
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1.5 rounded-full hover:bg-destructive/10"
+            data-testid="button-logout"
+          >
+            <LogOut size={13} />
+            Logout
+          </button>
         </div>
       </div>
     </header>
