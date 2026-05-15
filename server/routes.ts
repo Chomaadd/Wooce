@@ -84,20 +84,31 @@ export async function registerRoutes(
         const email = profile.emails?.[0]?.value;
         if (!email) return done(new Error("No email from Google"));
 
+        const latestPhotoUrl = profile.photos?.[0]?.value ?? null;
+        const latestName = profile.displayName || email.split("@")[0];
+
         let user = await storage.getUserByGoogleId(profile.id);
         if (!user) {
           user = await storage.getUserByEmail(email);
           if (user) {
-            user = await storage.updateUser(user.id, { googleId: profile.id, photoUrl: profile.photos?.[0]?.value ?? null });
+            user = await storage.updateUser(user.id, {
+              googleId: profile.id,
+              photoUrl: latestPhotoUrl,
+              name: latestName,
+            });
           } else {
             user = await storage.createUser({
               googleId: profile.id,
               email,
-              name: profile.displayName || email.split("@")[0],
-              photoUrl: profile.photos?.[0]?.value ?? null,
+              name: latestName,
+              photoUrl: latestPhotoUrl,
               role: "reader",
               status: "active",
             });
+          }
+        } else {
+          if (latestPhotoUrl && user.photoUrl !== latestPhotoUrl) {
+            user = await storage.updateUser(user.id, { photoUrl: latestPhotoUrl, name: latestName });
           }
         }
         return done(null, user);
@@ -635,22 +646,34 @@ export async function registerRoutes(
   });
 
   // ── Writer API ────────────────────────────────────────────────────────────
+  async function ensureAuthorId(user: any): Promise<string> {
+    if (user.authorId) return user.authorId;
+    const baseSlug = user.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug = `${baseSlug}-${Date.now().toString(36)}`;
+    const author = await storage.createAuthor({
+      name: user.name, slug, bio: "", photoUrl: user.photoUrl ?? null,
+      tiktok: null, instagram: null, facebook: null, twitter: null,
+      website: null, saweria: null, trakteer: null, email: user.email,
+    });
+    await storage.updateUser(user.id, { authorId: author.id });
+    return author.id;
+  }
+
   app.get("/api/writer/me", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
+      const authorId = await ensureAuthorId(user);
       let author = null;
-      if (user.authorId) {
-        try { author = await storage.getAuthorById(user.authorId); } catch {}
-      }
-      res.json({ ...user, author });
+      try { author = await storage.getAuthorById(authorId); } catch {}
+      res.json({ ...user, authorId, author });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.get("/api/writer/stories", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
-      if (!user.authorId) return res.json([]);
-      const stories = await storage.getNovelStoriesByAuthor(user.authorId);
+      const authorId = await ensureAuthorId(user);
+      const stories = await storage.getNovelStoriesByAuthor(authorId);
       const storiesWithStats = await Promise.all(stories.map(async (story) => {
         const seasons = await storage.getNovelSeasons(story.id);
         let totalChapters = 0;
@@ -667,8 +690,8 @@ export async function registerRoutes(
   app.post("/api/writer/stories", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
-      if (!user.authorId) return res.status(400).json({ message: "Profil penulis belum dibuat" });
-      const story = await storage.createNovelStory({ ...req.body, authorId: user.authorId });
+      const authorId = await ensureAuthorId(user);
+      const story = await storage.createNovelStory({ ...req.body, authorId });
       res.status(201).json(story);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });

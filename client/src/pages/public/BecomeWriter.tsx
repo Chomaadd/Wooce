@@ -17,8 +17,11 @@ export default function BecomeWriter() {
   const { toast } = useToast();
 
   const requestWriterMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/auth/request-writer"),
-    onSuccess: async () => {
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/request-writer");
+      return res.json();
+    },
+    onSuccess: async (data) => {
       await refetch();
       toast({ title: "Permintaan terkirim!", description: "Admin akan segera meninjaunya." });
     },

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,6 +14,11 @@ type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: strin
 
 function WriterModal({ onClose }: { onClose: () => void }) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isLoggedIn = !!user && !user.isAdmin;
+  const isPending = user?.role === "writer" && user?.status === "pending";
+  const isActive = user?.role === "writer" && user?.status === "active";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -65,14 +70,45 @@ function WriterModal({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-muted-foreground leading-relaxed">{t("writer.note")}</p>
           </div>
 
-          <a href="mailto:wooce.novel@gmail.com" className="block">
-            <button
-              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-              data-testid="button-writer-contact"
-            >
-              {t("writer.contact")}
-            </button>
-          </a>
+          {isPending ? (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+              <Clock size={18} className="text-yellow-500 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Permohonan sedang ditinjau</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Admin akan menghubungimu segera.</p>
+              </div>
+            </div>
+          ) : isActive ? (
+            <Link href="/writer/cerita">
+              <button
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                data-testid="button-go-writer-dashboard"
+              >
+                Buka Dapur Cerita →
+              </button>
+            </Link>
+          ) : isLoggedIn ? (
+            <Link href="/daftar-penulis">
+              <button
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                data-testid="button-register-writer"
+              >
+                Daftar sebagai Penulis →
+              </button>
+            </Link>
+          ) : (
+            <a href="/auth/google" className="block">
+              <button
+                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                data-testid="button-writer-contact"
+              >
+                <LogIn size={15} className="inline mr-2" />
+                Login Google untuk Mendaftar
+              </button>
+            </a>
+          )}
         </div>
       </motion.div>
     </div>
@@ -87,11 +123,13 @@ export function Navbar() {
   const { search, setSearch } = useSearchContext();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const parts = location.split("/").filter(Boolean);
   const isReading = parts.length === 3;
   const isHome = location === "/";
   const [writerModalOpen, setWriterModalOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const { data: stories } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/novel/stories"],
@@ -106,6 +144,7 @@ export function Navbar() {
 
   const showDropdown = isHome && search.trim().length > 0;
 
+  // Close search dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (
@@ -120,6 +159,17 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [setSearch]);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   return (
     <>
@@ -145,6 +195,7 @@ export function Navbar() {
           >
             <PenLine size={11} />
             <span className="hidden sm:inline">{t("writer.button")}</span>
+            <span className="sm:hidden">Penulis</span>
           </button>
 
           {isHome ? (
@@ -195,11 +246,7 @@ export function Navbar() {
                             >
                               <div className="w-9 aspect-[2/3] rounded-md overflow-hidden bg-muted flex-shrink-0">
                                 {story.coverUrl ? (
-                                  <img
-                                    src={story.coverUrl}
-                                    alt={story.title}
-                                    className="w-full h-full object-cover"
-                                  />
+                                  <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center">
                                     <BookOpen size={12} className="text-muted-foreground" />
@@ -265,55 +312,117 @@ export function Navbar() {
                 </button>
               </Link>
             )}
+
+            {/* ── User menu (click-based, no hover gap issue) ── */}
             {user && !user.isAdmin && (
-              <div className="relative group">
-                {user.photoUrl ? (
-                  <img src={user.photoUrl} alt={user.name ?? ""} className="w-7 h-7 rounded-full object-cover cursor-pointer ring-2 ring-primary/20" data-testid="img-user-avatar" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs cursor-pointer" data-testid="img-user-avatar-fallback">
-                    {(user.name ?? "U").charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="absolute right-0 top-full mt-2 w-52 bg-background border border-border rounded-xl shadow-xl overflow-hidden opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50">
-                  <div className="px-3 py-2.5 border-b border-border">
-                    <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-                    {user.role === "writer" && user.status === "pending" && (
-                      <span className="text-[10px] text-yellow-600 bg-yellow-500/10 px-1.5 py-0.5 rounded-full mt-1 inline-block">Menunggu approval</span>
-                    )}
-                    {user.role === "writer" && user.status === "active" && (
-                      <span className="text-[10px] text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-full mt-1 inline-block">Penulis Aktif</span>
-                    )}
-                  </div>
-                  <Link href="/profile">
-                    <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-profile-menu">
-                      <LogIn size={12} /> Profil Saya
-                    </button>
-                  </Link>
-                  {user.role === "writer" && user.status === "active" && (
-                    <Link href="/writer/cerita">
-                      <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-writer-menu">
-                        <PenLine size={12} /> Dapur Cerita
-                      </button>
-                    </Link>
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(prev => !prev)}
+                  className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  data-testid="button-user-avatar"
+                  aria-expanded={userMenuOpen}
+                >
+                  {user.photoUrl ? (
+                    <img
+                      src={user.photoUrl}
+                      alt={user.name ?? ""}
+                      className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/20"
+                      data-testid="img-user-avatar"
+                    />
+                  ) : (
+                    <div
+                      className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs"
+                      data-testid="img-user-avatar-fallback"
+                    >
+                      {(user.name ?? "U").charAt(0).toUpperCase()}
+                    </div>
                   )}
-                  {user.role === "reader" && (
-                    <Link href="/daftar-penulis">
-                      <button className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2" data-testid="button-become-writer-menu">
-                        <PenLine size={12} /> Daftar sebagai Penulis
+                </button>
+
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.14 }}
+                      className="absolute right-0 top-full mt-2 w-52 bg-background border border-border rounded-xl shadow-xl overflow-hidden z-50"
+                    >
+                      <div className="px-3 py-2.5 border-b border-border">
+                        <div className="flex items-center gap-2 mb-1">
+                          {user.photoUrl && (
+                            <img src={user.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                          )}
+                          <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                        {user.role === "writer" && user.status === "pending" && (
+                          <span className="text-[10px] text-yellow-600 bg-yellow-500/10 px-1.5 py-0.5 rounded-full mt-1.5 inline-flex items-center gap-1">
+                            <Clock size={9} /> Menunggu approval
+                          </span>
+                        )}
+                        {user.role === "writer" && user.status === "active" && (
+                          <span className="text-[10px] text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-full mt-1.5 inline-block">
+                            ✓ Penulis Aktif
+                          </span>
+                        )}
+                      </div>
+
+                      <Link href="/profile">
+                        <button
+                          className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-profile-menu"
+                        >
+                          <User size={12} /> Profil Saya
+                        </button>
+                      </Link>
+
+                      {user.role === "writer" && user.status === "active" && (
+                        <Link href="/writer/cerita">
+                          <button
+                            className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                            onClick={() => setUserMenuOpen(false)}
+                            data-testid="button-writer-menu"
+                          >
+                            <PenLine size={12} /> Dapur Cerita
+                          </button>
+                        </Link>
+                      )}
+
+                      {(user.role === "reader" || (user.role === "writer" && user.status === "pending")) && (
+                        <Link href="/daftar-penulis">
+                          <button
+                            className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                            onClick={() => setUserMenuOpen(false)}
+                            data-testid="button-become-writer-menu"
+                          >
+                            <PenLine size={12} />
+                            {user.role === "writer" && user.status === "pending"
+                              ? "Status Pendaftaran"
+                              : "Daftar sebagai Penulis"
+                            }
+                          </button>
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={async () => {
+                          setUserMenuOpen(false);
+                          await fetch("/api/auth/logout", { method: "POST" });
+                          window.location.href = "/";
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2 border-t border-border"
+                        data-testid="button-user-logout"
+                      >
+                        <LogOut size={12} /> Keluar
                       </button>
-                    </Link>
+                    </motion.div>
                   )}
-                  <button
-                    onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/"; }}
-                    className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
-                    data-testid="button-user-logout"
-                  >
-                    <LogOut size={12} /> Keluar
-                  </button>
-                </div>
+                </AnimatePresence>
               </div>
             )}
+
             {!user && !isLoading && (
               <a href="/auth/google">
                 <button
@@ -322,6 +431,7 @@ export function Navbar() {
                 >
                   <LogIn size={13} />
                   <span className="hidden sm:inline">Login</span>
+                  <span className="sm:hidden">Masuk</span>
                 </button>
               </a>
             )}
