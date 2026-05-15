@@ -712,6 +712,18 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.get("/api/writer/check-slug", requireWriter, async (req: any, res) => {
+    try {
+      const slug = String(req.query.slug || "").toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
+      if (!slug || slug.length < 3) return res.json({ available: false, reason: "Minimal 3 karakter" });
+      const user = req.writerUser;
+      const authorId = await ensureAuthorId(user);
+      const existing = await storage.getAuthorBySlug(slug);
+      const available = !existing || existing.id === authorId;
+      res.json({ available, slug });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   app.patch("/api/writer/profile", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
@@ -720,6 +732,16 @@ export async function registerRoutes(
       const updateData: Record<string, any> = {};
       for (const key of allowed) {
         if (key in req.body) updateData[key] = req.body[key] ?? null;
+      }
+      if (req.body.slug) {
+        const newSlug = String(req.body.slug).toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
+        if (newSlug.length >= 3) {
+          const existing = await storage.getAuthorBySlug(newSlug);
+          if (existing && existing.id !== authorId) {
+            return res.status(409).json({ message: "Username sudah dipakai" });
+          }
+          updateData.slug = newSlug;
+        }
       }
       const updated = await storage.updateAuthor(authorId, updateData);
       if (updateData.name) await storage.updateUser(user.id, { name: updateData.name });
