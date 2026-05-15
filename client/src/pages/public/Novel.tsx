@@ -407,9 +407,9 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                   <span className="text-[8px] font-semibold text-white">{formatViewCount(story.viewCount)}</span>
                 </div>
               </div>
-              <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+              <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                 {story.title}
-              </p>
+              </h3>
             </motion.div>
           </Link>
         ))}
@@ -612,9 +612,9 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                     <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
                   </div>
                 </div>
-                <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                   {story.title}
-                </p>
+                </h3>
                 {story.totalChapters > 0 && (
                   <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
                     <BookMarked size={9} /> {story.totalChapters} bab
@@ -697,9 +697,9 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                     </span>
                   </div>
                 </div>
-                <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                   {story.title}
-                </p>
+                </h3>
                 {story.totalChapters > 0 && (
                   <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
                     <BookMarked size={9} /> {story.totalChapters} bab
