@@ -76,9 +76,8 @@ export async function registerRoutes(
   app.use(passport.session());
 
   if (googleOAuthEnabled) {
-    const CALLBACK_URL = process.env.NODE_ENV === "production"
-      ? `https://${process.env.REPLIT_DEV_DOMAIN || ""}/auth/google/callback`
-      : `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
+    const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL ||
+      `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
 
     passport.use(new GoogleStrategy(
       {
