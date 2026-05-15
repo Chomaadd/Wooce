@@ -26,7 +26,7 @@ import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, 
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "authors" | "approvals";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals";
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -982,7 +982,6 @@ export default function ManageNovel() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; name: string } | null>(null);
   const [bannerDialog, setBannerDialog] = useState<{ open: boolean; banner?: BannerSlide }>({ open: false });
   const [announcementDialog, setAnnouncementDialog] = useState<{ open: boolean; ann?: Announcement }>({ open: false });
-  const [authorDialog, setAuthorDialog] = useState<{ open: boolean; author?: Author }>({ open: false });
 
   const { data: adminStats } = useQuery<{
     totalViews: number; totalStories: number; totalChapters: number; totalFeatured: number;
@@ -1121,27 +1120,6 @@ export default function ManageNovel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }),
   });
 
-  const { data: authors } = useQuery<Author[]>({
-    queryKey: ["/api/authors"],
-    queryFn: () => fetch("/api/authors", { credentials: "include" }).then(r => r.json()),
-    enabled: !!user,
-  });
-
-  const createAuthor = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/authors", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/authors"] }); setAuthorDialog({ open: false }); toast({ title: "Penulis berhasil ditambahkan!" }); },
-    onError: () => toast({ title: "Gagal menambah penulis", variant: "destructive" }),
-  });
-  const updateAuthor = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PUT", `/api/authors/${id}`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/authors"] }); setAuthorDialog({ open: false }); toast({ title: "Penulis diperbarui!" }); },
-    onError: () => toast({ title: "Gagal memperbarui penulis", variant: "destructive" }),
-  });
-  const deleteAuthor = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/authors/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/authors"] }); setDeleteDialog(null); toast({ title: "Penulis dihapus!" }); },
-    onError: () => toast({ title: "Gagal menghapus penulis", variant: "destructive" }),
-  });
 
   const handleBannerMove = (bannerId: string, direction: "up" | "down") => {
     if (!banners) return;
@@ -1176,7 +1154,6 @@ export default function ManageNovel() {
     if (deleteDialog.type === "chapter") deleteChapter.mutate(deleteDialog.id);
     if (deleteDialog.type === "banner") deleteBanner.mutate(deleteDialog.id);
     if (deleteDialog.type === "announcement") deleteAnnouncement.mutate(deleteDialog.id);
-    if (deleteDialog.type === "author") deleteAuthor.mutate(deleteDialog.id);
   };
 
   const AdminHeader = () => (
@@ -1259,12 +1236,6 @@ export default function ManageNovel() {
             <Bell size={13} /> Pengumuman
           </button>
           <button
-            onClick={() => setView("authors")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "authors" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <User size={13} /> Penulis
-          </button>
-          <button
             onClick={() => setView("approvals")}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -1273,7 +1244,7 @@ export default function ManageNovel() {
         </div>
 
         {/* Breadcrumb Nav */}
-        {view !== "settings" && view !== "stats" && view !== "announcements" && view !== "authors" && view !== "approvals" && (
+        {view !== "settings" && view !== "stats" && view !== "announcements" && view !== "approvals" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
@@ -1715,55 +1686,6 @@ export default function ManageNovel() {
           </div>
         )}
 
-        {/* ── AUTHORS VIEW ── */}
-        {view === "authors" && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                  <User size={22} /> Profil Penulis
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">Kelola halaman publik profil penulis cerita</p>
-              </div>
-              <Button onClick={() => setAuthorDialog({ open: true })} data-testid="button-add-author">
-                <Plus size={16} className="mr-1.5" /> Tambah Penulis
-              </Button>
-            </div>
-
-            {!authors?.length ? (
-              <div className="text-center py-16 border border-dashed border-border rounded-xl">
-                <User size={36} className="mx-auto mb-3 text-muted-foreground opacity-40" />
-                <p className="text-muted-foreground">Belum ada penulis. Tambah penulis pertama!</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {authors.map(author => (
-                  <div key={author.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                      {author.photoUrl
-                        ? <img src={author.photoUrl} alt={author.name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-sm">{author.name.charAt(0).toUpperCase()}</div>
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground text-sm">{author.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{author.bio ?? <span className="italic opacity-60">Belum ada bio</span>}</p>
-                      <a href={`/penulis/${author.slug}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">/penulis/{author.slug}</a>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <Button size="icon" variant="ghost" onClick={() => setAuthorDialog({ open: true, author })} data-testid={`button-edit-author-${author.id}`}>
-                        <Pencil size={14} />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteDialog({ open: true, type: "author", id: author.id, name: author.name })} data-testid={`button-delete-author-${author.id}`}>
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Banner Dialog ── */}
         <Dialog open={bannerDialog.open} onOpenChange={open => setBannerDialog({ open })}>
@@ -1795,23 +1717,6 @@ export default function ManageNovel() {
                 : createAnnouncement.mutate(data)
               }
               onCancel={() => setAnnouncementDialog({ open: false })}
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* ── Author Dialog ── */}
-        <Dialog open={authorDialog.open} onOpenChange={open => setAuthorDialog({ open })}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{authorDialog.author ? "Edit Penulis" : "Tambah Penulis Baru"}</DialogTitle>
-            </DialogHeader>
-            <AuthorForm
-              initial={authorDialog.author}
-              onSave={(data) => authorDialog.author
-                ? updateAuthor.mutate({ id: authorDialog.author.id, data })
-                : createAuthor.mutate(data)
-              }
-              onCancel={() => setAuthorDialog({ open: false })}
             />
           </DialogContent>
         </Dialog>

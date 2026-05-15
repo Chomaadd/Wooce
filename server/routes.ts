@@ -244,15 +244,15 @@ export async function registerRoutes(
   });
 
   app.get("/api/auth/me", async (req, res) => {
+    if (req.session.adminId) {
+      const adminUsername = process.env.ADMIN_USERNAME || "admin";
+      return res.json({ id: "admin-1", username: adminUsername, name: "Admin", role: "admin", status: "active", isAdmin: true });
+    }
     if (req.session.userId) {
       try {
         const user = await storage.getUserById(req.session.userId);
         if (user) return res.json({ ...user, isAdmin: false });
       } catch {}
-    }
-    if (req.session.adminId) {
-      const adminUsername = process.env.ADMIN_USERNAME || "admin";
-      return res.json({ id: "admin-1", username: adminUsername, name: "Admin", role: "admin", status: "active", isAdmin: true });
     }
     res.json(null);
   });
@@ -684,6 +684,21 @@ export async function registerRoutes(
         return { ...story, totalChapters };
       }));
       res.json(storiesWithStats);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/writer/profile", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const authorId = await ensureAuthorId(user);
+      const allowed = ["name", "bio", "photoUrl", "tiktok", "instagram", "facebook", "twitter", "website", "saweria", "trakteer"];
+      const updateData: Record<string, any> = {};
+      for (const key of allowed) {
+        if (key in req.body) updateData[key] = req.body[key] ?? null;
+      }
+      const updated = await storage.updateAuthor(authorId, updateData);
+      if (updateData.name) await storage.updateUser(user.id, { name: updateData.name });
+      res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 

@@ -379,15 +379,26 @@ export function Navbar() {
                       </Link>
 
                       {user.role === "writer" && user.status === "active" && (
-                        <Link href="/writer/cerita">
-                          <button
-                            className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
-                            onClick={() => setUserMenuOpen(false)}
-                            data-testid="button-writer-menu"
-                          >
-                            <PenLine size={12} /> Dapur Cerita
-                          </button>
-                        </Link>
+                        <>
+                          <Link href="/writer/cerita">
+                            <button
+                              className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                              onClick={() => setUserMenuOpen(false)}
+                              data-testid="button-writer-menu"
+                            >
+                              <PenLine size={12} /> Dapur Cerita
+                            </button>
+                          </Link>
+                          <Link href="/writer/profil">
+                            <button
+                              className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                              onClick={() => setUserMenuOpen(false)}
+                              data-testid="button-writer-profile-menu"
+                            >
+                              <User size={12} /> Profil Penulis
+                            </button>
+                          </Link>
+                        </>
                       )}
 
                       {(user.role === "reader" || (user.role === "writer" && user.status === "pending")) && (

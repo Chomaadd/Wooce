@@ -12,7 +12,7 @@ export default function Login() {
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
 
-  if (user) return <Redirect to="/admin/novel" />;
+  if (user?.isAdmin) return <Redirect to="/admin/novel" />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
