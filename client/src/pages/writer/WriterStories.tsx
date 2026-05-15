@@ -334,7 +334,7 @@ export default function WriterStories() {
       </nav>
 
       <div className="p-3 border-t border-border space-y-1">
-        <Link href="/writer/profil">
+        <Link href="/profile">
           <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" data-testid="button-go-profile">
             <User size={13} /> Profil Saya
           </button>

@@ -396,6 +396,11 @@ export async function registerRoutes(
   app.get("/api/novel/stories", async (req, res) => {
     try {
       const stories = await storage.getNovelStories(true);
+      const authorIds = [...new Set(stories.map(s => s.authorId).filter(Boolean))] as string[];
+      const authorsMap: Record<string, { name: string; slug: string }> = {};
+      for (const aId of authorIds) {
+        try { const a = await storage.getAuthorById(aId); if (a) authorsMap[a.id] = { name: a.name, slug: a.slug }; } catch {}
+      }
       const storiesWithStats = await Promise.all(
         stories.map(async (story) => {
           const seasons = await storage.getNovelSeasons(story.id);
@@ -412,7 +417,8 @@ export async function registerRoutes(
               }
             }
           }
-          return { ...story, totalChapters, lastChapterAt };
+          const authorInfo = story.authorId ? (authorsMap[story.authorId] ?? null) : null;
+          return { ...story, totalChapters, lastChapterAt, authorName: authorInfo?.name ?? null, authorSlug: authorInfo?.slug ?? null };
         })
       );
       res.json(storiesWithStats);

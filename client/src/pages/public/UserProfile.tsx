@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
+  Loader2, Copy,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,14 +30,30 @@ function fmtViews(n: number) {
   return String(n);
 }
 
-type AuthorData = {
+type AuthorInfo = {
   id: string;
   slug: string;
   name: string;
-  bio?: string;
-  photoUrl?: string;
-  socialLinks?: Record<string, string>;
-  donationLinks?: Record<string, string>;
+  bio?: string | null;
+  photoUrl?: string | null;
+  tiktok?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  twitter?: string | null;
+  website?: string | null;
+  saweria?: string | null;
+  trakteer?: string | null;
+};
+
+type WriterMeData = {
+  id: string;
+  email: string;
+  name: string;
+  photoUrl?: string | null;
+  role: string;
+  status: string;
+  authorId: string;
+  author: AuthorInfo | null;
 };
 
 export default function UserProfile() {
@@ -45,6 +62,11 @@ export default function UserProfile() {
   const { toast } = useToast();
   const [bookmarkSlugs, setBookmarkSlugs] = useState<string[]>([]);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [nameVal, setNameVal] = useState("");
+  const [photoVal, setPhotoVal] = useState("");
+  const [slugVal, setSlugVal] = useState("");
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const slugTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [bioVal, setBioVal] = useState("");
   const [socialVals, setSocialVals] = useState<Record<string, string>>({});
   const [donationVals, setDonationVals] = useState<Record<string, string>>({});
@@ -71,11 +93,13 @@ export default function UserProfile() {
     enabled: !!user && user.role === "writer" && user.status === "active",
   });
 
-  const { data: authorData } = useQuery<AuthorData>({
+  const { data: writerMe } = useQuery<WriterMeData>({
     queryKey: ["/api/writer/me"],
     queryFn: () => fetch("/api/writer/me", { credentials: "include" }).then(r => r.json()),
     enabled: !!user && user.role === "writer" && user.status === "active",
   });
+
+  const authorData = writerMe?.author ?? null;
 
   const updateProfile = useMutation({
     mutationFn: (data: any) =>
@@ -88,10 +112,27 @@ export default function UserProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/writer/me"] });
       setEditingProfile(false);
+      setSlugStatus("idle");
       toast({ title: "Profil berhasil disimpan!" });
     },
     onError: () => toast({ title: "Gagal menyimpan profil", variant: "destructive" }),
   });
+
+  const handleSlugChange = (val: string) => {
+    const clean = val.toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-");
+    setSlugVal(clean);
+    if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
+    if (!clean || clean.length < 3) { setSlugStatus("invalid"); return; }
+    if (clean === authorData?.slug) { setSlugStatus("idle"); return; }
+    setSlugStatus("checking");
+    slugTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/writer/check-slug?slug=${clean}`, { credentials: "include" });
+        const data = await res.json();
+        setSlugStatus(data.available ? "available" : "taken");
+      } catch { setSlugStatus("idle"); }
+    }, 600);
+  };
 
   const bookmarked = useMemo(
     () => (allStories ?? []).filter(s => bookmarkSlugs.includes(s.slug)),
@@ -105,16 +146,35 @@ export default function UserProfile() {
   };
 
   const openEdit = () => {
+    setNameVal(authorData?.name ?? "");
+    setPhotoVal(authorData?.photoUrl ?? "");
+    setSlugVal(authorData?.slug ?? "");
+    setSlugStatus("idle");
     setBioVal(authorData?.bio ?? "");
-    setSocialVals({ ...authorData?.socialLinks });
-    setDonationVals({ ...authorData?.donationLinks });
+    setSocialVals({
+      tiktok: authorData?.tiktok ?? "",
+      instagram: authorData?.instagram ?? "",
+      facebook: authorData?.facebook ?? "",
+      twitter: authorData?.twitter ?? "",
+      website: authorData?.website ?? "",
+    });
+    setDonationVals({
+      saweria: authorData?.saweria ?? "",
+      trakteer: authorData?.trakteer ?? "",
+    });
     setEditingProfile(true);
   };
 
   const saveProfile = () => {
-    const cleanSocial = Object.fromEntries(Object.entries(socialVals).filter(([, v]) => v.trim()));
-    const cleanDonation = Object.fromEntries(Object.entries(donationVals).filter(([, v]) => v.trim()));
-    updateProfile.mutate({ bio: bioVal, socialLinks: cleanSocial, donationLinks: cleanDonation });
+    const payload: Record<string, any> = {
+      name: nameVal.trim(),
+      bio: bioVal,
+      photoUrl: photoVal.trim() || null,
+      ...socialVals,
+      ...donationVals,
+    };
+    if (slugVal && slugVal !== authorData?.slug) payload.slug = slugVal;
+    updateProfile.mutate(payload);
   };
 
   if (authLoading) {
@@ -213,7 +273,7 @@ export default function UserProfile() {
         </motion.div>
 
         {/* Writer public profile section */}
-        {isWriter && authorData && (
+        {isWriter && (
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -230,15 +290,17 @@ export default function UserProfile() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={`/penulis/${authorData.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border"
-                  data-testid="link-view-author-profile"
-                >
-                  <ExternalLink size={11} /> Lihat
-                </a>
+                {authorData?.slug && (
+                  <a
+                    href={`/penulis/${authorData.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border"
+                    data-testid="link-view-author-profile"
+                  >
+                    <ExternalLink size={11} /> Lihat
+                  </a>
+                )}
                 {!editingProfile && (
                   <button
                     onClick={openEdit}
@@ -251,10 +313,31 @@ export default function UserProfile() {
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-1.5">
-              <p className="text-[11px] text-muted-foreground">
-                URL Profil: <span className="font-mono text-primary">/penulis/{authorData.slug}</span>
-              </p>
+            {/* Info bar: URL + AuthorId */}
+            <div className="px-5 py-3 bg-muted/30 border-b border-border flex flex-wrap items-center gap-4 text-[11px]">
+              <span className="text-muted-foreground">
+                URL Profil:{" "}
+                {authorData?.slug
+                  ? <span className="font-mono text-primary">/penulis/{authorData.slug}</span>
+                  : <span className="text-muted-foreground/50 italic">belum diset</span>
+                }
+              </span>
+              {writerMe?.authorId && (
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  ID Penulis:{" "}
+                  <span className="font-mono text-foreground/80 bg-muted px-1.5 py-0.5 rounded-md text-[10px]" data-testid="text-author-id">
+                    {writerMe.authorId}
+                  </span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(writerMe.authorId); toast({ title: "AuthorId disalin!" }); }}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="Salin AuthorId"
+                    data-testid="button-copy-author-id"
+                  >
+                    <Copy size={10} />
+                  </button>
+                </span>
+              )}
             </div>
 
             <AnimatePresence mode="wait">
@@ -264,8 +347,72 @@ export default function UserProfile() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="px-5 pb-5 space-y-4"
+                  className="px-5 pb-5 pt-4 space-y-4"
                 >
+                  {/* Nama penulis */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Nama Penulis</label>
+                    <input
+                      type="text"
+                      value={nameVal}
+                      onChange={e => setNameVal(e.target.value)}
+                      placeholder="Nama yang ditampilkan ke pembaca"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                      data-testid="input-name"
+                    />
+                  </div>
+
+                  {/* URL / Username */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Username / URL Profil</label>
+                    <div className={`flex items-center border rounded-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
+                      slugStatus === "available" ? "border-emerald-500 bg-emerald-500/5" :
+                      slugStatus === "taken" ? "border-destructive bg-destructive/5" :
+                      slugStatus === "invalid" ? "border-amber-500/60 bg-amber-500/5" :
+                      "border-border bg-muted/40"
+                    }`}>
+                      <span className="px-3 text-[11px] text-muted-foreground bg-muted/60 border-r border-border py-2 shrink-0">/penulis/</span>
+                      <input
+                        type="text"
+                        value={slugVal}
+                        onChange={e => handleSlugChange(e.target.value)}
+                        placeholder="username-kamu"
+                        className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40"
+                        data-testid="input-slug"
+                      />
+                      <div className="px-3 flex-shrink-0">
+                        {slugStatus === "checking" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+                        {slugStatus === "available" && <Check size={12} className="text-emerald-500" />}
+                        {slugStatus === "taken" && <X size={12} className="text-destructive" />}
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {slugStatus === "available" && <span className="text-emerald-600">✓ Username tersedia</span>}
+                      {slugStatus === "taken" && <span className="text-destructive">✗ Sudah dipakai, coba yang lain</span>}
+                      {slugStatus === "invalid" && <span className="text-amber-600">Min. 3 karakter, huruf kecil, angka, tanda hubung</span>}
+                      {(slugStatus === "idle" || slugStatus === "checking") && "Huruf kecil (a-z), angka (0-9), tanda hubung (-)"}
+                    </p>
+                  </div>
+
+                  {/* Foto */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">URL Foto Profil</label>
+                    <div className="flex items-center gap-3">
+                      {photoVal && (
+                        <img src={photoVal} alt="" className="w-9 h-9 rounded-xl object-cover border border-border flex-shrink-0" />
+                      )}
+                      <input
+                        type="url"
+                        value={photoVal}
+                        onChange={e => setPhotoVal(e.target.value)}
+                        placeholder="https://... (kosongkan untuk pakai foto Google)"
+                        className="flex-1 px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                        data-testid="input-photo"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bio */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Bio</label>
                     <textarea
@@ -288,7 +435,7 @@ export default function UserProfile() {
                             type="url"
                             value={socialVals[f.key] ?? ""}
                             onChange={e => setSocialVals(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            placeholder={`https://...`}
+                            placeholder="https://..."
                             className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
                             data-testid={`input-social-${f.key}`}
                           />
@@ -307,7 +454,7 @@ export default function UserProfile() {
                             type="url"
                             value={donationVals[f.key] ?? ""}
                             onChange={e => setDonationVals(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            placeholder={`https://...`}
+                            placeholder="https://..."
                             className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
                             data-testid={`input-donation-${f.key}`}
                           />
@@ -319,11 +466,11 @@ export default function UserProfile() {
                   <div className="flex gap-2 pt-1">
                     <button
                       onClick={saveProfile}
-                      disabled={updateProfile.isPending}
+                      disabled={updateProfile.isPending || slugStatus === "taken" || slugStatus === "checking"}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
                       data-testid="button-save-profile"
                     >
-                      <Check size={12} /> {updateProfile.isPending ? "Menyimpan..." : "Simpan"}
+                      {updateProfile.isPending ? <><Loader2 size={11} className="animate-spin" /> Menyimpan...</> : <><Check size={12} /> Simpan</>}
                     </button>
                     <button
                       onClick={() => setEditingProfile(false)}
@@ -341,23 +488,26 @@ export default function UserProfile() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="px-5 pb-5 space-y-3"
+                  className="px-5 pb-5 pt-3 space-y-3"
                 >
-                  {authorData.bio ? (
+                  {authorData?.bio ? (
                     <p className="text-sm text-muted-foreground leading-relaxed">{authorData.bio}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground/50 italic">Belum ada bio. Klik Edit untuk menambahkan.</p>
                   )}
-                  {authorData.socialLinks && Object.keys(authorData.socialLinks).length > 0 && (
+                  {authorData && (
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(authorData.socialLinks).map(([k, v]) => v && (
-                        <a key={k} href={v} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors capitalize"
-                          data-testid={`link-social-${k}`}
-                        >
-                          {k}
-                        </a>
-                      ))}
+                      {(["tiktok","instagram","facebook","twitter","website"] as const).map(k => {
+                        const v = authorData[k];
+                        return v ? (
+                          <a key={k} href={v} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors capitalize"
+                            data-testid={`link-social-${k}`}
+                          >
+                            {k}
+                          </a>
+                        ) : null;
+                      })}
                     </div>
                   )}
                 </motion.div>

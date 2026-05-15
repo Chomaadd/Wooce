@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 
-type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
+type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null; authorName?: string | null; authorSlug?: string | null };
 
 interface BannerSlide {
   id: string;
@@ -796,6 +796,14 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                     >
                       {story.title}
                     </h3>
+                    {story.authorName && (
+                      <p className="text-[10px] text-muted-foreground/70 truncate">
+                        oleh{" "}
+                        <Link href={`/penulis/${story.authorSlug}`} onClick={e => e.stopPropagation()} className="hover:text-primary transition-colors">
+                          {story.authorName}
+                        </Link>
+                      </p>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                         <Eye size={9} />

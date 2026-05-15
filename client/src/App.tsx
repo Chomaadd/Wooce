@@ -19,7 +19,6 @@ import AuthorProfile from "./pages/public/AuthorProfile";
 import BecomeWriter from "./pages/public/BecomeWriter";
 import UserProfile from "./pages/public/UserProfile";
 import WriterStories from "./pages/writer/WriterStories";
-import WriterProfileSettings from "./pages/writer/WriterProfileSettings";
 import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
 import NotFound from "@/pages/public/Not-Found";
@@ -36,7 +35,6 @@ function Router() {
       <Route path="/daftar-penulis" component={BecomeWriter} />
       <Route path="/profile" component={UserProfile} />
       <Route path="/writer/cerita" component={WriterStories} />
-      <Route path="/writer/profil" component={WriterProfileSettings} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />
