@@ -196,6 +196,17 @@ export default function WriterProfileSettings() {
 
           <InputField label="Nama Penulis" value={form.name} onChange={v => set("name", v)} placeholder="Nama yang ditampilkan ke pembaca" />
 
+          {slug && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">Username / URL Profil</label>
+              <div className="flex items-center border border-border rounded-xl overflow-hidden bg-muted/20">
+                <span className="px-3 text-xs text-muted-foreground bg-muted/50 border-r border-border py-2.5 shrink-0">/penulis/</span>
+                <span className="flex-1 px-3 py-2.5 text-sm text-foreground font-medium select-all">{slug}</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Username tidak bisa diubah secara manual. Dibuat otomatis dari nama penulis saat pertama kali disetujui.</p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">Bio</label>
             <textarea

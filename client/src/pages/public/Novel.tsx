@@ -349,7 +349,7 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
   const { t } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const trending = useMemo(
-    () => [...stories].sort((a, b) => b.viewCount - a.viewCount).slice(0, 10),
+    () => [...stories].filter(s => s.viewCount > 0).sort((a, b) => b.viewCount - a.viewCount).slice(0, 10),
     [stories]
   );
 
@@ -407,7 +407,7 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                   <span className="text-[8px] font-semibold text-white">{formatViewCount(story.viewCount)}</span>
                 </div>
               </div>
-              <p className="text-[11px] font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+              <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                 {story.title}
               </p>
             </motion.div>
@@ -612,7 +612,92 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                     <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
                   </div>
                 </div>
-                <p className="text-[11px] font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                  {story.title}
+                </p>
+                {story.totalChapters > 0 && (
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                    <BookMarked size={9} /> {story.totalChapters} bab
+                  </p>
+                )}
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Terbaru Rilis ─────────────────────────────────────────────────────────────
+function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
+  const { t } = useLanguage();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const terbaru = useMemo(() => {
+    return [...stories]
+      .filter(s => !!(s as any).createdAt)
+      .sort((a, b) => new Date((b as any).createdAt).getTime() - new Date((a as any).createdAt).getTime())
+      .slice(0, 10);
+  }, [stories]);
+
+  if (terbaru.length === 0) return null;
+
+  const scroll = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-2">
+      <SectionHeader
+        icon={<Sparkles size={15} />}
+        subtitle={t("novel.terbaruRilis.subtitle")}
+        title={t("novel.terbaruRilis.title")}
+        scrollLeft={() => scroll(-1)}
+        scrollRight={() => scroll(1)}
+      />
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {terbaru.map((story, i) => {
+          const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+          return (
+            <Link key={story.id} href={`/${story.slug}`} data-testid={`link-terbaru-${story.id}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px] group cursor-pointer"
+              >
+                <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
+                  {story.coverUrl ? (
+                    <img
+                      src={story.coverUrl}
+                      alt={story.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                      <BookOpen size={18} className="text-primary/40" />
+                    </div>
+                  )}
+                  <div className="absolute top-1.5 left-1.5">
+                    <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                      <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                      {story.status}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-1.5 right-1.5">
+                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/90 text-white shadow-sm">
+                      <Sparkles size={7} />
+                      Baru
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                   {story.title}
                 </p>
                 {story.totalChapters > 0 && (
@@ -706,7 +791,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                   </div>
                   <div className="space-y-0.5">
                     <h3
-                      className="font-semibold text-[11px] text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug"
+                      className="font-bold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug"
                       data-testid={`text-rec-title-${story.id}`}
                     >
                       {story.title}
@@ -917,6 +1002,7 @@ export default function Novel() {
               <>
                 <LanjutBaca stories={stories} />
                 <NovelUnggulan stories={stories} />
+                <TerbaruRilis stories={stories} />
                 <Trending stories={stories} />
                 <BaruDiupdate stories={stories} />
                 <Rekomendasi stories={stories} />

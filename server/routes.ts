@@ -68,83 +68,96 @@ export async function registerRoutes(
   };
 
   // ── Passport / Google OAuth ───────────────────────────────────────────────
-  const CALLBACK_URL = process.env.NODE_ENV === "production"
-    ? `https://${process.env.REPLIT_DEV_DOMAIN || ""}/auth/google/callback`
-    : `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
-
-  passport.use(new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      callbackURL: CALLBACK_URL,
-      proxy: true,
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        const email = profile.emails?.[0]?.value;
-        if (!email) return done(new Error("No email from Google"));
-
-        const latestPhotoUrl = profile.photos?.[0]?.value ?? null;
-        const latestName = profile.displayName || email.split("@")[0];
-
-        let user = await storage.getUserByGoogleId(profile.id);
-        if (!user) {
-          user = await storage.getUserByEmail(email);
-          if (user) {
-            user = await storage.updateUser(user.id, {
-              googleId: profile.id,
-              photoUrl: latestPhotoUrl,
-              name: latestName,
-            });
-          } else {
-            user = await storage.createUser({
-              googleId: profile.id,
-              email,
-              name: latestName,
-              photoUrl: latestPhotoUrl,
-              role: "reader",
-              status: "active",
-            });
-          }
-        } else {
-          if (latestPhotoUrl && user.photoUrl !== latestPhotoUrl) {
-            user = await storage.updateUser(user.id, { photoUrl: latestPhotoUrl, name: latestName });
-          }
-        }
-        return done(null, user);
-      } catch (err) {
-        return done(err as Error);
-      }
-    }
-  ));
-
-  passport.serializeUser((user: any, done) => done(null, user.id));
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUserById(id);
-      done(null, user ?? false);
-    } catch (err) { done(err); }
-  });
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+  const googleOAuthEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
   app.use(passport.initialize());
   app.use(passport.session());
 
-  app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  if (googleOAuthEnabled) {
+    const CALLBACK_URL = process.env.NODE_ENV === "production"
+      ? `https://${process.env.REPLIT_DEV_DOMAIN || ""}/auth/google/callback`
+      : `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
 
-  app.get("/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/?auth=error" }),
-    (req: any, res) => {
-      const user = req.user;
-      if (user) {
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
+    passport.use(new GoogleStrategy(
+      {
+        clientID: GOOGLE_CLIENT_ID!,
+        clientSecret: GOOGLE_CLIENT_SECRET!,
+        callbackURL: CALLBACK_URL,
+        proxy: true,
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value;
+          if (!email) return done(new Error("No email from Google"));
+
+          const latestPhotoUrl = profile.photos?.[0]?.value ?? null;
+          const latestName = profile.displayName || email.split("@")[0];
+
+          let user = await storage.getUserByGoogleId(profile.id);
+          if (!user) {
+            user = await storage.getUserByEmail(email);
+            if (user) {
+              user = await storage.updateUser(user.id, {
+                googleId: profile.id,
+                photoUrl: latestPhotoUrl,
+                name: latestName,
+              });
+            } else {
+              user = await storage.createUser({
+                googleId: profile.id,
+                email,
+                name: latestName,
+                photoUrl: latestPhotoUrl,
+                role: "reader",
+                status: "active",
+              });
+            }
+          } else {
+            if (latestPhotoUrl && user.photoUrl !== latestPhotoUrl) {
+              user = await storage.updateUser(user.id, { photoUrl: latestPhotoUrl, name: latestName });
+            }
+          }
+          return done(null, user);
+        } catch (err) {
+          return done(err as Error);
+        }
       }
-      if (user?.role === "writer" && user?.status === "pending") {
-        return res.redirect("/?auth=pending");
+    ));
+
+    passport.serializeUser((user: any, done) => done(null, user.id));
+    passport.deserializeUser(async (id: string, done) => {
+      try {
+        const user = await storage.getUserById(id);
+        done(null, user ?? false);
+      } catch (err) { done(err); }
+    });
+
+    app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+    app.get("/auth/google/callback",
+      passport.authenticate("google", { failureRedirect: "/?auth=error" }),
+      (req: any, res) => {
+        const user = req.user;
+        if (user) {
+          req.session.userId = user.id;
+          req.session.userRole = user.role;
+        }
+        if (user?.role === "writer" && user?.status === "pending") {
+          return res.redirect("/?auth=pending");
+        }
+        res.redirect("/?auth=success");
       }
-      res.redirect("/?auth=success");
-    }
-  );
+    );
+  } else {
+    app.get("/auth/google", (_req, res) => {
+      res.status(503).json({ message: "Google OAuth belum dikonfigurasi" });
+    });
+    app.get("/auth/google/callback", (_req, res) => {
+      res.redirect("/?auth=error");
+    });
+  }
 
   // ── File Upload (GridFS) ──────────────────────────────────────────────────
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -244,6 +257,10 @@ export async function registerRoutes(
   });
 
   app.get("/api/auth/me", async (req, res) => {
+    if (req.session.adminId) {
+      const adminUsername = (process.env.ADMIN_USERNAME || "admin").trim();
+      return res.json({ id: "1", name: "Admin", username: adminUsername, isAdmin: true, role: "admin" });
+    }
     if (req.session.userId) {
       try {
         const user = await storage.getUserById(req.session.userId);

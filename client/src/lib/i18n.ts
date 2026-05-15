@@ -177,6 +177,8 @@ const translations: Record<Language, Record<string, string>> = {
     "novel.read.toc": "Chapter List",
     "novel.read.tocTitle": "Contents",
 
+    "novel.terbaruRilis.title": "New Releases",
+    "novel.terbaruRilis.subtitle": "The latest published stories",
     "novel.baruDiupdate.title": "Recently Updated",
     "novel.baruDiupdate.subtitle": "Updated in the last 7 days",
     "novel.unggulan.subtitle": "Read nonstop from start to finish",
@@ -1159,6 +1161,8 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.shorturls.section.expired": "Sudah Expired",
     "admin.shorturls.empty": "Belum ada short URL. Buat yang pertama!",
 
+    "novel.terbaruRilis.title": "Novel Terbaru Rilis",
+    "novel.terbaruRilis.subtitle": "Cerita yang baru saja diterbitkan",
     "novel.baruDiupdate.title": "Baru Diupdate",
     "novel.baruDiupdate.subtitle": "Diperbarui dalam 7 hari terakhir",
     "novel.unggulan.subtitle": "Baca nonstop dari awal sampai akhir",
