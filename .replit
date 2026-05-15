@@ -38,3 +38,8 @@ externalPort = 80
 deploymentTarget = "autoscale"
 run = ["node", "./dist/index.cjs"]
 build = ["npm", "run", "build"]
+
+[userenv]
+
+[userenv.shared]
+GOOGLE_CALLBACK_URL = "https://98df3bcf-d866-448a-97b9-863947958e5a-00-2kkgku2krp1xb.pike.replit.dev/auth/google/callback"
