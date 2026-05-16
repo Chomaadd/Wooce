@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import session from "express-session";
+import MongoStore from "connect-mongo";
 import mongoose from "mongoose";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
@@ -26,20 +27,15 @@ export async function registerRoutes(
 ): Promise<Server> {
   // ── Session store ─────────────────────────────────────────────────────────
   let store: session.Store;
-  if (process.env.NODE_ENV === "production") {
-    try {
-      const connectMongo = require("connect-mongo");
-      const MongoStore = connectMongo.default || connectMongo;
-      store = new MongoStore({
-        mongoUrl: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/portfolio",
-        touchAfter: 24 * 3600,
-      });
-      log("Using MongoDB session store", "express");
-    } catch {
-      store = new session.MemoryStore();
-    }
-  } else {
+  try {
+    store = MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/portfolio",
+      touchAfter: 24 * 3600,
+    });
+    log("Using MongoDB session store", "express");
+  } catch {
     store = new session.MemoryStore();
+    log("Falling back to MemoryStore", "express");
   }
 
   app.set("trust proxy", 1);
@@ -429,7 +425,19 @@ export async function registerRoutes(
     if (!req.session?.adminId) return res.status(401).json({ message: "Unauthorized" });
     try {
       const stories = await storage.getNovelStories();
-      res.json(stories);
+      const authorIds = [...new Set(stories.map(s => s.authorId).filter(Boolean))];
+      const authorMap: Record<string, string> = {};
+      await Promise.all(authorIds.map(async id => {
+        try {
+          const a = await storage.getAuthorById(id!);
+          if (a) authorMap[id!] = a.name;
+        } catch {}
+      }));
+      const result = stories.map(s => ({
+        ...s,
+        authorName: s.authorId ? (authorMap[s.authorId] ?? null) : null,
+      }));
+      res.json(result);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 

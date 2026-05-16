@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -11,10 +11,126 @@ import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
-  Loader2, Copy,
+  Loader2, Copy, Upload, RotateCcw, Camera,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
+import Cropper from "react-easy-crop";
+
+async function getCroppedBlob(imageSrc: string, croppedAreaPixels: any): Promise<Blob> {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image(); img.onload = () => resolve(img); img.onerror = reject;
+    img.crossOrigin = "anonymous"; img.src = imageSrc;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = croppedAreaPixels.width; canvas.height = croppedAreaPixels.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
+  return new Promise((resolve, reject) => { canvas.toBlob(b => b ? resolve(b) : reject(new Error("Canvas empty")), "image/jpeg", 0.9); });
+}
+
+function ProfilePhotoUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [rawSrc, setRawSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const onCropComplete = useCallback((_: any, pixels: any) => setCroppedAreaPixels(pixels), []);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { setRawSrc(reader.result as string); setCrop({ x: 0, y: 0 }); setZoom(1); setCropOpen(true); };
+    reader.readAsDataURL(file); e.target.value = "";
+  };
+
+  const handleCrop = async () => {
+    if (!rawSrc || !croppedAreaPixels) return;
+    setUploading(true);
+    try {
+      const blob = await getCroppedBlob(rawSrc, croppedAreaPixels);
+      const form = new FormData(); form.append("file", blob, `photo-${Date.now()}.jpg`);
+      const res = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) throw new Error("Upload gagal");
+      const { url } = await res.json();
+      onChange(url); setCropOpen(false); setRawSrc(null);
+      toast({ title: "Foto berhasil diupload!" });
+    } catch { toast({ title: "Upload gagal", variant: "destructive" }); }
+    finally { setUploading(false); }
+  };
+
+  return (
+    <div>
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+      <div className="flex items-center gap-3">
+        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted border border-border flex-shrink-0">
+          {value
+            ? <img src={value} alt="foto profil" className="w-full h-full object-cover" />
+            : <div className="w-full h-full flex items-center justify-center"><Camera size={20} className="text-muted-foreground/40" /></div>
+          }
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted transition-colors"
+            data-testid="button-upload-photo"
+          >
+            <Upload size={12} /> Upload Foto
+          </button>
+          {value && (
+            <button type="button" onClick={() => onChange("")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              data-testid="button-remove-photo"
+            >
+              <RotateCcw size={12} /> Hapus Foto
+            </button>
+          )}
+          <p className="text-[10px] text-muted-foreground">JPG, PNG, WebP. Dipotong otomatis ke persegi.</p>
+        </div>
+      </div>
+
+      {cropOpen && rawSrc && (
+        <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center p-4">
+          <div className="bg-card rounded-2xl overflow-hidden shadow-2xl w-full max-w-sm">
+            <div className="relative w-full h-64 bg-black">
+              <Cropper
+                image={rawSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">Zoom</span>
+                <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={e => setZoom(Number(e.target.value))} className="flex-1 h-1 accent-primary" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleCrop} disabled={uploading}
+                  className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+                  data-testid="button-confirm-crop"
+                >
+                  {uploading ? <span className="flex items-center justify-center gap-1"><Loader2 size={13} className="animate-spin" /> Mengupload...</span> : "Simpan Foto"}
+                </button>
+                <button onClick={() => { setCropOpen(false); setRawSrc(null); }}
+                  className="px-4 py-2 rounded-xl text-sm border border-border text-muted-foreground hover:bg-muted transition-colors"
+                  data-testid="button-cancel-crop"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
@@ -102,20 +218,26 @@ export default function UserProfile() {
   const authorData = writerMe?.author ?? null;
 
   const updateProfile = useMutation({
-    mutationFn: (data: any) =>
-      fetch("/api/writer/profile", {
+    mutationFn: async (data: any) => {
+      const r = await fetch("/api/writer/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
-      }).then(r => { if (!r.ok) throw new Error("Gagal menyimpan"); return r.json(); }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/writer/me"] });
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ message: "Gagal menyimpan" }));
+        throw new Error(err.message || "Gagal menyimpan");
+      }
+      return r.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/writer/me"] });
       setEditingProfile(false);
       setSlugStatus("idle");
       toast({ title: "Profil berhasil disimpan!" });
     },
-    onError: () => toast({ title: "Gagal menyimpan profil", variant: "destructive" }),
+    onError: (err: any) => toast({ title: err?.message || "Gagal menyimpan profil", variant: "destructive" }),
   });
 
   const handleSlugChange = (val: string) => {
@@ -396,20 +518,8 @@ export default function UserProfile() {
 
                   {/* Foto */}
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">URL Foto Profil</label>
-                    <div className="flex items-center gap-3">
-                      {photoVal && (
-                        <img src={photoVal} alt="" className="w-9 h-9 rounded-xl object-cover border border-border flex-shrink-0" />
-                      )}
-                      <input
-                        type="url"
-                        value={photoVal}
-                        onChange={e => setPhotoVal(e.target.value)}
-                        placeholder="https://... (kosongkan untuk pakai foto Google)"
-                        className="flex-1 px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
-                        data-testid="input-photo"
-                      />
-                    </div>
+                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Foto Profil</label>
+                    <ProfilePhotoUpload value={photoVal} onChange={setPhotoVal} />
                   </div>
 
                   {/* Bio */}

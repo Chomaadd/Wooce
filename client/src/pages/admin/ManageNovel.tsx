@@ -1028,8 +1028,13 @@ export default function ManageNovel() {
 
   const { data: chapters, isLoading: chaptersLoading } = useQuery<NovelChapter[]>({
     queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"],
-    queryFn: () => fetch(`/api/novel/seasons/${selectedSeason!.id}/chapters/all`, { credentials: "include" }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/novel/seasons/${selectedSeason!.id}/chapters/all`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.json();
+    },
     enabled: !!selectedSeason?.id && adminVerified === true,
+    retry: false,
   });
 
   const createStory = useMutation({
@@ -1419,6 +1424,12 @@ export default function ManageNovel() {
                         </span>
                         <span>·</span>
                         <span className={story.published ? "text-green-600" : "text-muted-foreground"}>{story.published ? t("admin.novel.published") : t("admin.novel.draft")}</span>
+                        {(story as any).authorName && (
+                          <>
+                            <span>·</span>
+                            <span className="text-primary/80 font-medium truncate max-w-[120px]">✍ {(story as any).authorName}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1514,7 +1525,13 @@ export default function ManageNovel() {
 
             {chaptersLoading ? (
               <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>
-            ) : !chapters?.length ? (
+            ) : !chapters || (chapters as any).message || !Array.isArray(chapters) ? (
+              <div className="text-center py-16 border border-dashed border-destructive/30 rounded-xl">
+                <FileText size={36} className="mx-auto mb-3 text-destructive/40" />
+                <p className="text-muted-foreground">Gagal memuat bab — sesi mungkin berakhir.</p>
+                <button onClick={() => window.location.href = "/login"} className="mt-3 text-sm text-primary hover:underline">Login ulang</button>
+              </div>
+            ) : !chapters.length ? (
               <div className="text-center py-16 border border-dashed border-border rounded-xl">
                 <FileText size={36} className="mx-auto mb-3 text-muted-foreground opacity-40" />
                 <p className="text-muted-foreground">{t("admin.novel.empty.chapters")}</p>
