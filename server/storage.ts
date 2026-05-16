@@ -244,7 +244,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     await NovelChapterModel.updateMany(
       { scheduledAt: { $lte: now }, published: false },
-      { $set: { published: true, scheduledAt: null, updatedAt: now } }
+      [{ $set: { published: true, updatedAt: "$scheduledAt", scheduledAt: null } }]
     );
     const query: any = { seasonId };
     if (published !== undefined) query.published = published;
@@ -255,7 +255,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     await NovelChapterModel.updateMany(
       { scheduledAt: { $lte: now }, published: false },
-      { $set: { published: true, scheduledAt: null, updatedAt: now } }
+      [{ $set: { published: true, updatedAt: "$scheduledAt", scheduledAt: null } }]
     );
     const docs = await NovelChapterModel.find({ seasonId, published: false, scheduledAt: { $gt: now } }).sort({ chapterNumber: 1 }).select("chapterNumber title scheduledAt");
     return docs.map((d: any) => ({ id: d._id.toString(), chapterNumber: d.chapterNumber, title: d.title, scheduledAt: d.scheduledAt ? (d.scheduledAt as Date).toISOString() : null }));

@@ -58,11 +58,21 @@ function countdown(scheduledAt: string, lang: string): string {
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins  = Math.floor((diff % 3600000) / 60000);
   if (lang === "id") {
-    if (days > 0) return `${days} hari${hours > 0 ? ` ${hours} jam` : ""}`;
+    if (days > 0) {
+      let s = `${days} hari`;
+      if (hours > 0) s += ` ${hours} jam`;
+      if (mins > 0)  s += ` ${mins} menit`;
+      return s;
+    }
     if (hours > 0) return `${hours} jam ${mins} menit`;
     return `${mins} menit`;
   }
-  if (days > 0) return `${days}d${hours > 0 ? ` ${hours}h` : ""}`;
+  if (days > 0) {
+    let s = `${days}d`;
+    if (hours > 0) s += ` ${hours}h`;
+    if (mins > 0)  s += ` ${mins}m`;
+    return s;
+  }
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
 }
