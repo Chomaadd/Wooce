@@ -78,15 +78,37 @@ function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSe
   const [open, setOpen] = useState(true);
   const { t, language } = useLanguage();
 
-  const { data: chapters, isLoading } = useQuery<NovelChapter[]>({
+  const { data: chapters, isLoading, refetch: refetchChapters } = useQuery<NovelChapter[]>({
     queryKey: ["/api/novel/seasons", season.id, "chapters"],
     queryFn: () => fetch(`/api/novel/seasons/${season.id}/chapters`).then(r => r.json()),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
-  const { data: upcoming } = useQuery<UpcomingChapter[]>({
+  const { data: upcoming, refetch: refetchUpcoming } = useQuery<UpcomingChapter[]>({
     queryKey: ["/api/novel/seasons", season.id, "upcoming"],
     queryFn: () => fetch(`/api/novel/seasons/${season.id}/upcoming`).then(r => r.json()),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchInterval: 60000,
   });
+
+  useEffect(() => {
+    if (!upcoming?.length) return;
+    const now = Date.now();
+    const next = upcoming
+      .filter(ch => ch.scheduledAt)
+      .map(ch => new Date(ch.scheduledAt!).getTime())
+      .filter(t => t > now)
+      .sort((a, b) => a - b)[0];
+    if (!next) return;
+    const delay = next - now + 3000;
+    const timer = setTimeout(() => {
+      refetchChapters();
+      refetchUpcoming();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [upcoming, refetchChapters, refetchUpcoming]);
 
   const totalVisible = (chapters?.length ?? 0) + (upcoming?.length ?? 0);
 

@@ -252,7 +252,12 @@ export class DatabaseStorage implements IStorage {
     return docs.map((d: any) => ({ ...mapId<NovelChapter>(d), storyId: d.storyId?.toString(), seasonId: d.seasonId?.toString(), scheduledAt: d.scheduledAt ?? null }));
   }
   async getUpcomingChapters(seasonId: string) {
-    const docs = await NovelChapterModel.find({ seasonId, published: false, scheduledAt: { $gt: new Date() } }).sort({ chapterNumber: 1 }).select("chapterNumber title scheduledAt");
+    const now = new Date();
+    await NovelChapterModel.updateMany(
+      { scheduledAt: { $lte: now }, published: false },
+      { $set: { published: true, scheduledAt: null, updatedAt: now } }
+    );
+    const docs = await NovelChapterModel.find({ seasonId, published: false, scheduledAt: { $gt: now } }).sort({ chapterNumber: 1 }).select("chapterNumber title scheduledAt");
     return docs.map((d: any) => ({ id: d._id.toString(), chapterNumber: d.chapterNumber, title: d.title, scheduledAt: d.scheduledAt ? (d.scheduledAt as Date).toISOString() : null }));
   }
   async getNovelChapter(id: string): Promise<NovelChapter | undefined> {
