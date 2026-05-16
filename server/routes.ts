@@ -139,10 +139,13 @@ export async function registerRoutes(
           req.session.userId = user.id;
           req.session.userRole = user.role;
         }
-        if (user?.role === "writer" && user?.status === "pending") {
-          return res.redirect("/?auth=pending");
-        }
-        res.redirect("/?auth=success");
+        req.session.save((err: any) => {
+          if (err) console.error("Session save error (OAuth):", err);
+          if (user?.role === "writer" && user?.status === "pending") {
+            return res.redirect("/?auth=pending");
+          }
+          res.redirect("/?auth=success");
+        });
       }
     );
   } else {
@@ -231,10 +234,12 @@ export async function registerRoutes(
       const { username, password } = z.object({ username: z.string(), password: z.string() }).parse(req.body);
       const adminUsername = (process.env.ADMIN_USERNAME || "admin").trim();
       const adminPassword = (process.env.ADMIN_PASSWORD || "admin123").trim();
-      if (username.trim() !== adminUsername || password.trim() !== adminPassword) {
+      if (username.trim().toLowerCase() !== adminUsername.toLowerCase() || password.trim() !== adminPassword) {
+        log(`Login failed — username: ${username.trim()}`, "express");
         return res.status(401).json({ message: "Invalid credentials" });
       }
       req.session.adminId = "1";
+      await new Promise<void>((resolve, reject) => req.session.save((err) => err ? reject(err) : resolve()));
       res.json({ success: true, admin: { id: "1", username: adminUsername, name: "Admin", email: "" } });
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
@@ -275,7 +280,10 @@ export async function registerRoutes(
 
   app.post("/api/auth/admin-logout", (req, res) => {
     delete req.session.adminId;
-    res.json({ success: true });
+    req.session.save((err) => {
+      if (err) console.error("Session save error (admin-logout):", err);
+      res.json({ success: true });
+    });
   });
 
   // ── User (self) ────────────────────────────────────────────────────────────
@@ -294,6 +302,7 @@ export async function registerRoutes(
       if (user.role === "admin") return res.json({ message: "Anda adalah admin", user });
       const updated = await storage.updateUser(user.id, { role: "writer", status: "pending" });
       req.session.userRole = "writer";
+      req.session.save((err: any) => { if (err) console.error("Session save error (request-writer):", err); });
       res.json({ success: true, user: updated });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -392,7 +401,7 @@ export async function registerRoutes(
   app.get("/api/novel/stories", async (req, res) => {
     try {
       const stories = await storage.getNovelStories(true);
-      const authorIds = [...new Set(stories.map(s => s.authorId).filter(Boolean))] as string[];
+      const authorIds = Array.from(new Set(stories.map(s => s.authorId).filter(Boolean))) as string[];
       const authorsMap: Record<string, { name: string; slug: string }> = {};
       for (const aId of authorIds) {
         try { const a = await storage.getAuthorById(aId); if (a) authorsMap[a.id] = { name: a.name, slug: a.slug }; } catch {}
@@ -425,7 +434,7 @@ export async function registerRoutes(
     if (!req.session?.adminId) return res.status(401).json({ message: "Unauthorized" });
     try {
       const stories = await storage.getNovelStories();
-      const authorIds = [...new Set(stories.map(s => s.authorId).filter(Boolean))];
+      const authorIds = Array.from(new Set(stories.map(s => s.authorId).filter(Boolean)));
       const authorMap: Record<string, string> = {};
       await Promise.all(authorIds.map(async id => {
         try {
@@ -686,11 +695,15 @@ export async function registerRoutes(
 
   // ── Writer API ────────────────────────────────────────────────────────────
   async function ensureAuthorId(user: any): Promise<string> {
-    if (user.authorId) return user.authorId;
-    const baseSlug = user.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    if (user.authorId) {
+      const existing = await storage.getAuthorById(user.authorId);
+      if (existing) return user.authorId;
+      await storage.updateUser(user.id, { authorId: null });
+    }
+    const baseSlug = (user.name || "penulis").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "penulis";
     const slug = `${baseSlug}-${Date.now().toString(36)}`;
     const author = await storage.createAuthor({
-      name: user.name, slug, bio: "", photoUrl: user.photoUrl ?? null,
+      name: user.name || "Penulis", slug, bio: "", photoUrl: user.photoUrl ?? null,
       tiktok: null, instagram: null, facebook: null, twitter: null,
       website: null, saweria: null, trakteer: null, email: user.email,
     });
@@ -758,9 +771,14 @@ export async function registerRoutes(
         }
       }
       const updated = await storage.updateAuthor(authorId, updateData);
-      if (updateData.name) await storage.updateUser(user.id, { name: updateData.name });
+      if (updateData.name && typeof updateData.name === "string" && updateData.name.trim()) {
+        try { await storage.updateUser(user.id, { name: updateData.name.trim() }); } catch (e) { console.error("updateUser name failed:", e); }
+      }
       res.json(updated);
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+    } catch (err) {
+      console.error("PATCH /api/writer/profile error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.post("/api/writer/stories", requireWriter, async (req: any, res) => {
@@ -775,9 +793,10 @@ export async function registerRoutes(
   app.put("/api/writer/stories/:id", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
+      const authorId = await ensureAuthorId(user);
       const story = await storage.getNovelStoryById(req.params.id);
       if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
-      if (story.authorId !== user.authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+      if (story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
       const updated = await storage.updateNovelStory(req.params.id, req.body);
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
@@ -786,9 +805,10 @@ export async function registerRoutes(
   app.delete("/api/writer/stories/:id", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
+      const authorId = await ensureAuthorId(user);
       const story = await storage.getNovelStoryById(req.params.id);
       if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
-      if (story.authorId !== user.authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+      if (story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
       await storage.deleteNovelStory(req.params.id);
       res.status(204).send();
     } catch { res.status(500).json({ message: "Internal server error" }); }

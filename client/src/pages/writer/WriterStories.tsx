@@ -566,7 +566,7 @@ export default function WriterStories() {
             </div>
 
             <div className="border border-border rounded-xl overflow-hidden">
-              <RichTextEditor content={chapterContent} onChange={setChapterContent} />
+              <RichTextEditor value={chapterContent} onChange={setChapterContent} />
             </div>
 
             {chapterContent && (

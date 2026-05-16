@@ -1,6 +1,15 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { SiteSettings, UpdateSiteSettings } from "@shared/schema";
+
+export type SiteSettings = {
+  siteName?: string;
+  siteDescription?: string;
+  maintenanceMode?: boolean;
+  allowRegistration?: boolean;
+  [key: string]: any;
+};
+
+export type UpdateSiteSettings = Partial<SiteSettings>;
 
 export function useSiteSettings() {
   return useQuery<SiteSettings>({

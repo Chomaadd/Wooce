@@ -22,10 +22,11 @@ import {
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author } from "@shared/schema";
+import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
 type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals";
+type AppUser = AppUserType;
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -1246,14 +1247,14 @@ export default function ManageNovel() {
           </button>
           <button
             onClick={() => setView("approvals")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <ShieldCheck size={13} /> Approval
           </button>
         </div>
 
         {/* Breadcrumb Nav */}
-        {view !== "settings" && view !== "stats" && view !== "announcements" && view !== "approvals" && (
+        {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
         <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
           <Link href="/"><span className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">Novel</span></Link>
           <ChevronRight size={14} className="text-muted-foreground" />
