@@ -1809,19 +1809,23 @@ function ApprovalsView() {
 
   const { data: pendingUsers, isLoading, refetch } = useQuery<AppUser[]>({
     queryKey: ["/api/admin/users", "writer", "pending"],
-    queryFn: () => fetch("/api/admin/users?role=writer&status=pending").then(r => r.json()),
+    queryFn: () => fetch("/api/admin/users?role=writer&status=pending", { credentials: "include" }).then(r => r.json()),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
-  const { data: activeWriters } = useQuery<AppUser[]>({
+  const { data: activeWriters, refetch: refetchActive } = useQuery<AppUser[]>({
     queryKey: ["/api/admin/users", "writer", "active"],
-    queryFn: () => fetch("/api/admin/users?role=writer&status=active").then(r => r.json()),
+    queryFn: () => fetch("/api/admin/users?role=writer&status=active", { credentials: "include" }).then(r => r.json()),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/approve`),
     onSuccess: () => {
       refetch();
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      refetchActive();
       toast({ title: "Penulis disetujui!" });
     },
   });
@@ -1830,7 +1834,7 @@ function ApprovalsView() {
     mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/reject`),
     onSuccess: () => {
       refetch();
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      refetchActive();
       toast({ title: "Permohonan ditolak." });
     },
   });
@@ -1838,18 +1842,28 @@ function ApprovalsView() {
   const suspendMutation = useMutation({
     mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/suspend`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      refetch();
+      refetchActive();
       toast({ title: "Akun disuspend." });
     },
   });
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <ShieldCheck size={22} /> Approval Penulis
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Tinjau dan kelola permohonan bergabung sebagai penulis</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <ShieldCheck size={22} /> Approval Penulis
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Tinjau dan kelola permohonan bergabung sebagai penulis</p>
+        </div>
+        <button
+          onClick={() => { refetch(); refetchActive(); }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border shrink-0 mt-1"
+          data-testid="button-refresh-approvals"
+        >
+          <RotateCcw size={12} /> Refresh
+        </button>
       </div>
 
       {/* Pending */}
