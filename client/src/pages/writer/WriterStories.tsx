@@ -284,9 +284,7 @@ export default function WriterStories() {
       <div className="px-4 py-4 border-b border-border">
         <Link href="/">
           <div className="flex items-center gap-2 mb-3 cursor-pointer">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen size={14} className="text-primary-foreground" />
-            </div>
+            <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-7 h-7 rounded-lg object-cover" />
             <span className="font-bold text-sm text-foreground">WOOCE Novel</span>
           </div>
         </Link>

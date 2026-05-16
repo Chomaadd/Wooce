@@ -1169,9 +1169,7 @@ export default function ManageNovel() {
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="max-w-5xl mx-auto px-6 flex h-14 items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-            <BookOpen size={14} className="text-primary-foreground" />
-          </div>
+          <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-7 h-7 rounded-lg object-cover" />
           <span className="font-bold text-sm text-foreground">Admin Novel</span>
         </div>
         <div className="flex items-center gap-2">
@@ -1217,13 +1215,11 @@ export default function ManageNovel() {
     <div className="min-h-screen bg-background">
       <AdminHeader />
       <div className="max-w-5xl mx-auto px-6 py-8">
-        {view !== "approvals" && <>
-
-        {/* Tab Nav */}
+          {/* Tab Nav */}
         <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
           <button
             onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" && view !== "announcements" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Cerita
           </button>
@@ -1252,6 +1248,8 @@ export default function ManageNovel() {
             <ShieldCheck size={13} /> Approval
           </button>
         </div>
+
+      {view !== "approvals" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (

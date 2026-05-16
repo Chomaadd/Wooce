@@ -44,8 +44,8 @@ export default function Login() {
           />
         </div>
         <div className="relative text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/15 backdrop-blur-sm border border-white/20 mb-6 shadow-2xl">
-            <BookOpen size={36} className="text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/15 backdrop-blur-sm border border-white/20 mb-6 shadow-2xl overflow-hidden">
+            <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">WOOCE Novel</h1>
           <p className="text-white/70 text-base leading-relaxed max-w-xs">
@@ -72,9 +72,7 @@ export default function Login() {
 
         <div className="w-full max-w-sm relative">
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-              <BookOpen size={18} className="text-primary-foreground" />
-            </div>
+            <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-9 h-9 rounded-xl object-cover" />
             <span className="font-bold text-foreground">WOOCE Novel</span>
           </div>
 
