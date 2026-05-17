@@ -370,7 +370,7 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserById(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      await UserModel.updateOne({ _id: req.params.id }, { $set: { rejectedAt: new Date() } } as any);
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { rejectedAt: new Date() } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { role: "reader", status: "active" });
       sendWriterRejectedEmail(user.email, user.name).catch(console.error);
       storage.createNotification({ userId: user.id, type: "rejected", title: "Pengajuan Tidak Disetujui", message: "Permohonanmu untuk menjadi penulis belum disetujui saat ini. Kamu bisa mencoba lagi dalam 7 hari." }).catch(console.error);
@@ -382,7 +382,7 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserById(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date() } } as any);
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date() } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { status: "suspended" });
       sendWriterSuspendedEmail(user.email, user.name).catch(console.error);
       storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Penulis Disuspend", message: "Akun penulismu telah disuspend oleh admin. Kamu bisa mengajukan permohonan kembali setelah 30 hari." }).catch(console.error);

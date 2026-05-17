@@ -77,19 +77,20 @@ export default function BecomeWriter() {
   const suspendedAt = (user as any)?.suspendedAt;
 
   const rejectedDaysLeft = rejectedAt
-    ? Math.ceil(7 - (Date.now() - new Date(rejectedAt).getTime()) / 86400000)
+    ? Math.max(0, Math.ceil(7 - (Date.now() - new Date(rejectedAt).getTime()) / 86400000))
     : 0;
 
   const suspendedDaysLeft = suspendedAt
-    ? Math.ceil(30 - (Date.now() - new Date(suspendedAt).getTime()) / 86400000)
+    ? Math.max(0, Math.ceil(30 - (Date.now() - new Date(suspendedAt).getTime()) / 86400000))
     : 0;
 
-  const showRejectedCooldown = !cooldown && rejectedAt && rejectedDaysLeft > 0 && !isWriter && !isSuspended;
-  const showSuspendedCooldown = !cooldown && (isSuspended || (suspendedAt && suspendedDaysLeft > 0));
+  // Cooldown only shows if timestamp exists and days still remain
+  const hasSuspendedCooldown = !!suspendedAt && suspendedDaysLeft > 0;
+  const hasRejectedCooldown = !isSuspended && !!rejectedAt && rejectedDaysLeft > 0 && !isWriter;
 
   const activeCooldown = cooldown ?? (
-    showSuspendedCooldown ? { type: "suspended" as const, daysLeft: Math.max(suspendedDaysLeft, 1) } :
-    showRejectedCooldown ? { type: "rejected" as const, daysLeft: Math.max(rejectedDaysLeft, 1) } :
+    hasSuspendedCooldown ? { type: "suspended" as const, daysLeft: suspendedDaysLeft } :
+    hasRejectedCooldown ? { type: "rejected" as const, daysLeft: rejectedDaysLeft } :
     null
   );
 

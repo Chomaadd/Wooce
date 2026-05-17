@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -141,6 +141,7 @@ export function Navbar() {
   const [writerModalOpen, setWriterModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const showNotifBell = !!user && !user.isAdmin;
 
@@ -192,6 +193,7 @@ export function Navbar() {
     function handleClick(e: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
+        setSettingsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -318,15 +320,17 @@ export function Navbar() {
                 <Library size={15} />
               </button>
             </Link>
-            <Link href="/bookmarks">
-              <button
-                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                data-testid="button-bookmarks"
-                aria-label="Bookmark"
-              >
-                <Bookmark size={15} />
-              </button>
-            </Link>
+            <div className="hidden sm:block">
+              <Link href="/bookmarks">
+                <button
+                  className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                  data-testid="button-bookmarks"
+                  aria-label="Bookmark"
+                >
+                  <Bookmark size={15} />
+                </button>
+              </Link>
+            </div>
             {user?.isAdmin && (
               <Link href="/admin/novel">
                 <button
@@ -353,7 +357,7 @@ export function Navbar() {
 
             {/* ── Notification Bell ── */}
             {showNotifBell && (
-              <div className="relative" ref={notifRef}>
+              <div className="relative hidden sm:block" ref={notifRef}>
                 <button
                   onClick={() => {
                     setNotifOpen(prev => !prev);
@@ -493,6 +497,37 @@ export function Navbar() {
                         </button>
                       </Link>
 
+                      <div className="hidden sm:block">
+                        <Link href="/bookmarks">
+                          <button
+                            className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                            onClick={() => setUserMenuOpen(false)}
+                            data-testid="button-bookmarks-menu"
+                          >
+                            <Bookmark size={12} /> Bookmark
+                          </button>
+                        </Link>
+                      </div>
+
+                      {/* Mobile-only: Bookmark & Notifikasi */}
+                      <Link href="/bookmarks">
+                        <button
+                          className="sm:hidden w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-bookmarks-mobile-menu"
+                        >
+                          <Bookmark size={12} /> Bookmark
+                        </button>
+                      </Link>
+                      <button
+                        className="sm:hidden w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center justify-between"
+                        onClick={() => { setUserMenuOpen(false); setNotifOpen(true); }}
+                        data-testid="button-notif-mobile-menu"
+                      >
+                        <span className="flex items-center gap-2"><Bell size={12} /> Notifikasi</span>
+                        {unreadCount > 0 && <span className="w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+                      </button>
+
                       {user.role === "writer" && user.status === "active" && (
                         <Link href="/writer/cerita">
                           <button
@@ -516,6 +551,37 @@ export function Navbar() {
                           </button>
                         </Link>
                       )}
+
+                      {/* Mobile-only: Bahasa & Tampilan expandable */}
+                      <div className="sm:hidden border-t border-border">
+                        <button
+                          onClick={() => setSettingsOpen(p => !p)}
+                          className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center justify-between"
+                        >
+                          <span className="flex items-center gap-2"><Globe size={12} /> Bahasa & Tampilan</span>
+                          <ChevronDown size={11} className={`transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {settingsOpen && (
+                          <div className="bg-muted/40 border-t border-border/50 px-3 py-2 space-y-1">
+                            <button
+                              onClick={() => setLanguage(language === "id" ? "en" : "id")}
+                              className="w-full text-left py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                            >
+                              <Globe size={11} />
+                              <span>Bahasa: <strong>{language.toUpperCase()}</strong></span>
+                              <span className="ml-auto text-[10px] opacity-60">→ {language === "id" ? "EN" : "ID"}</span>
+                            </button>
+                            <button
+                              onClick={toggleTheme}
+                              className="w-full text-left py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                            >
+                              {theme === "light" ? <Moon size={11} /> : <Sun size={11} />}
+                              <span>Tema: <strong>{theme === "light" ? "Terang" : "Gelap"}</strong></span>
+                              <span className="ml-auto text-[10px] opacity-60">→ {theme === "light" ? "Gelap" : "Terang"}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
                       <button
                         onClick={async () => {
@@ -548,7 +614,7 @@ export function Navbar() {
             )}
             <button
               onClick={() => setLanguage(language === "id" ? "en" : "id")}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground text-xs font-semibold"
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground text-xs font-semibold"
               data-testid="button-language-toggle"
             >
               <Globe size={14} />
@@ -556,7 +622,7 @@ export function Navbar() {
             </button>
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
               data-testid="button-theme-toggle"
             >
               {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
