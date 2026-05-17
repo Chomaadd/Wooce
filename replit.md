@@ -62,11 +62,23 @@ Credentials via environment secrets:
 - `GET /api/novel/seasons/:seasonId/chapters` — Get chapters
 - `GET /api/novel/read/:slug/season-:n/bab-:n` — Get chapter content
 
-## Environment Variables
-- `MONGODB_URI` — MongoDB connection string
-- `ADMIN_USERNAME` — Admin login username
-- `ADMIN_PASSWORD` — Admin login password
-- `SESSION_SECRET` — Session encryption secret
+## Environment Variables (Wajib Diisi Sebelum Menjalankan App)
+
+Semua variabel di bawah harus diset di Replit Secrets sebelum app bisa berjalan penuh:
+
+| Secret | Keterangan |
+|--------|------------|
+| `MONGODB_URI` | Connection string MongoDB (contoh: `mongodb+srv://user:pass@cluster.mongodb.net/dbname`) |
+| `ADMIN_USERNAME` | Username untuk login ke halaman admin (`/login`) |
+| `ADMIN_PASSWORD` | Password untuk login ke halaman admin |
+| `SESSION_SECRET` | String acak panjang untuk enkripsi session (gunakan string random yang kuat) |
+| `SITE_URL` | URL publik app, contoh: `https://wooce-novel.replit.app` (digunakan di email template) |
+| `GOOGLE_CLIENT_ID` | Client ID Google OAuth (untuk login dengan Google — opsional tapi dianjurkan) |
+| `GOOGLE_CLIENT_SECRET` | Client Secret Google OAuth (pasangan dari `GOOGLE_CLIENT_ID`) |
+| `GMAIL_USER` | Alamat Gmail yang dipakai untuk kirim email notifikasi |
+| `GMAIL_APP_PASSWORD` | App Password Gmail (bukan password biasa — generate di Google Account settings) |
+
+> **Catatan:** `GOOGLE_CLIENT_ID/SECRET` dan `GMAIL_USER/APP_PASSWORD` bersifat opsional — app tetap berjalan tanpa keduanya, tapi fitur login Google dan email notifikasi tidak akan aktif.
 
 ## URL Structure
 - `/` — Novel list (homepage)
