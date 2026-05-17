@@ -953,6 +953,40 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.get("/api/writer/stats", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const authorId = await ensureAuthorId(user);
+      if (!authorId) return res.json({ totalViews: 0, totalStories: 0, totalChapters: 0, totalPublished: 0, topStories: [], topChapters: [] });
+      const stories = await storage.getNovelStoriesByAuthor(authorId);
+      const storyStats = await Promise.all(stories.map(async (story) => {
+        const seasons = await storage.getNovelSeasons(story.id);
+        let totalChapters = 0;
+        let publishedChapters = 0;
+        const chapterList: any[] = [];
+        for (const season of seasons) {
+          const chapters = await storage.getNovelChapters(season.id);
+          totalChapters += chapters.length;
+          publishedChapters += chapters.filter((c: any) => c.published).length;
+          for (const ch of chapters) {
+            chapterList.push({ ...ch, storyTitle: story.title, storySlug: story.slug });
+          }
+        }
+        return { story: { ...story, totalChapters, publishedChapters }, chapters: chapterList };
+      }));
+      const totalViews = storyStats.reduce((acc, s) => acc + (s.story.viewCount || 0), 0);
+      const totalChapters = storyStats.reduce((acc, s) => acc + s.story.totalChapters, 0);
+      const totalPublished = storyStats.reduce((acc, s) => acc + s.story.publishedChapters, 0);
+      const topStories = [...storyStats.map(s => s.story)].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 5);
+      const allChapters = storyStats.flatMap(s => s.chapters);
+      const topChapters = [...allChapters].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 10);
+      res.json({ totalViews, totalStories: stories.length, totalChapters, totalPublished, topStories, topChapters });
+    } catch (err) {
+      console.error("Writer stats error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // ── Translation API ───────────────────────────────────────────────────────
   const LINGVA_INSTANCES = [
     "https://lingva.ml",
