@@ -81,6 +81,7 @@ export async function registerRoutes(
   if (googleOAuthEnabled) {
     const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL ||
       `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
+    log(`Google OAuth callback URL: ${CALLBACK_URL}`, "express");
 
     passport.use(new GoogleStrategy(
       {
@@ -139,20 +140,26 @@ export async function registerRoutes(
     app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
     app.get("/auth/google/callback",
-      passport.authenticate("google", { failureRedirect: "/?auth=error" }),
-      (req: any, res) => {
-        const user = req.user;
-        if (user) {
+      (req: any, res: any, next: any) => {
+        passport.authenticate("google", (err: any, user: any, info: any) => {
+          if (err) {
+            console.error("[OAuth] Error:", err?.message || err);
+            return res.redirect("/?auth=error");
+          }
+          if (!user) {
+            console.error("[OAuth] No user returned. Info:", JSON.stringify(info));
+            return res.redirect("/?auth=error");
+          }
           req.session.userId = user.id;
           req.session.userRole = user.role;
-        }
-        req.session.save((err: any) => {
-          if (err) console.error("Session save error (OAuth):", err);
-          if (user?.role === "writer" && user?.status === "pending") {
-            return res.redirect("/?auth=pending");
-          }
-          res.redirect("/?auth=success");
-        });
+          req.session.save((saveErr: any) => {
+            if (saveErr) console.error("[OAuth] Session save error:", saveErr);
+            if (user.role === "writer" && user.status === "pending") {
+              return res.redirect("/?auth=pending");
+            }
+            res.redirect("/?auth=success");
+          });
+        })(req, res, next);
       }
     );
   } else {
