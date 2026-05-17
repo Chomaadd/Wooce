@@ -309,7 +309,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                     </div>
                   </div>
                   <div className="space-y-1 px-0.5">
-                    <h3 className="font-bold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                    <h3 className="font-bold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                       {story.title}
                     </h3>
                     <div className="flex items-center gap-2">
@@ -407,7 +407,7 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                   <span className="text-[8px] font-semibold text-white">{formatViewCount(story.viewCount)}</span>
                 </div>
               </div>
-              <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+              <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                 {story.title}
               </h3>
             </motion.div>
@@ -524,9 +524,9 @@ function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
                     <span className="text-[8px] text-white/80">{timeAgo(progress.updatedAt)}</span>
                   </div>
                 </div>
-                <p className="text-[11px] font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                   {story.title}
-                </p>
+                </h3>
               </motion.div>
             </Link>
           );
@@ -612,11 +612,11 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                     <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
                   </div>
                 </div>
-                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                   {story.title}
                 </h3>
                 {story.totalChapters > 0 && (
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5 justify-center">
                     <BookMarked size={9} /> {story.totalChapters} bab
                   </p>
                 )}
@@ -697,11 +697,11 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                     </span>
                   </div>
                 </div>
-                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                   {story.title}
                 </h3>
                 {story.totalChapters > 0 && (
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5 justify-center">
                     <BookMarked size={9} /> {story.totalChapters} bab
                   </p>
                 )}
@@ -791,7 +791,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                   </div>
                   <div className="space-y-0.5">
                     <h3
-                      className="font-bold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug"
+                      className="font-bold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center"
                       data-testid={`text-rec-title-${story.id}`}
                     >
                       {story.title}
@@ -799,9 +799,12 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                     {story.authorName && (
                       <p className="text-[10px] text-muted-foreground/70 truncate">
                         oleh{" "}
-                        <Link href={`/penulis/${story.authorSlug}`} onClick={e => e.stopPropagation()} className="hover:text-primary transition-colors">
+                        <span
+                          onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
+                          className="hover:text-primary transition-colors cursor-pointer"
+                        >
                           {story.authorName}
-                        </Link>
+                        </span>
                       </p>
                     )}
                     <div className="flex items-center gap-1.5">

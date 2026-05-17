@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Globe, Mail, ArrowLeft, Heart } from "lucide-react";
 import { SiTiktok, SiFacebook, SiInstagram, SiX } from "react-icons/si";
+import { useLanguage } from "@/hooks/use-language";
 import type { Author, NovelStory } from "@shared/schema";
 
 type AuthorWithStories = Author & { stories: NovelStory[] };
@@ -19,6 +20,7 @@ const STATUS_CONFIG: Record<string, { badge: string; dot: string }> = {
 export default function AuthorProfile() {
   const [, params] = useRoute("/penulis/:slug");
   const slug = params?.slug ?? "";
+  const { t } = useLanguage();
 
   const { data: author, isLoading } = useQuery<AuthorWithStories>({
     queryKey: ["/api/authors", slug],
@@ -47,8 +49,8 @@ export default function AuthorProfile() {
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20">
           <BookOpen size={48} className="text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground">Penulis tidak ditemukan.</p>
-          <Link href="/"><button className="mt-4 text-sm text-primary hover:underline">Kembali ke beranda</button></Link>
+          <p className="text-muted-foreground">{t("author.notFound")}</p>
+          <Link href="/"><button className="mt-4 text-sm text-primary hover:underline">{t("author.backToHome")}</button></Link>
         </div>
         <Footer />
       </div>
@@ -75,7 +77,7 @@ export default function AuthorProfile() {
       <main className="max-w-3xl mx-auto px-5 lg:px-8 py-10">
         <Link href="/">
           <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-8">
-            <ArrowLeft size={14} /> Kembali ke beranda
+            <ArrowLeft size={14} /> {t("author.backToHome")}
           </button>
         </Link>
 
@@ -124,7 +126,7 @@ export default function AuthorProfile() {
                     className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-sm font-semibold transition-all duration-200 ${color}`}
                   >
                     <Heart size={14} fill="currentColor" />
-                    Dukung via {label}
+                    {t("author.support")} {label}
                   </a>
                 ))}
               </div>
@@ -135,9 +137,9 @@ export default function AuthorProfile() {
         {author.stories && author.stories.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-base font-bold text-foreground">Karya Penulis</h2>
+              <h2 className="text-base font-bold text-foreground">{t("author.works")}</h2>
               <div className="flex-1 h-px bg-border/60" />
-              <span className="text-xs text-muted-foreground">{author.stories.length} cerita</span>
+              <span className="text-xs text-muted-foreground">{author.stories.length} {t("author.stories")}</span>
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
               {author.stories.map((story, i) => {

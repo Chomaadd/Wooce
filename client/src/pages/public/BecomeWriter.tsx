@@ -34,14 +34,14 @@ export default function BecomeWriter() {
     },
     onSuccess: async () => {
       await refetch();
-      toast({ title: "Permintaan terkirim!", description: "Admin akan segera meninjaunya." });
+      toast({ title: t("becomeWriter.toast.success.title"), description: t("becomeWriter.toast.success.desc") });
     },
     onError: (error: any) => {
       if (error?.cooldown) {
         setCooldown({ type: error.cooldownType, daysLeft: error.daysLeft });
         return;
       }
-      toast({ title: "Gagal", description: "Terjadi kesalahan. Coba lagi.", variant: "destructive" });
+      toast({ title: t("becomeWriter.toast.error.title"), description: t("becomeWriter.toast.error.desc"), variant: "destructive" });
     },
   });
 
@@ -50,9 +50,9 @@ export default function BecomeWriter() {
   };
 
   const benefits = [
-    { icon: <BookOpen size={18} className="text-primary" />, title: "Tulis & Publikasikan", desc: "Upload karya kamu langsung ke platform WOOCE Novel dan dapatkan pembaca setia." },
-    { icon: <Heart size={18} className="text-primary" />, title: "Dukungan Pembaca", desc: "Terima donasi dari pembaca lewat Saweria atau Trakteer yang kamu daftarkan." },
-    { icon: <Zap size={18} className="text-primary" />, title: "Kelola Ceritamu", desc: "Dashboard penulis untuk mengatur season, chapter, jadwal rilis, dan statistik." },
+    { icon: <BookOpen size={18} className="text-primary" />, title: t("becomeWriter.benefit1.title"), desc: t("becomeWriter.benefit1.desc") },
+    { icon: <Heart size={18} className="text-primary" />, title: t("becomeWriter.benefit2.title"), desc: t("becomeWriter.benefit2.desc") },
+    { icon: <Zap size={18} className="text-primary" />, title: t("becomeWriter.benefit3.title"), desc: t("becomeWriter.benefit3.desc") },
   ];
 
   if (isLoading) {
@@ -109,9 +109,9 @@ export default function BecomeWriter() {
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <PenLine size={26} className="text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Daftar sebagai Penulis</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("becomeWriter.title")}</h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-            Bergabung dengan komunitas penulis WOOCE Novel. Tulis ceritamu, bangun pembaca setia, dan dapatkan dukungan langsung dari mereka.
+            {t("becomeWriter.subtitle")}
           </p>
         </motion.div>
 
@@ -144,14 +144,14 @@ export default function BecomeWriter() {
         >
           {!user ? (
             <div className="p-6 space-y-4 text-center">
-              <p className="text-sm text-muted-foreground">Login dengan Google untuk mendaftar sebagai penulis.</p>
+              <p className="text-sm text-muted-foreground">{t("becomeWriter.login.text")}</p>
               <button
                 onClick={handleGoogleLogin}
                 className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity mx-auto"
                 data-testid="button-google-login-writer"
               >
                 <LogIn size={16} />
-                Login dengan Google
+                {t("becomeWriter.login.button")}
               </button>
             </div>
 
@@ -161,21 +161,21 @@ export default function BecomeWriter() {
                 <Ban size={22} className="text-orange-500" />
               </div>
               <div>
-                <p className="font-bold text-foreground text-base">Akun Disuspend</p>
+                <p className="font-bold text-foreground text-base">{t("becomeWriter.suspended.title")}</p>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-1">
-                  Akun penulismu sedang disuspend. Kamu bisa mengajukan permohonan kembali setelah masa suspend berakhir.
+                  {t("becomeWriter.suspended.desc")}
                 </p>
               </div>
               <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3 inline-flex items-center gap-2 mx-auto">
                 <Clock size={15} className="text-orange-500 flex-shrink-0" />
                 <p className="text-sm font-semibold text-orange-600">
-                  {activeCooldown.daysLeft} hari lagi untuk bisa mendaftar ulang
+                  {activeCooldown.daysLeft} {t("becomeWriter.suspended.days")}
                 </p>
               </div>
               <Link href="/">
                 <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-suspended">
                   <ArrowLeft size={14} />
-                  Kembali ke Beranda
+                  {t("becomeWriter.back")}
                 </button>
               </Link>
             </div>
@@ -186,21 +186,21 @@ export default function BecomeWriter() {
                 <AlertTriangle size={22} className="text-red-500" />
               </div>
               <div>
-                <p className="font-bold text-foreground text-base">Pengajuan Sebelumnya Ditolak</p>
+                <p className="font-bold text-foreground text-base">{t("becomeWriter.rejected.title")}</p>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-1">
-                  Pengajuanmu belum bisa disetujui. Pastikan profilmu sudah lengkap sebelum mendaftar ulang.
+                  {t("becomeWriter.rejected.desc")}
                 </p>
               </div>
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 inline-flex items-center gap-2 mx-auto">
                 <Clock size={15} className="text-red-500 flex-shrink-0" />
                 <p className="text-sm font-semibold text-red-600">
-                  {activeCooldown.daysLeft} hari lagi untuk bisa mendaftar ulang
+                  {activeCooldown.daysLeft} {t("becomeWriter.rejected.days")}
                 </p>
               </div>
               <Link href="/">
                 <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-rejected">
                   <ArrowLeft size={14} />
-                  Kembali ke Beranda
+                  {t("becomeWriter.back")}
                 </button>
               </Link>
             </div>
@@ -210,9 +210,9 @@ export default function BecomeWriter() {
               <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto">
                 <Clock size={20} className="text-yellow-500" />
               </div>
-              <p className="font-semibold text-foreground">Permohonan sedang ditinjau</p>
+              <p className="font-semibold text-foreground">{t("becomeWriter.pending.title")}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Tim admin akan meninjau permohonanmu. Kamu akan mendapat notifikasi setelah disetujui.
+                {t("becomeWriter.pending.desc")}
               </p>
             </div>
 
@@ -221,11 +221,11 @@ export default function BecomeWriter() {
               <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
                 <CheckCircle2 size={20} className="text-green-500" />
               </div>
-              <p className="font-semibold text-foreground">Kamu sudah menjadi penulis aktif!</p>
+              <p className="font-semibold text-foreground">{t("becomeWriter.active.title")}</p>
               <Link href="/">
                 <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity" data-testid="button-go-home">
                   <ArrowLeft size={15} />
-                  Kembali ke Beranda
+                  {t("becomeWriter.back")}
                 </button>
               </Link>
             </div>
@@ -235,8 +235,8 @@ export default function BecomeWriter() {
               <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto">
                 <CheckCircle2 size={20} className="text-blue-500" />
               </div>
-              <p className="font-semibold text-foreground">Kamu adalah Admin</p>
-              <p className="text-sm text-muted-foreground">Admin memiliki akses penuh ke seluruh platform.</p>
+              <p className="font-semibold text-foreground">{t("becomeWriter.admin.title")}</p>
+              <p className="text-sm text-muted-foreground">{t("becomeWriter.admin.desc")}</p>
             </div>
 
           ) : (
@@ -255,7 +255,7 @@ export default function BecomeWriter() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Dengan mendaftar, kamu menyetujui untuk mengikuti panduan konten WOOCE Novel. Permohonan akan ditinjau oleh admin sebelum disetujui.
+                {t("becomeWriter.form.desc")}
               </p>
               <button
                 onClick={() => requestWriterMutation.mutate()}
@@ -263,7 +263,7 @@ export default function BecomeWriter() {
                 className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
                 data-testid="button-request-writer"
               >
-                {requestWriterMutation.isPending ? "Mengirim..." : "Daftar sebagai Penulis"}
+                {requestWriterMutation.isPending ? t("becomeWriter.form.submitting") : t("becomeWriter.form.submit")}
               </button>
             </div>
           )}
@@ -273,7 +273,7 @@ export default function BecomeWriter() {
           <Link href="/">
             <button className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-home">
               <ArrowLeft size={14} />
-              Kembali ke Beranda
+              {t("becomeWriter.back")}
             </button>
           </Link>
         </div>

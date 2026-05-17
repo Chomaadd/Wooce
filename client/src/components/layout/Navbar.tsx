@@ -634,6 +634,73 @@ export function Navbar() {
       <AnimatePresence>
         {writerModalOpen && <WriterModal onClose={() => setWriterModalOpen(false)} />}
       </AnimatePresence>
+
+      {/* Mobile notification bottom sheet */}
+      <AnimatePresence>
+        {notifOpen && (
+          <div
+            className="sm:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60"
+            onClick={() => setNotifOpen(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+              className="bg-background border-t border-border rounded-t-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">Notifikasi</p>
+                <div className="flex items-center gap-3">
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={() => markAllReadMutation.mutate()}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      Tandai semua dibaca
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setNotifOpen(false)}
+                    className="p-1.5 rounded-full hover:bg-muted text-muted-foreground"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+                    <BellOff size={24} strokeWidth={1.5} />
+                    <p className="text-xs">Belum ada notifikasi</p>
+                  </div>
+                ) : (
+                  notifications.map(n => (
+                    <div
+                      key={n.id}
+                      className={`flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
+                    >
+                      {notifIcon(n.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground leading-tight">{n.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+                        {n.createdAt && (
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">
+                            {new Date(n.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                      </div>
+                      {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="h-safe-area-inset-bottom pb-4" />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

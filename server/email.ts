@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
 
 const BASE_URL = process.env.SITE_URL || "https://wooce.replit.app";
 
-const emailWrapper = (headerBg: string, headerIcon: string, headerTitle: string, headerSub: string, bodyContent: string) => `
+const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string) => `
 <!DOCTYPE html>
 <html lang="id">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
@@ -20,7 +20,9 @@ const emailWrapper = (headerBg: string, headerIcon: string, headerTitle: string,
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
         <tr>
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:40px 40px 36px;text-align:center;">
-            <div style="display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;background:rgba(255,255,255,0.1);border-radius:18px;margin-bottom:16px;font-size:30px;">${headerIcon}</div>
+            <div style="display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:18px;margin-bottom:16px;overflow:hidden;">
+              <img src="${BASE_URL}/image/icon-navbar.png" alt="WOOCE Novel" style="width:72px;height:72px;object-fit:cover;border-radius:18px;" />
+            </div>
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
             <p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px;">${headerSub}</p>
           </td>
@@ -58,7 +60,6 @@ export async function sendContactNotification(data: { name: string; email: strin
     subject: `✉️ Pesan baru dari ${data.name} — ${data.subject}`,
     html: emailWrapper(
       "linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)",
-      "✉️",
       "Pesan Baru Masuk",
       "Ada yang mengirim pesan lewat form contact",
       `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
@@ -92,10 +93,9 @@ export async function sendWriterPendingEmail(to: string, name: string) {
   return guard(() => transporter.sendMail({
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
-    subject: "📝 Pengajuan Penulismu Sedang Ditinjau — WOOCE Novel",
+    subject: "Pengajuan Penulismu Sedang Ditinjau — WOOCE Novel",
     html: emailWrapper(
       "linear-gradient(135deg,#78350f 0%,#92400e 60%,#78350f 100%)",
-      "📝",
       "Pengajuan Sedang Ditinjau",
       "Kami sudah menerima permohonanmu",
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
@@ -112,10 +112,9 @@ export async function sendWriterApprovedEmail(to: string, name: string) {
   return guard(() => transporter.sendMail({
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
-    subject: "🎉 Selamat! Kamu Diterima sebagai Penulis WOOCE Novel",
+    subject: "Selamat! Kamu Diterima sebagai Penulis WOOCE Novel",
     html: emailWrapper(
       "linear-gradient(135deg,#064e3b 0%,#065f46 60%,#064e3b 100%)",
-      "🎉",
       "Pengajuan Diterima!",
       "Selamat bergabung sebagai penulis WOOCE Novel",
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
@@ -142,7 +141,6 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
     subject: "Pengajuan Penulis Ditolak — Bisa Coba Lagi dalam 7 Hari",
     html: emailWrapper(
       "linear-gradient(135deg,#7f1d1d 0%,#991b1b 60%,#7f1d1d 100%)",
-      "📋",
       "Pengajuan Tidak Disetujui",
       "Jangan menyerah, kamu bisa coba lagi",
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
@@ -162,7 +160,6 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
     subject: "⚠️ Akun Penulismu di WOOCE Novel Telah Disuspend",
     html: emailWrapper(
       "linear-gradient(135deg,#7c2d12 0%,#9a3412 60%,#7c2d12 100%)",
-      "⚠️",
       "Akun Disuspend",
       "Tindakan diperlukan pada akunmu",
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
