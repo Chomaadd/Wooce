@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import fs from "fs";
 import path from "path";
 
 const transporter = nodemailer.createTransport({
@@ -9,14 +10,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const LOGO_CID = "logo@wooce-novel";
-const LOGO_PATH = path.resolve("public/image/icon-navbar.png");
-
-const logoAttachment = {
-  filename: "icon-navbar.png",
-  path: LOGO_PATH,
-  cid: LOGO_CID,
-};
+// Logo 72x72 dikompres khusus email — embed base64 agar muncul di semua email client
+const LOGO_DATA_URL = (() => {
+  try {
+    const data = fs.readFileSync(path.resolve("public/image/icon-email.png"));
+    return `data:image/png;base64,${data.toString("base64")}`;
+  } catch {
+    return "";
+  }
+})();
 
 function getBaseUrl(): string {
   const raw = process.env.SITE_URL ||
@@ -42,7 +44,7 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:40px 40px 36px;text-align:center;">
             <table cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
               <tr><td align="center" style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:18px;overflow:hidden;line-height:0;">
-                <img src="cid:${LOGO_CID}" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;border-radius:18px;" />
+                ${LOGO_DATA_URL ? `<img src="${LOGO_DATA_URL}" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;border-radius:18px;" />` : `<div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;">W</div>`}
               </td></tr>
             </table>
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
@@ -82,7 +84,6 @@ export async function sendContactNotification(data: { name: string; email: strin
     replyTo: data.email,
     subject: `Pesan baru dari ${data.name} — ${data.subject}`,
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)",
       "Pesan Baru Masuk",
@@ -120,7 +121,6 @@ export async function sendWriterPendingEmail(to: string, name: string) {
     to,
     subject: "Pengajuan Penulismu Sedang Ditinjau — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#78350f 0%,#92400e 60%,#78350f 100%)",
       "Pengajuan Sedang Ditinjau",
@@ -142,7 +142,6 @@ export async function sendWriterApprovedEmail(to: string, name: string) {
     to,
     subject: "Selamat! Kamu Diterima sebagai Penulis WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#064e3b 0%,#065f46 60%,#064e3b 100%)",
       "Pengajuan Diterima!",
@@ -170,7 +169,6 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
     to,
     subject: "Pengajuan Penulis Ditolak — Bisa Coba Lagi dalam 7 Hari",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7f1d1d 0%,#991b1b 60%,#7f1d1d 100%)",
       "Pengajuan Tidak Disetujui",
@@ -191,7 +189,6 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
     to,
     subject: "Akun Penulismu di WOOCE Novel Telah Disuspend",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7c2d12 0%,#9a3412 60%,#7c2d12 100%)",
       "Akun Disuspend",
