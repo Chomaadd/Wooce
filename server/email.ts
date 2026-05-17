@@ -118,6 +118,7 @@ export async function sendWriterPendingEmail(to: string, name: string) {
 }
 
 export async function sendWriterApprovedEmail(to: string, name: string) {
+  const BASE_URL = getBaseUrl();
   return guard(() => transporter.sendMail({
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
