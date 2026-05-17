@@ -42,4 +42,3 @@ build = ["npm", "run", "build"]
 [userenv]
 
 [userenv.shared]
-GOOGLE_CALLBACK_URL = "https://0b182e69-a568-40ae-99d4-efa4e3e72a07-00-ck5jsxn5glof.pike.replit.dev/auth/google/callback"
