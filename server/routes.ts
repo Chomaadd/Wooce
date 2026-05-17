@@ -79,8 +79,10 @@ export async function registerRoutes(
   app.use(passport.session());
 
   if (googleOAuthEnabled) {
-    const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL ||
-      `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
+    const baseUrl = (process.env.SITE_URL ||
+      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000"))
+      .replace(/\/+$/, "");
+    const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${baseUrl}/auth/google/callback`;
     log(`Google OAuth callback URL: ${CALLBACK_URL}`, "express");
 
     passport.use(new GoogleStrategy(
