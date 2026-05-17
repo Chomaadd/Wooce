@@ -8,9 +8,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const BASE_URL = process.env.SITE_URL || "https://7998c637-24f6-4bca-b555-3eabd606587c-00-32zjt079ah4op.sisko.replit.dev";
+function getBaseUrl(): string {
+  if (process.env.SITE_URL) return process.env.SITE_URL;
+  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  return "https://wooce-novel.replit.app";
+}
 
-const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string) => `
+const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string) => {
+  const BASE_URL = getBaseUrl();
+  return `
 <!DOCTYPE html>
 <html lang="id">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
@@ -20,9 +26,11 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
         <tr>
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:40px 40px 36px;text-align:center;">
-            <div style="display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:18px;margin-bottom:16px;overflow:hidden;">
-              <img src="${BASE_URL}/image/icon-navbar.png" alt="WOOCE Novel" style="width:72px;height:72px;object-fit:cover;border-radius:18px;" />
-            </div>
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
+              <tr><td align="center" style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:18px;overflow:hidden;line-height:0;">
+                <img src="${BASE_URL}/image/icon-navbar.png" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;border-radius:18px;" />
+              </td></tr>
+            </table>
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
             <p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px;">${headerSub}</p>
           </td>
@@ -43,6 +51,7 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
   </table>
 </body>
 </html>`;
+};
 
 function guard(fn: () => Promise<any>): Promise<void> {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {

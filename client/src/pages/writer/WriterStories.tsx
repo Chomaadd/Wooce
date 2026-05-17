@@ -15,6 +15,7 @@ import {
   BookOpen, Plus, Pencil, Trash2, ChevronRight, Eye, EyeOff,
   ArrowLeft, Layers, FileText, LogOut, Upload, ImageIcon, RotateCcw,
   Clock, CalendarClock, X, User, AtSign, CheckCircle, XCircle, Loader2,
+  Menu, Home,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
@@ -125,6 +126,7 @@ export default function WriterStories() {
   const [selectedStory, setSelectedStory] = useState<StoryWithStats | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
   const [editingChapter, setEditingChapter] = useState<NovelChapter | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [storyDialog, setStoryDialog] = useState(false);
   const [editingStory, setEditingStory] = useState<StoryWithStats | null>(null);
@@ -156,7 +158,6 @@ export default function WriterStories() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameChecking, setUsernameChecking] = useState(false);
 
-  // ── Queries ────────────────────────────────────────────────────────────────
   const { data: writerMe, isLoading: writerMeLoading } = useQuery<WriterMe>({
     queryKey: ["/api/writer/me"],
     queryFn: () => fetch("/api/writer/me", { credentials: "include" }).then(r => r.json()),
@@ -208,7 +209,6 @@ export default function WriterStories() {
     enabled: !!selectedSeason?.id,
   });
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
   const createStory = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/writer/stories", data).then(r => r.json()),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/stories"] }); setStoryDialog(false); toast({ title: "Cerita berhasil dibuat!" }); },
@@ -258,7 +258,6 @@ export default function WriterStories() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/seasons", selectedSeason?.id, "chapters"] }); setDeleteConfirm(null); toast({ title: "Chapter dihapus." }); },
   });
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   const openStoryForm = (story?: StoryWithStats) => {
     if (!story && needsUsername) return;
     if (story) {
@@ -309,7 +308,11 @@ export default function WriterStories() {
     setView("write");
   };
 
-  // ── Loading / Guard ────────────────────────────────────────────────────────
+  const navigateTo = (v: WriterView) => {
+    setView(v);
+    setMobileSidebarOpen(false);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -323,11 +326,17 @@ export default function WriterStories() {
 
   if (!isWriter) return null;
 
-  // ── Sidebar ────────────────────────────────────────────────────────────────
-  const sidebar = (
-    <aside className="w-56 shrink-0 border-r border-border bg-card/50 flex flex-col min-h-screen">
+  // ── Breadcrumb label for mobile header ─────────────────────────────────────
+  const mobileTitle = view === "stories" ? "Cerita Saya"
+    : view === "seasons" ? (selectedStory?.title ?? "Season")
+    : view === "chapters" ? (selectedSeason?.title ?? "Chapter")
+    : `Bab ${editingChapter?.chapterNumber}: ${editingChapter?.title ?? "Tulis"}`;
+
+  // ── Sidebar content (shared desktop + mobile drawer) ───────────────────────
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
       <div className="px-4 py-4 border-b border-border">
-        <Link href="/">
+        <Link href="/" onClick={() => setMobileSidebarOpen(false)}>
           <div className="flex items-center gap-2 mb-3 cursor-pointer">
             <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-7 h-7 rounded-lg object-cover" />
             <span className="font-bold text-sm text-foreground">WOOCE Novel</span>
@@ -348,7 +357,7 @@ export default function WriterStories() {
 
       <nav className="flex-1 p-3 space-y-1">
         <button
-          onClick={() => setView("stories")}
+          onClick={() => navigateTo("stories")}
           className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${view === "stories" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           data-testid="nav-stories"
         >
@@ -356,7 +365,7 @@ export default function WriterStories() {
         </button>
         {selectedStory && (
           <button
-            onClick={() => setView("seasons")}
+            onClick={() => navigateTo("seasons")}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${view === "seasons" || view === "chapters" || view === "write" ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             data-testid="nav-seasons"
           >
@@ -366,7 +375,7 @@ export default function WriterStories() {
         )}
         {selectedSeason && (view === "chapters" || view === "write") && (
           <button
-            onClick={() => setView("chapters")}
+            onClick={() => navigateTo("chapters")}
             className={`w-full flex items-center gap-2 px-3 py-2 ml-3 rounded-lg text-xs font-medium transition-colors ${view === "chapters" || view === "write" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             data-testid="nav-chapters"
           >
@@ -377,9 +386,14 @@ export default function WriterStories() {
       </nav>
 
       <div className="p-3 border-t border-border space-y-1">
-        <Link href="/profile">
+        <Link href="/profile" onClick={() => setMobileSidebarOpen(false)}>
           <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" data-testid="button-go-profile">
             <User size={13} /> Profil Saya
+          </button>
+        </Link>
+        <Link href="/" onClick={() => setMobileSidebarOpen(false)}>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <Home size={13} /> Kembali ke Beranda
           </button>
         </Link>
         <button
@@ -390,237 +404,292 @@ export default function WriterStories() {
           <LogOut size={13} /> Keluar
         </button>
       </div>
-    </aside>
+    </div>
   );
 
   return (
     <div className="flex min-h-screen bg-background">
-      {sidebar}
 
-      <main className="flex-1 overflow-auto p-6">
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden md:flex w-56 shrink-0 border-r border-border bg-card/50 flex-col min-h-screen">
+        {sidebarContent}
+      </aside>
 
-        {/* ── Stories view ── */}
-        {view === "stories" && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Cerita Saya</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">{stories?.length ?? 0} cerita terdaftar</p>
-              </div>
-              <Button size="sm" onClick={() => openStoryForm()} data-testid="button-create-story">
-                <Plus size={14} className="mr-1.5" /> Cerita Baru
-              </Button>
+      {/* ── Mobile Sidebar Drawer ── */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r border-border shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Menu</span>
+              <button onClick={() => setMobileSidebarOpen(false)} className="p-1 rounded-lg hover:bg-muted transition-colors">
+                <X size={16} className="text-muted-foreground" />
+              </button>
             </div>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
 
-            {storiesLoading ? (
-              <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
-            ) : !stories || stories.length === 0 ? (
-              <div className="border border-dashed border-border rounded-2xl py-16 text-center">
-                <BookOpen size={32} className="mx-auto text-muted-foreground/30 mb-3" />
-                <p className="font-semibold text-foreground mb-1">Belum ada cerita</p>
-                <p className="text-sm text-muted-foreground mb-4">Mulai tulis cerita pertamamu!</p>
-                <Button size="sm" onClick={() => openStoryForm()} data-testid="button-create-first-story">
-                  <Plus size={13} className="mr-1" /> Buat Cerita
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {stories.map(story => (
-                  <div key={story.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/30 transition-colors" data-testid={`row-story-${story.id}`}>
-                    <div className="w-12 aspect-[2/3] rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                      {story.coverUrl
-                        ? <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center"><BookOpen size={14} className="text-muted-foreground/50" /></div>
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="font-semibold text-sm text-foreground truncate">{story.title}</h3>
-                        {!story.published && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Draft</span>}
-                        {story.published && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Published</span>}
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{story.description || "Tidak ada deskripsi"}</p>
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
-                        <span className="capitalize">{story.category}</span>
-                        <span className="capitalize">{story.status}</span>
-                        <span>{story.totalChapters} chapter</span>
-                        <span>{story.viewCount} views</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => { setSelectedStory(story); setView("seasons"); }} data-testid={`button-manage-${story.id}`}>
-                        <Layers size={13} className="mr-1" /> Season <ChevronRight size={12} />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => openStoryForm(story)} data-testid={`button-edit-story-${story.id}`}>
-                        <Pencil size={13} />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "story", id: story.id, name: story.title })} data-testid={`button-delete-story-${story.id}`}>
-                        <Trash2 size={13} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      {/* ── Main ── */}
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+
+        {/* ── Mobile Top Header ── */}
+        <header className="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border flex items-center gap-3 px-4 py-3">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            data-testid="button-mobile-menu"
+          >
+            <Menu size={18} className="text-foreground" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground truncate">{mobileTitle}</p>
+            {selectedStory && view !== "stories" && (
+              <p className="text-[10px] text-muted-foreground truncate">{selectedStory.title}</p>
             )}
           </div>
-        )}
-
-        {/* ── Seasons view ── */}
-        {view === "seasons" && selectedStory && (
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <Button variant="ghost" size="sm" onClick={() => setView("stories")} data-testid="button-back-to-stories">
-                <ArrowLeft size={14} className="mr-1" /> Kembali
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-foreground truncate">{selectedStory.title}</h1>
-                <p className="text-xs text-muted-foreground">Kelola season cerita</p>
-              </div>
-              <Button size="sm" onClick={() => openSeasonForm()} data-testid="button-create-season">
-                <Plus size={14} className="mr-1.5" /> Tambah Season
-              </Button>
+          {user?.photoUrl ? (
+            <img src={user.photoUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <User size={13} className="text-primary" />
             </div>
+          )}
+        </header>
 
-            {!seasons || seasons.length === 0 ? (
-              <div className="border border-dashed border-border rounded-2xl py-16 text-center">
-                <Layers size={32} className="mx-auto text-muted-foreground/30 mb-3" />
-                <p className="font-semibold text-foreground mb-1">Belum ada season</p>
-                <Button size="sm" className="mt-2" onClick={() => openSeasonForm()} data-testid="button-create-first-season">
-                  <Plus size={13} className="mr-1" /> Buat Season
+        {/* ── Content ── */}
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+
+          {/* ── Stories view ── */}
+          {view === "stories" && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Cerita Saya</h1>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stories?.length ?? 0} cerita terdaftar</p>
+                </div>
+                <Button size="sm" onClick={() => openStoryForm()} data-testid="button-create-story">
+                  <Plus size={14} className="mr-1.5" /> Cerita Baru
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {seasons.map(season => (
-                  <div key={season.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4" data-testid={`row-season-${season.id}`}>
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-primary">{season.seasonNumber}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm text-foreground">{season.title}</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setSelectedSeason(season); setView("chapters"); }} data-testid={`button-chapters-${season.id}`}>
-                        <FileText size={13} className="mr-1" /> Chapter <ChevronRight size={12} />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => openSeasonForm(season)} data-testid={`button-edit-season-${season.id}`}><Pencil size={13} /></Button>
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "season", id: season.id, name: season.title })} data-testid={`button-delete-season-${season.id}`}><Trash2 size={13} /></Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* ── Chapters view ── */}
-        {view === "chapters" && selectedSeason && (
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <Button variant="ghost" size="sm" onClick={() => setView("seasons")} data-testid="button-back-to-seasons">
-                <ArrowLeft size={14} className="mr-1" /> Kembali
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-foreground">{selectedSeason.title}</h1>
-                <p className="text-xs text-muted-foreground">{selectedStory?.title} · {chapters?.length ?? 0} chapter</p>
-              </div>
-              <Button size="sm" onClick={() => openChapterForm()} data-testid="button-create-chapter">
-                <Plus size={14} className="mr-1.5" /> Tambah Chapter
-              </Button>
-            </div>
-
-            {!chapters || chapters.length === 0 ? (
-              <div className="border border-dashed border-border rounded-2xl py-16 text-center">
-                <FileText size={32} className="mx-auto text-muted-foreground/30 mb-3" />
-                <p className="font-semibold text-foreground mb-1">Belum ada chapter</p>
-                <Button size="sm" className="mt-2" onClick={() => openChapterForm()} data-testid="button-create-first-chapter">
-                  <Plus size={13} className="mr-1" /> Tambah Chapter
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {chapters.map(ch => (
-                  <div key={ch.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3" data-testid={`row-chapter-${ch.id}`}>
-                    <span className="text-xs font-mono text-muted-foreground w-8 text-center flex-shrink-0">{ch.chapterNumber}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{ch.title}</p>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
-                        {ch.published
-                          ? <span className="text-emerald-500 flex items-center gap-0.5"><Eye size={9} /> Published</span>
-                          : ch.scheduledAt
-                            ? <span className="text-amber-500 flex items-center gap-0.5"><CalendarClock size={9} /> Terjadwal</span>
-                            : <span className="flex items-center gap-0.5"><EyeOff size={9} /> Draft</span>
+              {storiesLoading ? (
+                <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+              ) : !stories || stories.length === 0 ? (
+                <div className="border border-dashed border-border rounded-2xl py-16 text-center">
+                  <BookOpen size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="font-semibold text-foreground mb-1">Belum ada cerita</p>
+                  <p className="text-sm text-muted-foreground mb-4">Mulai tulis cerita pertamamu!</p>
+                  <Button size="sm" onClick={() => openStoryForm()} data-testid="button-create-first-story">
+                    <Plus size={13} className="mr-1" /> Buat Cerita
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {stories.map(story => (
+                    <div key={story.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/30 transition-colors" data-testid={`row-story-${story.id}`}>
+                      <div className="w-12 aspect-[2/3] rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        {story.coverUrl
+                          ? <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center"><BookOpen size={14} className="text-muted-foreground/50" /></div>
                         }
-                        <span>{ch.viewCount} views</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h3 className="font-semibold text-sm text-foreground truncate">{story.title}</h3>
+                          {!story.published && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Draft</span>}
+                          {story.published && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">Published</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{story.description || "Tidak ada deskripsi"}</p>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
+                          <span className="capitalize">{story.category}</span>
+                          <span className="capitalize">{story.status}</span>
+                          <span>{story.totalChapters} chapter</span>
+                          <span>{story.viewCount} views</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => { setSelectedStory(story); setView("seasons"); }} data-testid={`button-manage-${story.id}`}>
+                          <Layers size={13} className="mr-1 hidden sm:block" /> Season <ChevronRight size={12} />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openStoryForm(story)} data-testid={`button-edit-story-${story.id}`}>
+                          <Pencil size={13} />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "story", id: story.id, name: story.title })} data-testid={`button-delete-story-${story.id}`}>
+                          <Trash2 size={13} />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <Button size="sm" onClick={() => openWrite(ch)} data-testid={`button-write-${ch.id}`}>
-                        <Pencil size={13} className="mr-1" /> Tulis
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => openChapterForm(ch)} data-testid={`button-edit-chapter-${ch.id}`}><Pencil size={13} /></Button>
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "chapter", id: ch.id, name: ch.title })} data-testid={`button-delete-chapter-${ch.id}`}><Trash2 size={13} /></Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Write view ── */}
-        {view === "write" && editingChapter && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <Button variant="ghost" size="sm" onClick={() => setView("chapters")} data-testid="button-back-to-chapters">
-                <ArrowLeft size={14} className="mr-1" /> Kembali
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-base font-bold text-foreground truncate">Bab {editingChapter.chapterNumber}: {editingChapter.title}</h1>
-                <p className="text-xs text-muted-foreground">{selectedStory?.title} · {selectedSeason?.title}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                  <input type="checkbox" checked={chapterPublished} onChange={e => setChapterPublished(e.target.checked)} className="accent-primary" />
-                  Published
-                </label>
-                <Button
-                  size="sm"
-                  onClick={() => saveChapterContent.mutate({ id: editingChapter.id, content: chapterContent, published: chapterPublished, scheduledAt })}
-                  disabled={saveChapterContent.isPending}
-                  data-testid="button-save-chapter"
-                >
-                  {saveChapterContent.isPending ? "Menyimpan..." : "Simpan"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock size={12} />
-                <span>Jadwal terbit:</span>
-              </div>
-              <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="h-7 text-xs w-52" />
-              {scheduledAt && (
-                <button onClick={() => setScheduledAt("")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                  <X size={11} /> Hapus jadwal
-                </button>
+                  ))}
+                </div>
               )}
             </div>
+          )}
 
-            <div className="border border-border rounded-xl overflow-hidden">
-              <RichTextEditor value={chapterContent} onChange={setChapterContent} />
+          {/* ── Seasons view ── */}
+          {view === "seasons" && selectedStory && (
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <Button variant="ghost" size="sm" onClick={() => setView("stories")} data-testid="button-back-to-stories">
+                  <ArrowLeft size={14} className="mr-1" /> Kembali
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl font-bold text-foreground truncate">{selectedStory.title}</h1>
+                  <p className="text-xs text-muted-foreground">Kelola season cerita</p>
+                </div>
+                <Button size="sm" onClick={() => openSeasonForm()} data-testid="button-create-season">
+                  <Plus size={14} className="mr-1.5" /> Tambah Season
+                </Button>
+              </div>
+
+              {!seasons || seasons.length === 0 ? (
+                <div className="border border-dashed border-border rounded-2xl py-16 text-center">
+                  <Layers size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="font-semibold text-foreground mb-1">Belum ada season</p>
+                  <Button size="sm" className="mt-2" onClick={() => openSeasonForm()} data-testid="button-create-first-season">
+                    <Plus size={13} className="mr-1" /> Buat Season
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {seasons.map(season => (
+                    <div key={season.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4" data-testid={`row-season-${season.id}`}>
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-primary">{season.seasonNumber}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm text-foreground">{season.title}</h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { setSelectedSeason(season); setView("chapters"); }} data-testid={`button-chapters-${season.id}`}>
+                          <FileText size={13} className="mr-1 hidden sm:block" /> Chapter <ChevronRight size={12} />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openSeasonForm(season)} data-testid={`button-edit-season-${season.id}`}><Pencil size={13} /></Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "season", id: season.id, name: season.title })} data-testid={`button-delete-season-${season.id}`}><Trash2 size={13} /></Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
 
-            {chapterContent && (
-              <details className="mt-4">
-                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground p-3 bg-muted/30 rounded-xl border border-border">Preview konten</summary>
-                <div className="mt-2 p-4 bg-muted/20 rounded-xl border border-border prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderRichContent(chapterContent) }} />
-              </details>
-            )}
-          </div>
-        )}
-      </main>
+          {/* ── Chapters view ── */}
+          {view === "chapters" && selectedSeason && (
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <Button variant="ghost" size="sm" onClick={() => setView("seasons")} data-testid="button-back-to-seasons">
+                  <ArrowLeft size={14} className="mr-1" /> Kembali
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl font-bold text-foreground">{selectedSeason.title}</h1>
+                  <p className="text-xs text-muted-foreground">{selectedStory?.title} · {chapters?.length ?? 0} chapter</p>
+                </div>
+                <Button size="sm" onClick={() => openChapterForm()} data-testid="button-create-chapter">
+                  <Plus size={14} className="mr-1.5" /> Tambah Chapter
+                </Button>
+              </div>
+
+              {!chapters || chapters.length === 0 ? (
+                <div className="border border-dashed border-border rounded-2xl py-16 text-center">
+                  <FileText size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="font-semibold text-foreground mb-1">Belum ada chapter</p>
+                  <Button size="sm" className="mt-2" onClick={() => openChapterForm()} data-testid="button-create-first-chapter">
+                    <Plus size={13} className="mr-1" /> Tambah Chapter
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {chapters.map(ch => (
+                    <div key={ch.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3" data-testid={`row-chapter-${ch.id}`}>
+                      <span className="text-xs font-mono text-muted-foreground w-8 text-center flex-shrink-0">{ch.chapterNumber}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{ch.title}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+                          {ch.published
+                            ? <span className="text-emerald-500 flex items-center gap-0.5"><Eye size={9} /> Published</span>
+                            : ch.scheduledAt
+                              ? <span className="text-amber-500 flex items-center gap-0.5"><CalendarClock size={9} /> Terjadwal</span>
+                              : <span className="flex items-center gap-0.5"><EyeOff size={9} /> Draft</span>
+                          }
+                          <span>{ch.viewCount} views</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Button size="sm" onClick={() => openWrite(ch)} data-testid={`button-write-${ch.id}`}>
+                          <Pencil size={13} className="mr-1 hidden sm:block" /> Tulis
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openChapterForm(ch)} data-testid={`button-edit-chapter-${ch.id}`}><Pencil size={13} /></Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "chapter", id: ch.id, name: ch.title })} data-testid={`button-delete-chapter-${ch.id}`}><Trash2 size={13} /></Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Write view ── */}
+          {view === "write" && editingChapter && (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <Button variant="ghost" size="sm" onClick={() => setView("chapters")} data-testid="button-back-to-chapters">
+                  <ArrowLeft size={14} className="mr-1" /> Kembali
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-base font-bold text-foreground truncate">Bab {editingChapter.chapterNumber}: {editingChapter.title}</h1>
+                  <p className="text-xs text-muted-foreground hidden sm:block">{selectedStory?.title} · {selectedSeason?.title}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <label className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input type="checkbox" checked={chapterPublished} onChange={e => setChapterPublished(e.target.checked)} className="accent-primary" />
+                    Published
+                  </label>
+                  <Button
+                    size="sm"
+                    onClick={() => saveChapterContent.mutate({ id: editingChapter.id, content: chapterContent, published: chapterPublished, scheduledAt })}
+                    disabled={saveChapterContent.isPending}
+                    data-testid="button-save-chapter"
+                  >
+                    {saveChapterContent.isPending ? "Menyimpan..." : "Simpan"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Mobile: published checkbox */}
+              <label className="sm:hidden flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none mb-3 px-1">
+                <input type="checkbox" checked={chapterPublished} onChange={e => setChapterPublished(e.target.checked)} className="accent-primary" />
+                Publish chapter ini
+              </label>
+
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock size={12} />
+                  <span>Jadwal terbit:</span>
+                </div>
+                <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="h-7 text-xs w-full sm:w-52" />
+                {scheduledAt && (
+                  <button onClick={() => setScheduledAt("")} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <X size={11} /> Hapus jadwal
+                  </button>
+                )}
+              </div>
+
+              <div className="border border-border rounded-xl overflow-hidden">
+                <RichTextEditor value={chapterContent} onChange={setChapterContent} />
+              </div>
+
+              {chapterContent && (
+                <details className="mt-4">
+                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground p-3 bg-muted/30 rounded-xl border border-border">Preview konten</summary>
+                  <div className="mt-2 p-4 bg-muted/20 rounded-xl border border-border prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderRichContent(chapterContent) }} />
+                </details>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* ── Dialogs ── */}
       <Dialog open={storyDialog} onOpenChange={setStoryDialog}>
@@ -751,7 +820,6 @@ export default function WriterStories() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Username Setup Dialog (blocking, cannot be dismissed) ── */}
       <Dialog open={!!needsUsername} onOpenChange={() => {}}>
         <DialogContent className="max-w-md" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()}>
           <DialogHeader>
@@ -765,12 +833,10 @@ export default function WriterStories() {
               </div>
             </div>
           </DialogHeader>
-
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
               Selamat, kamu sudah diterima sebagai penulis! Sebelum mulai menulis novel, silakan pilih username kamu. Username ini akan tampil sebagai nama penulis di halaman publik.
             </p>
-
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">Username</label>
               <div className="flex items-center border border-border rounded-xl overflow-hidden bg-muted/30 focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all">
@@ -778,11 +844,7 @@ export default function WriterStories() {
                 <input
                   type="text"
                   value={usernameInput}
-                  onChange={e => {
-                    setUsernameInput(e.target.value);
-                    setUsernameAvailable(null);
-                    checkUsername(e.target.value);
-                  }}
+                  onChange={e => { setUsernameInput(e.target.value); setUsernameAvailable(null); checkUsername(e.target.value); }}
                   placeholder="nama-penulis"
                   maxLength={30}
                   className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40"
@@ -797,16 +859,11 @@ export default function WriterStories() {
               {usernameSlug.length > 0 && usernameSlug.length < 3 && (
                 <p className="text-xs text-muted-foreground">Minimal 3 karakter</p>
               )}
-              {usernameAvailable === true && (
-                <p className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle size={11} /> Username tersedia</p>
-              )}
-              {usernameAvailable === false && (
-                <p className="text-xs text-destructive flex items-center gap-1"><XCircle size={11} /> Username sudah dipakai, coba yang lain</p>
-              )}
+              {usernameAvailable === true && <p className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle size={11} /> Username tersedia</p>}
+              {usernameAvailable === false && <p className="text-xs text-destructive flex items-center gap-1"><XCircle size={11} /> Username sudah dipakai, coba yang lain</p>}
               <p className="text-[11px] text-muted-foreground">Hanya huruf kecil, angka, dan tanda - (contoh: nama-penulis)</p>
             </div>
           </div>
-
           <DialogFooter>
             <Button
               onClick={() => setupUsername.mutate(usernameSlug)}
