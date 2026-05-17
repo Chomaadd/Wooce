@@ -14,10 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   BookOpen, Plus, Pencil, Trash2, ChevronRight, Eye, EyeOff,
   ArrowLeft, Layers, FileText, LogOut, Upload, ImageIcon, RotateCcw,
-  Clock, CalendarClock, X, User,
+  Clock, CalendarClock, X, User, AtSign, CheckCircle, XCircle, Loader2,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
+
+type WriterMe = {
+  id: string; name: string; email: string; photoUrl?: string | null;
+  role: string; status: string; authorId?: string | null;
+  author?: { id: string; name: string; slug: string; } | null;
+};
 
 type WriterView = "stories" | "seasons" | "chapters" | "write";
 type StoryWithStats = NovelStory & { totalChapters: number };
@@ -145,7 +151,45 @@ export default function WriterStories() {
     }
   }, [user, authLoading, navigate]);
 
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameSlug, setUsernameSlug] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
+
   // ── Queries ────────────────────────────────────────────────────────────────
+  const { data: writerMe, isLoading: writerMeLoading } = useQuery<WriterMe>({
+    queryKey: ["/api/writer/me"],
+    queryFn: () => fetch("/api/writer/me", { credentials: "include" }).then(r => r.json()),
+    enabled: isWriter,
+  });
+
+  const needsUsername = isWriter && !writerMeLoading && writerMe && !writerMe.author;
+
+  const setupUsername = useMutation({
+    mutationFn: (username: string) => apiRequest("POST", "/api/writer/setup-username", { username }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/writer/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/writer/stories"] });
+      toast({ title: "Username berhasil disimpan!" });
+      setUsernameInput(""); setUsernameSlug(""); setUsernameAvailable(null);
+    },
+    onError: (e: any) => toast({ title: e.message ?? "Gagal menyimpan username", variant: "destructive" }),
+  });
+
+  const checkUsername = async (val: string) => {
+    const slug = val.toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
+    setUsernameSlug(slug);
+    setUsernameAvailable(null);
+    if (slug.length < 3) return;
+    setUsernameChecking(true);
+    try {
+      const res = await fetch(`/api/writer/check-slug?slug=${slug}`, { credentials: "include" });
+      const data = await res.json();
+      setUsernameAvailable(data.available);
+    } catch { setUsernameAvailable(null); }
+    finally { setUsernameChecking(false); }
+  };
+
   const { data: stories, isLoading: storiesLoading } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/writer/stories"],
     queryFn: () => fetch("/api/writer/stories", { credentials: "include" }).then(r => r.json()),
@@ -216,6 +260,7 @@ export default function WriterStories() {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const openStoryForm = (story?: StoryWithStats) => {
+    if (!story && needsUsername) return;
     if (story) {
       setEditingStory(story);
       setStoryForm({ title: story.title, slug: story.slug, description: story.description ?? "", coverUrl: story.coverUrl ?? "", category: story.category, status: story.status, tags: (story.tags ?? []).join(", "), published: story.published });
@@ -701,6 +746,75 @@ export default function WriterStories() {
               if (deleteConfirm.type === "chapter") deleteChapter.mutate(deleteConfirm.id);
             }} data-testid="button-confirm-delete">
               Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Username Setup Dialog (blocking, cannot be dismissed) ── */}
+      <Dialog open={!!needsUsername} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <AtSign size={20} className="text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Buat Username Kamu</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Wajib diisi sebelum mulai menulis</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Selamat, kamu sudah diterima sebagai penulis! Sebelum mulai menulis novel, silakan pilih username kamu. Username ini akan tampil sebagai nama penulis di halaman publik.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">Username</label>
+              <div className="flex items-center border border-border rounded-xl overflow-hidden bg-muted/30 focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all">
+                <span className="px-3 text-xs text-muted-foreground bg-muted/50 border-r border-border py-2.5 shrink-0">@</span>
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={e => {
+                    setUsernameInput(e.target.value);
+                    setUsernameAvailable(null);
+                    checkUsername(e.target.value);
+                  }}
+                  placeholder="nama-penulis"
+                  maxLength={30}
+                  className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40"
+                  data-testid="input-username-setup"
+                />
+                <div className="px-3">
+                  {usernameChecking && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+                  {!usernameChecking && usernameAvailable === true && <CheckCircle size={14} className="text-emerald-500" />}
+                  {!usernameChecking && usernameAvailable === false && <XCircle size={14} className="text-destructive" />}
+                </div>
+              </div>
+              {usernameSlug.length > 0 && usernameSlug.length < 3 && (
+                <p className="text-xs text-muted-foreground">Minimal 3 karakter</p>
+              )}
+              {usernameAvailable === true && (
+                <p className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle size={11} /> Username tersedia</p>
+              )}
+              {usernameAvailable === false && (
+                <p className="text-xs text-destructive flex items-center gap-1"><XCircle size={11} /> Username sudah dipakai, coba yang lain</p>
+              )}
+              <p className="text-[11px] text-muted-foreground">Hanya huruf kecil, angka, dan tanda - (contoh: nama-penulis)</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => setupUsername.mutate(usernameSlug)}
+              disabled={!usernameAvailable || setupUsername.isPending || usernameSlug.length < 3}
+              className="w-full"
+              data-testid="button-save-username"
+            >
+              {setupUsername.isPending ? <><Loader2 size={14} className="animate-spin mr-2" /> Menyimpan...</> : "Simpan Username"}
             </Button>
           </DialogFooter>
         </DialogContent>

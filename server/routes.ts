@@ -348,18 +348,7 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserById(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      let authorId = user.authorId;
-      if (!authorId) {
-        const baseSlug = user.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-        const slug = `${baseSlug}-${Date.now().toString(36)}`;
-        const author = await storage.createAuthor({
-          name: user.name, slug, bio: "", photoUrl: user.photoUrl ?? null,
-          tiktok: null, instagram: null, facebook: null, twitter: null,
-          website: null, saweria: null, trakteer: null, email: user.email,
-        });
-        authorId = author.id;
-      }
-      const updated = await storage.updateUser(req.params.id, { status: "active", authorId });
+      const updated = await storage.updateUser(req.params.id, { status: "active" });
       sendWriterApprovedEmail(user.email, user.name).catch(console.error);
       storage.createNotification({ userId: user.id, type: "approved", title: "Pengajuan Diterima!", message: "Selamat! Permohonanmu untuk menjadi penulis telah disetujui. Sekarang kamu bisa mulai menulis di WOOCE Novel." }).catch(console.error);
       res.json(updated);
@@ -382,8 +371,19 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserById(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date() } }, { strict: false });
-      const updated = await storage.updateUser(req.params.id, { status: "suspended" });
+
+      if (user.authorId) {
+        try {
+          const stories = await storage.getNovelStoriesByAuthor(user.authorId);
+          for (const story of stories) {
+            await storage.deleteNovelStory(story.id);
+          }
+          await storage.deleteAuthor(user.authorId);
+        } catch (e) { console.error("Suspend cleanup error:", e); }
+      }
+
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date(), authorId: null } }, { strict: false });
+      const updated = await storage.updateUser(req.params.id, { status: "suspended", authorId: null });
       sendWriterSuspendedEmail(user.email, user.name).catch(console.error);
       storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Penulis Disuspend", message: "Akun penulismu telah disuspend oleh admin. Kamu bisa mengajukan permohonan kembali setelah 30 hari." }).catch(console.error);
       res.json(updated);
@@ -749,29 +749,49 @@ export async function registerRoutes(
   });
 
   // ── Writer API ────────────────────────────────────────────────────────────
-  async function ensureAuthorId(user: any): Promise<string> {
-    if (user.authorId) {
-      const existing = await storage.getAuthorById(user.authorId);
-      if (existing) return user.authorId;
+  async function ensureAuthorId(user: any): Promise<string | null> {
+    if (!user.authorId) return null;
+    const existing = await storage.getAuthorById(user.authorId);
+    if (!existing) {
       await storage.updateUser(user.id, { authorId: null });
+      return null;
     }
-    const baseSlug = (user.name || "penulis").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "penulis";
-    const slug = `${baseSlug}-${Date.now().toString(36)}`;
-    const author = await storage.createAuthor({
-      name: user.name || "Penulis", slug, bio: "", photoUrl: user.photoUrl ?? null,
-      tiktok: null, instagram: null, facebook: null, twitter: null,
-      website: null, saweria: null, trakteer: null, email: user.email,
-    });
-    await storage.updateUser(user.id, { authorId: author.id });
-    return author.id;
+    return user.authorId;
   }
+
+  app.post("/api/writer/setup-username", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      if (user.authorId) {
+        const existing = await storage.getAuthorById(user.authorId);
+        if (existing) return res.status(400).json({ message: "Username sudah diset sebelumnya" });
+      }
+      const { username } = z.object({ username: z.string().min(3).max(30) }).parse(req.body);
+      const slug = username.toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
+      if (slug.length < 3) return res.status(400).json({ message: "Username minimal 3 karakter" });
+      const taken = await storage.getAuthorBySlug(slug);
+      if (taken) return res.status(409).json({ message: "Username sudah dipakai, coba yang lain" });
+      const author = await storage.createAuthor({
+        name: user.name || "Penulis", slug, bio: "", photoUrl: user.photoUrl ?? null,
+        tiktok: null, instagram: null, facebook: null, twitter: null,
+        website: null, saweria: null, trakteer: null, email: user.email,
+      });
+      await storage.updateUser(user.id, { authorId: author.id });
+      res.json({ author });
+    } catch (err: any) {
+      if (err?.name === "ZodError") return res.status(400).json({ message: "Username tidak valid" });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
 
   app.get("/api/writer/me", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
       let author = null;
-      try { author = await storage.getAuthorById(authorId); } catch {}
+      if (authorId) {
+        try { author = await storage.getAuthorById(authorId); } catch {}
+      }
       res.json({ ...user, authorId, author });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -780,6 +800,7 @@ export async function registerRoutes(
     try {
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
+      if (!authorId) return res.json([]);
       const stories = await storage.getNovelStoriesByAuthor(authorId);
       const storiesWithStats = await Promise.all(stories.map(async (story) => {
         const seasons = await storage.getNovelSeasons(story.id);
@@ -801,7 +822,7 @@ export async function registerRoutes(
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
       const existing = await storage.getAuthorBySlug(slug);
-      const available = !existing || existing.id === authorId;
+      const available = !existing || (authorId ? existing.id === authorId : false);
       res.json({ available, slug });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -810,6 +831,7 @@ export async function registerRoutes(
     try {
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
+      if (!authorId) return res.status(400).json({ message: "Silakan set username terlebih dahulu", needsUsername: true });
       const allowed = ["name", "bio", "photoUrl", "tiktok", "instagram", "facebook", "twitter", "website", "saweria", "trakteer"];
       const updateData: Record<string, any> = {};
       for (const key of allowed) {
@@ -840,6 +862,7 @@ export async function registerRoutes(
     try {
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
+      if (!authorId) return res.status(400).json({ message: "Silakan set username terlebih dahulu", needsUsername: true });
       const story = await storage.createNovelStory({ ...req.body, authorId });
       res.status(201).json(story);
     } catch { res.status(500).json({ message: "Internal server error" }); }
@@ -849,6 +872,7 @@ export async function registerRoutes(
     try {
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
+      if (!authorId) return res.status(400).json({ message: "Silakan set username terlebih dahulu", needsUsername: true });
       const story = await storage.getNovelStoryById(req.params.id);
       if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
       if (story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
@@ -861,6 +885,7 @@ export async function registerRoutes(
     try {
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
+      if (!authorId) return res.status(400).json({ message: "Silakan set username terlebih dahulu", needsUsername: true });
       const story = await storage.getNovelStoryById(req.params.id);
       if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
       if (story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
