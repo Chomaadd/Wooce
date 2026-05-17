@@ -131,11 +131,26 @@ export const userSchema = z.object({
   role: z.enum(["reader", "writer", "admin"]).default("reader"),
   status: z.enum(["active", "pending", "suspended"]).default("active"),
   authorId: z.string().nullable().optional(),
+  rejectedAt: z.union([z.date(), z.string()]).nullable().optional(),
+  suspendedAt: z.union([z.date(), z.string()]).nullable().optional(),
   createdAt: z.union([z.date(), z.string()]).optional(),
 });
-export const insertUserSchema = userSchema.omit({ id: true, createdAt: true });
+export const insertUserSchema = userSchema.omit({ id: true, createdAt: true, rejectedAt: true, suspendedAt: true });
 export type User = z.infer<typeof userSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+export const notificationSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  type: z.enum(["pending", "approved", "rejected", "suspended"]),
+  title: z.string(),
+  message: z.string(),
+  read: z.boolean().default(false),
+  createdAt: z.union([z.date(), z.string()]).optional(),
+});
+export type AppNotification = z.infer<typeof notificationSchema>;
+export type InsertNotification = Omit<AppNotification, "id" | "createdAt" | "read">;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export interface LoginRequest {

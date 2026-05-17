@@ -18,6 +18,8 @@ import {
   type UpdateBannerSlideRequest,
   type Announcement,
   type InsertAnnouncement,
+  type AppNotification,
+  type InsertNotification,
 } from "@shared/schema";
 import {
   AdminModel,
@@ -29,6 +31,7 @@ import {
   BannerSlideModel,
   AnnouncementModel,
 } from "./db";
+import { NotificationModel } from "./notificationModel";
 
 export interface IStorage {
   getAdminByUsername(username: string): Promise<Admin | undefined>;
@@ -84,6 +87,11 @@ export interface IStorage {
   createAnnouncement(data: InsertAnnouncement): Promise<Announcement>;
   updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement>;
   deleteAnnouncement(id: string): Promise<void>;
+
+  createNotification(data: InsertNotification): Promise<AppNotification>;
+  getNotifications(userId: string): Promise<AppNotification[]>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 }
 
 function mapId<T>(doc: any): T {
@@ -118,15 +126,15 @@ export class DatabaseStorage implements IStorage {
 
   // ── Users ──────────────────────────────────────────────────────────────────
   async getUserById(id: string): Promise<User | undefined> {
-    const doc = await UserModel.findById(id);
+    const doc = await UserModel.findById(id).lean();
     return doc ? mapUser(doc) : undefined;
   }
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const doc = await UserModel.findOne({ email });
+    const doc = await UserModel.findOne({ email }).lean();
     return doc ? mapUser(doc) : undefined;
   }
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
-    const doc = await UserModel.findOne({ googleId });
+    const doc = await UserModel.findOne({ googleId }).lean();
     return doc ? mapUser(doc) : undefined;
   }
   async createUser(data: InsertUser): Promise<User> {
@@ -343,6 +351,22 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteAnnouncement(id: string): Promise<void> {
     await AnnouncementModel.findByIdAndDelete(id);
+  }
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+  async createNotification(data: InsertNotification): Promise<AppNotification> {
+    const doc = await NotificationModel.create(data);
+    return { id: (doc._id as any).toString(), userId: doc.userId.toString(), type: doc.type as any, title: doc.title, message: doc.message, read: doc.read, createdAt: (doc as any).createdAt };
+  }
+  async getNotifications(userId: string): Promise<AppNotification[]> {
+    const docs = await NotificationModel.find({ userId }).sort({ createdAt: -1 }).limit(30).lean();
+    return docs.map((d: any) => ({ id: d._id.toString(), userId: d.userId.toString(), type: d.type, title: d.title, message: d.message, read: d.read, createdAt: d.createdAt }));
+  }
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await NotificationModel.updateMany({ userId, read: false }, { $set: { read: true } });
+  }
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    return NotificationModel.countDocuments({ userId, read: false });
   }
 }
 

@@ -12,6 +12,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import {
+  sendWriterPendingEmail,
+  sendWriterApprovedEmail,
+  sendWriterRejectedEmail,
+  sendWriterSuspendedEmail,
+} from "./email";
+import { UserModel } from "./db";
 
 declare module "express-session" {
   interface SessionData {
@@ -298,11 +305,32 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserById(req.session.userId);
       if (!user) return res.status(404).json({ message: "User not found" });
-      if (user.role === "writer") return res.json({ message: "Sudah menjadi penulis", user });
       if (user.role === "admin") return res.json({ message: "Anda adalah admin", user });
+
+      if (user.status === "suspended") {
+        const suspendedAt = (user as any).suspendedAt;
+        if (suspendedAt) {
+          const daysLeft = Math.ceil(30 - (Date.now() - new Date(suspendedAt).getTime()) / 86400000);
+          if (daysLeft > 0) return res.status(403).json({ message: `Akunmu disuspend. Bisa daftar lagi dalam ${daysLeft} hari.`, cooldown: true, daysLeft, cooldownType: "suspended" });
+        }
+      }
+
+      const rejectedAt = (user as any).rejectedAt;
+      if (rejectedAt) {
+        const daysLeft = Math.ceil(7 - (Date.now() - new Date(rejectedAt).getTime()) / 86400000);
+        if (daysLeft > 0) return res.status(403).json({ message: `Pengajuan ditolak. Bisa daftar lagi dalam ${daysLeft} hari.`, cooldown: true, daysLeft, cooldownType: "rejected" });
+      }
+
+      if (user.role === "writer" && user.status === "pending") return res.json({ message: "Sudah mengajukan", user });
+      if (user.role === "writer" && user.status === "active") return res.json({ message: "Sudah menjadi penulis", user });
+
       const updated = await storage.updateUser(user.id, { role: "writer", status: "pending" });
       req.session.userRole = "writer";
       req.session.save((err: any) => { if (err) console.error("Session save error (request-writer):", err); });
+
+      sendWriterPendingEmail(user.email, user.name).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "pending", title: "Pengajuan Sedang Ditinjau", message: "Permohonanmu untuk menjadi penulis sedang ditinjau oleh admin. Kami akan segera memberitahumu." }).catch(console.error);
+
       res.json({ success: true, user: updated });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -332,21 +360,48 @@ export async function registerRoutes(
         authorId = author.id;
       }
       const updated = await storage.updateUser(req.params.id, { status: "active", authorId });
+      sendWriterApprovedEmail(user.email, user.name).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "approved", title: "Pengajuan Diterima!", message: "Selamat! Permohonanmu untuk menjadi penulis telah disetujui. Sekarang kamu bisa mulai menulis di WOOCE Novel." }).catch(console.error);
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.patch("/api/admin/users/:id/reject", requireAuth, async (req, res) => {
     try {
-      const user = await storage.updateUser(req.params.id, { role: "reader", status: "active" });
-      res.json(user);
+      const user = await storage.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { rejectedAt: new Date() } } as any);
+      const updated = await storage.updateUser(req.params.id, { role: "reader", status: "active" });
+      sendWriterRejectedEmail(user.email, user.name).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "rejected", title: "Pengajuan Tidak Disetujui", message: "Permohonanmu untuk menjadi penulis belum disetujui saat ini. Kamu bisa mencoba lagi dalam 7 hari." }).catch(console.error);
+      res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.patch("/api/admin/users/:id/suspend", requireAuth, async (req, res) => {
     try {
-      const user = await storage.updateUser(req.params.id, { status: "suspended" });
-      res.json(user);
+      const user = await storage.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date() } } as any);
+      const updated = await storage.updateUser(req.params.id, { status: "suspended" });
+      sendWriterSuspendedEmail(user.email, user.name).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Penulis Disuspend", message: "Akun penulismu telah disuspend oleh admin. Kamu bisa mengajukan permohonan kembali setelah 30 hari." }).catch(console.error);
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+  app.get("/api/notifications", requireUser, async (req: any, res) => {
+    try {
+      const notifications = await storage.getNotifications(req.session.userId);
+      res.json(notifications);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/notifications/read-all", requireUser, async (req: any, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.session.userId);
+      res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 

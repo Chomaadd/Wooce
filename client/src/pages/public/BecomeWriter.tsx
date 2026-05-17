@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
@@ -6,26 +6,41 @@ import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { PenLine, CheckCircle2, Clock, ArrowLeft, LogIn, BookOpen, Heart, Zap } from "lucide-react";
+import { PenLine, CheckCircle2, Clock, ArrowLeft, LogIn, BookOpen, Heart, Zap, Ban, AlertTriangle } from "lucide-react";
+
+interface CooldownInfo {
+  type: "rejected" | "suspended";
+  daysLeft: number;
+}
 
 export default function BecomeWriter() {
   const { user, isLoading, refetch } = useAuth();
   const { t } = useLanguage();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [cooldown, setCooldown] = useState<CooldownInfo | null>(null);
 
   const requestWriterMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/request-writer");
-      return res.json();
+      const res = await fetch("/api/auth/request-writer", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      return data;
     },
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       await refetch();
       toast({ title: "Permintaan terkirim!", description: "Admin akan segera meninjaunya." });
     },
-    onError: () => {
+    onError: (error: any) => {
+      if (error?.cooldown) {
+        setCooldown({ type: error.cooldownType, daysLeft: error.daysLeft });
+        return;
+      }
       toast({ title: "Gagal", description: "Terjadi kesalahan. Coba lagi.", variant: "destructive" });
     },
   });
@@ -56,6 +71,27 @@ export default function BecomeWriter() {
   const isPending = user?.role === "writer" && user?.status === "pending";
   const isAlreadyActive = user?.role === "writer" && user?.status === "active";
   const isAdmin = user?.role === "admin" || user?.isAdmin;
+  const isSuspended = user?.status === "suspended";
+
+  const rejectedAt = (user as any)?.rejectedAt;
+  const suspendedAt = (user as any)?.suspendedAt;
+
+  const rejectedDaysLeft = rejectedAt
+    ? Math.ceil(7 - (Date.now() - new Date(rejectedAt).getTime()) / 86400000)
+    : 0;
+
+  const suspendedDaysLeft = suspendedAt
+    ? Math.ceil(30 - (Date.now() - new Date(suspendedAt).getTime()) / 86400000)
+    : 0;
+
+  const showRejectedCooldown = !cooldown && rejectedAt && rejectedDaysLeft > 0 && !isWriter && !isSuspended;
+  const showSuspendedCooldown = !cooldown && (isSuspended || (suspendedAt && suspendedDaysLeft > 0));
+
+  const activeCooldown = cooldown ?? (
+    showSuspendedCooldown ? { type: "suspended" as const, daysLeft: Math.max(suspendedDaysLeft, 1) } :
+    showRejectedCooldown ? { type: "rejected" as const, daysLeft: Math.max(rejectedDaysLeft, 1) } :
+    null
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,6 +153,57 @@ export default function BecomeWriter() {
                 Login dengan Google
               </button>
             </div>
+
+          ) : activeCooldown?.type === "suspended" ? (
+            <div className="p-6 space-y-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto">
+                <Ban size={22} className="text-orange-500" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground text-base">Akun Disuspend</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mt-1">
+                  Akun penulismu sedang disuspend. Kamu bisa mengajukan permohonan kembali setelah masa suspend berakhir.
+                </p>
+              </div>
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3 inline-flex items-center gap-2 mx-auto">
+                <Clock size={15} className="text-orange-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-orange-600">
+                  {activeCooldown.daysLeft} hari lagi untuk bisa mendaftar ulang
+                </p>
+              </div>
+              <Link href="/">
+                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-suspended">
+                  <ArrowLeft size={14} />
+                  Kembali ke Beranda
+                </button>
+              </Link>
+            </div>
+
+          ) : activeCooldown?.type === "rejected" ? (
+            <div className="p-6 space-y-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+                <AlertTriangle size={22} className="text-red-500" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground text-base">Pengajuan Sebelumnya Ditolak</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mt-1">
+                  Pengajuanmu belum bisa disetujui. Pastikan profilmu sudah lengkap sebelum mendaftar ulang.
+                </p>
+              </div>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 inline-flex items-center gap-2 mx-auto">
+                <Clock size={15} className="text-red-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-red-600">
+                  {activeCooldown.daysLeft} hari lagi untuk bisa mendaftar ulang
+                </p>
+              </div>
+              <Link href="/">
+                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-rejected">
+                  <ArrowLeft size={14} />
+                  Kembali ke Beranda
+                </button>
+              </Link>
+            </div>
+
           ) : isPending ? (
             <div className="p-6 space-y-3 text-center">
               <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto">
@@ -127,6 +214,7 @@ export default function BecomeWriter() {
                 Tim admin akan meninjau permohonanmu. Kamu akan mendapat notifikasi setelah disetujui.
               </p>
             </div>
+
           ) : isAlreadyActive ? (
             <div className="p-6 space-y-3 text-center">
               <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
@@ -140,6 +228,7 @@ export default function BecomeWriter() {
                 </button>
               </Link>
             </div>
+
           ) : isAdmin ? (
             <div className="p-6 space-y-3 text-center">
               <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto">
@@ -148,6 +237,7 @@ export default function BecomeWriter() {
               <p className="font-semibold text-foreground">Kamu adalah Admin</p>
               <p className="text-sm text-muted-foreground">Admin memiliki akses penuh ke seluruh platform.</p>
             </div>
+
           ) : (
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-3 pb-4 border-b border-border">

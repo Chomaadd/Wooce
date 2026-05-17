@@ -1,14 +1,15 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { useSearchContext } from "@/lib/search-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import type { NovelStory } from "@shared/schema";
+import type { NovelStory, AppNotification } from "@shared/schema";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { apiRequest } from "@/lib/queryClient";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
@@ -115,21 +116,47 @@ function WriterModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function notifIcon(type: AppNotification["type"]) {
+  if (type === "approved") return <CheckCircle2 size={14} className="text-green-500 flex-shrink-0 mt-0.5" />;
+  if (type === "rejected") return <AlertCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />;
+  if (type === "suspended") return <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />;
+  return <Clock size={14} className="text-yellow-500 flex-shrink-0 mt-0.5" />;
+}
+
 export function Navbar() {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { user, isLoading } = useAuth();
   const { search, setSearch } = useSearchContext();
+  const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const parts = location.split("/").filter(Boolean);
   const isReading = parts.length === 3;
   const isHome = location === "/";
   const [writerModalOpen, setWriterModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const showNotifBell = !!user && !user.isAdmin;
+
+  const { data: notifications = [] } = useQuery<AppNotification[]>({
+    queryKey: ["/api/notifications"],
+    enabled: showNotifBell,
+    refetchInterval: 30000,
+    staleTime: 0,
+  });
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", "/api/notifications/read-all"),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+  });
 
   const { data: stories } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/novel/stories"],
@@ -165,6 +192,17 @@ export function Navbar() {
     function handleClick(e: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Close notif dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -311,6 +349,83 @@ export function Navbar() {
                   <span className="hidden sm:inline">Cerita</span>
                 </button>
               </Link>
+            )}
+
+            {/* ── Notification Bell ── */}
+            {showNotifBell && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => {
+                    setNotifOpen(prev => !prev);
+                    if (!notifOpen && unreadCount > 0) {
+                      markAllReadMutation.mutate();
+                    }
+                  }}
+                  className="relative p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                  data-testid="button-notification-bell"
+                  aria-label="Notifikasi"
+                >
+                  <Bell size={15} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {notifOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.14 }}
+                      className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-xl shadow-xl overflow-hidden z-50"
+                    >
+                      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">Notifikasi</p>
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={() => markAllReadMutation.mutate()}
+                            className="text-[11px] text-primary hover:underline"
+                            data-testid="button-mark-all-read"
+                          >
+                            Tandai semua dibaca
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                            <BellOff size={24} strokeWidth={1.5} />
+                            <p className="text-xs">Belum ada notifikasi</p>
+                          </div>
+                        ) : (
+                          notifications.map(n => (
+                            <div
+                              key={n.id}
+                              className={`flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
+                              data-testid={`notif-item-${n.id}`}
+                            >
+                              {notifIcon(n.type)}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-foreground leading-tight">{n.title}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+                                {n.createdAt && (
+                                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                                    {new Date(n.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                  </p>
+                                )}
+                              </div>
+                              {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
 
             {/* ── User menu (click-based, no hover gap issue) ── */}
