@@ -303,8 +303,20 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                       </div>
                     )}
                     <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <div className="bg-white/15 backdrop-blur-md rounded-lg px-3 py-1.5 text-center">
-                        <span className="text-white text-xs font-semibold">{t("novel.readNow")}</span>
+                      <div className="bg-white/15 backdrop-blur-md rounded-lg px-3 py-2">
+                        <div className="flex items-center justify-center gap-3 mb-1.5">
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-white">
+                            <Eye size={9} />
+                            {formatViewCount(story.viewCount)}
+                          </span>
+                          {story.totalChapters > 0 && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-white">
+                              <BookMarked size={9} />
+                              {story.totalChapters} bab
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-white text-xs font-semibold block text-center">{t("novel.readNow")}</span>
                       </div>
                     </div>
                   </div>
@@ -312,18 +324,6 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                     <h3 className="font-bold text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                       {story.title}
                     </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                        <Eye size={9} />
-                        {formatViewCount(story.viewCount)}
-                      </span>
-                      {story.totalChapters > 0 && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                          <BookMarked size={9} />
-                          {story.totalChapters}
-                        </span>
-                      )}
-                    </div>
                     {(story.tags ?? []).length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-0.5">
                         {(story.tags ?? []).slice(0, 2).map(tag => (
@@ -690,7 +690,13 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                       {story.status}
                     </span>
                   </div>
-                  <div className="absolute bottom-1.5 right-1.5">
+                  <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+                    {story.totalChapters > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-white">
+                        <BookMarked size={7} />
+                        {story.totalChapters}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/90 text-white shadow-sm">
                       <Sparkles size={7} />
                       Baru
@@ -700,11 +706,6 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                 <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
                   {story.title}
                 </h3>
-                {story.totalChapters > 0 && (
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5 justify-center">
-                    <BookMarked size={9} /> {story.totalChapters} bab
-                  </p>
-                )}
               </motion.div>
             </Link>
           );
@@ -797,7 +798,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                       {story.title}
                     </h3>
                     {story.authorName && (
-                      <p className="text-[10px] text-muted-foreground/70 truncate">
+                      <p className="text-[10px] text-muted-foreground/70 truncate text-center">
                         oleh{" "}
                         <span
                           onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
