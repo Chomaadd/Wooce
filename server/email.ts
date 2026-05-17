@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import path from "path";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -7,6 +8,15 @@ const transporter = nodemailer.createTransport({
     pass: process.env.GMAIL_APP_PASSWORD,
   },
 });
+
+const LOGO_CID = "logo@wooce-novel";
+const LOGO_PATH = path.resolve("public/image/icon-navbar.png");
+
+const logoAttachment = {
+  filename: "icon-navbar.png",
+  path: LOGO_PATH,
+  cid: LOGO_CID,
+};
 
 function getBaseUrl(): string {
   const raw = process.env.SITE_URL ||
@@ -32,7 +42,7 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:40px 40px 36px;text-align:center;">
             <table cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
               <tr><td align="center" style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:18px;overflow:hidden;line-height:0;">
-                <img src="${BASE_URL}/image/icon-navbar.png" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;border-radius:18px;" />
+                <img src="cid:${LOGO_CID}" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;border-radius:18px;" />
               </td></tr>
             </table>
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
@@ -70,7 +80,9 @@ export async function sendContactNotification(data: { name: string; email: strin
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to: process.env.GMAIL_USER,
     replyTo: data.email,
-    subject: `✉️ Pesan baru dari ${data.name} — ${data.subject}`,
+    subject: `Pesan baru dari ${data.name} — ${data.subject}`,
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)",
       "Pesan Baru Masuk",
@@ -96,7 +108,7 @@ export async function sendContactNotification(data: { name: string; email: strin
         <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;white-space:pre-wrap;">${data.message}</p>
       </div>
       <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-        <a href="mailto:${data.email}?subject=Re: ${encodeURIComponent(data.subject)}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Balas Pesan →</a>
+        <a href="mailto:${data.email}?subject=Re: ${encodeURIComponent(data.subject)}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Balas Pesan</a>
       </td></tr></table>`
     ),
   }));
@@ -107,6 +119,8 @@ export async function sendWriterPendingEmail(to: string, name: string) {
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
     subject: "Pengajuan Penulismu Sedang Ditinjau — WOOCE Novel",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#78350f 0%,#92400e 60%,#78350f 100%)",
       "Pengajuan Sedang Ditinjau",
@@ -114,7 +128,7 @@ export async function sendWriterPendingEmail(to: string, name: string) {
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Permohonanmu untuk menjadi <strong>penulis di WOOCE Novel</strong> sudah kami terima dan sedang dalam proses peninjauan oleh tim admin.</p>
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
-        <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">⏳ Proses peninjauan biasanya berlangsung <strong>1–3 hari kerja</strong>. Kamu akan mendapat email lanjutan setelah keputusan diambil.</p>
+        <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">Proses peninjauan biasanya berlangsung <strong>1-3 hari kerja</strong>. Kamu akan mendapat email lanjutan setelah keputusan diambil.</p>
       </div>
       <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Sambil menunggu, kamu tetap bisa menikmati semua novel di platform kami.</p>`
     ),
@@ -127,6 +141,8 @@ export async function sendWriterApprovedEmail(to: string, name: string) {
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
     subject: "Selamat! Kamu Diterima sebagai Penulis WOOCE Novel",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#064e3b 0%,#065f46 60%,#064e3b 100%)",
       "Pengajuan Diterima!",
@@ -142,7 +158,7 @@ export async function sendWriterApprovedEmail(to: string, name: string) {
         </ul>
       </div>
       <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-        <a href="${BASE_URL}/writer/cerita" style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Buka Dashboard Penulis →</a>
+        <a href="${BASE_URL}/writer/cerita" style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Buka Dashboard Penulis</a>
       </td></tr></table>`
     ),
   }));
@@ -153,6 +169,8 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
     subject: "Pengajuan Penulis Ditolak — Bisa Coba Lagi dalam 7 Hari",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7f1d1d 0%,#991b1b 60%,#7f1d1d 100%)",
       "Pengajuan Tidak Disetujui",
@@ -160,7 +178,7 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Setelah ditinjau, pengajuanmu untuk menjadi penulis di <strong>WOOCE Novel</strong> belum bisa kami setujui saat ini.</p>
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
-        <p style="margin:0;color:#991b1b;font-size:14px;line-height:1.6;">⏱ Kamu bisa mengajukan permohonan kembali setelah <strong>7 hari</strong> dari sekarang. Pastikan profilmu sudah lengkap sebelum mendaftar ulang.</p>
+        <p style="margin:0;color:#991b1b;font-size:14px;line-height:1.6;">Kamu bisa mengajukan permohonan kembali setelah <strong>7 hari</strong> dari sekarang. Pastikan profilmu sudah lengkap sebelum mendaftar ulang.</p>
       </div>
       <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Tetap semangat menulis! Kami selalu terbuka untuk pengajuan berikutnya.</p>`
     ),
@@ -171,7 +189,9 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
   return guard(() => transporter.sendMail({
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
     to,
-    subject: "⚠️ Akun Penulismu di WOOCE Novel Telah Disuspend",
+    subject: "Akun Penulismu di WOOCE Novel Telah Disuspend",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7c2d12 0%,#9a3412 60%,#7c2d12 100%)",
       "Akun Disuspend",
@@ -179,7 +199,7 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
       `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami ingin memberitahu bahwa akun penulismu di <strong>WOOCE Novel</strong> telah <strong>disuspend</strong> oleh tim admin karena melanggar panduan konten platform.</p>
       <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
-        <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.6;">🔒 Akses ke dashboard penulis dan manajemen ceritamu sementara dinonaktifkan. Kamu bisa mengajukan permohonan kembali setelah <strong>30 hari</strong>.</p>
+        <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.6;">Akses ke dashboard penulis dan manajemen ceritamu sementara dinonaktifkan. Kamu bisa mengajukan permohonan kembali setelah <strong>30 hari</strong>.</p>
       </div>
       <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, hubungi tim kami melalui halaman kontak.</p>`
     ),
