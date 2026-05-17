@@ -42,12 +42,12 @@ const emailWrapper = (headerBg: string, headerIcon: string, headerTitle: string,
 </body>
 </html>`;
 
-function guard(fn: () => Promise<void>) {
+function guard(fn: () => Promise<any>): Promise<void> {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     console.warn("Gmail credentials not configured, skipping email.");
     return Promise.resolve();
   }
-  return fn().catch(err => console.error("Email send error:", err));
+  return fn().then(() => {}).catch(err => console.error("Email send error:", err));
 }
 
 export async function sendContactNotification(data: { name: string; email: string; subject: string; message: string }) {
