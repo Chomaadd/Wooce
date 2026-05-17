@@ -325,7 +325,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                       {story.title}
                     </h3>
                     {(story.tags ?? []).length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-0.5">
+                      <div className="flex flex-wrap gap-1 pt-0.5 justify-center">
                         {(story.tags ?? []).slice(0, 2).map(tag => (
                           <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                             {tag}
@@ -768,7 +768,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                         <BookOpen size={18} className="text-primary/50" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className="absolute top-1.5 left-1.5">
                       <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                         <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
@@ -784,11 +784,23 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                       </div>
                     )}
                     {avgRating && (
-                      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5">
+                      <div className="absolute bottom-8 left-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <Star size={7} className="text-amber-400 fill-amber-400" />
                         <span className="text-[8px] font-semibold text-white">{avgRating}</span>
                       </div>
                     )}
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                        <Eye size={8} />
+                        {formatViewCount(story.viewCount)}
+                      </span>
+                      {story.totalChapters > 0 && (
+                        <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                          <BookMarked size={8} />
+                          {story.totalChapters} bab
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-0.5">
                     <h3
@@ -808,18 +820,6 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                         </span>
                       </p>
                     )}
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                        <Eye size={9} />
-                        {formatViewCount(story.viewCount)}
-                      </span>
-                      {story.totalChapters > 0 && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                          <BookMarked size={9} />
-                          {story.totalChapters}
-                        </span>
-                      )}
-                    </div>
                   </div>
                 </div>
               </Link>

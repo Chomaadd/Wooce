@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const BASE_URL = process.env.SITE_URL || "https://wooce.replit.app";
+const BASE_URL = process.env.SITE_URL || "https://7998c637-24f6-4bca-b555-3eabd606587c-00-32zjt079ah4op.sisko.replit.dev";
 
 const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string) => `
 <!DOCTYPE html>
