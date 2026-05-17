@@ -9,9 +9,13 @@ const transporter = nodemailer.createTransport({
 });
 
 function getBaseUrl(): string {
-  if (process.env.SITE_URL) return process.env.SITE_URL;
-  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  return "https://wooce-novel.replit.app";
+  const raw = process.env.SITE_URL ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://wooce-novel.replit.app");
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw.replace(/\/+$/, "");
+  }
 }
 
 const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string) => {
