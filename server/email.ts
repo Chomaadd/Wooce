@@ -43,8 +43,8 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
         <tr>
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:40px 40px 36px;text-align:center;">
             <table cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
-              <tr><td align="center" style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:18px;overflow:hidden;line-height:0;">
-                ${LOGO_DATA_URL ? `<img src="${LOGO_DATA_URL}" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;border-radius:18px;" />` : `<div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;">W</div>`}
+              <tr><td align="center" style="line-height:0;">
+                ${LOGO_DATA_URL ? `<img src="${LOGO_DATA_URL}" alt="WOOCE" width="72" height="72" style="width:72px;height:72px;display:block;" />` : `<div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;">W</div>`}
               </td></tr>
             </table>
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
