@@ -17,6 +17,7 @@ import {
   sendWriterApprovedEmail,
   sendWriterRejectedEmail,
   sendWriterSuspendedEmail,
+  sendContactNotification,
 } from "./email";
 import { UserModel } from "./db";
 
@@ -1065,6 +1066,21 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Stats error:", err);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // ── Contact Form ─────────────────────────────────────────────────────────
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, subject, message } = req.body;
+      if (!name || !email || !subject || !message) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      await sendContactNotification({ name, email, subject, message });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Contact error:", err);
+      res.status(500).json({ message: "Failed to send message" });
     }
   });
 

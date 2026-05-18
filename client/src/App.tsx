@@ -15,6 +15,7 @@ import NovelRead from "./pages/public/NovelRead";
 import Bookmarks from "./pages/public/Bookmarks";
 import Terms from "./pages/public/Terms";
 import Privacy from "./pages/public/Privacy";
+import Contact from "./pages/public/Contact";
 import AuthorProfile from "./pages/public/AuthorProfile";
 import BecomeWriter from "./pages/public/BecomeWriter";
 import UserProfile from "./pages/public/UserProfile";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/bookmarks" component={Bookmarks} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/contact" component={Contact} />
       <Route path="/penulis/:slug" component={AuthorProfile} />
       <Route path="/daftar-penulis" component={BecomeWriter} />
       <Route path="/profile" component={UserProfile} />
