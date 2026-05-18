@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Globe, Mail, ArrowLeft, Heart } from "lucide-react";
+import { BookOpen, Globe, Mail, ArrowLeft, Heart, ShieldOff } from "lucide-react";
 import { SiTiktok, SiFacebook, SiInstagram, SiX } from "react-icons/si";
 import { useLanguage } from "@/hooks/use-language";
 import type { Author, NovelStory } from "@shared/schema";
@@ -71,6 +71,8 @@ export default function AuthorProfile() {
     { key: "trakteer", href: author.trakteer ? `https://trakteer.id/${author.trakteer}` : null, label: "Trakteer", color: "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/30" },
   ].filter(l => !!l.href);
 
+  const isSuspended = (author as any).userStatus === "suspended";
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -80,6 +82,21 @@ export default function AuthorProfile() {
             <ArrowLeft size={14} /> {t("author.backToHome")}
           </button>
         </Link>
+
+        {isSuspended && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-start gap-3 px-4 py-3.5 rounded-xl bg-destructive/8 border border-destructive/20"
+            data-testid="banner-author-suspended"
+          >
+            <ShieldOff size={16} className="text-destructive mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-destructive">Akun Disuspend</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Akun penulis ini sedang dalam status suspensi oleh admin platform.</p>
+            </div>
+          </motion.div>
+        )}
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row gap-6 items-start mb-10">
           <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-muted border border-border flex-shrink-0 shadow-md">
@@ -93,7 +110,14 @@ export default function AuthorProfile() {
           </div>
 
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">{author.name}</h1>
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{author.name}</h1>
+              {isSuspended && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                  <ShieldOff size={9} /> Suspended
+                </span>
+              )}
+            </div>
             {author.bio && (
               <p className="text-muted-foreground text-sm leading-relaxed mb-4 max-w-xl">{author.bio}</p>
             )}

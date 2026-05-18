@@ -181,6 +181,131 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
   }));
 }
 
+export async function sendOtpEmail(to: string, name: string, otp: string) {
+  return guard(() => transporter.sendMail({
+    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: "Kode Verifikasi Hapus Akun — WOOCE Novel",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
+    html: emailWrapper(
+      "linear-gradient(135deg,#7f1d1d 0%,#991b1b 60%,#7f1d1d 100%)",
+      "Verifikasi Penghapusan Akun",
+      "Masukkan kode OTP untuk mengonfirmasi",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami menerima permintaan untuk <strong>menghapus akunmu</strong> di WOOCE Novel. Gunakan kode OTP berikut untuk melanjutkan:</p>
+      <div style="text-align:center;margin:28px 0;">
+        <div style="display:inline-block;background:linear-gradient(135deg,#7f1d1d,#991b1b);border-radius:16px;padding:20px 40px;">
+          <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#ffffff;font-family:monospace;">${otp}</span>
+        </div>
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;color:#991b1b;font-size:13px;line-height:1.6;">Kode ini berlaku selama <strong>10 menit</strong>. Jika kamu tidak meminta ini, abaikan email ini — akunmu aman.</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;text-align:center;">Penghapusan akun bersifat <strong>permanen</strong> dan tidak dapat dibatalkan.</p>`
+    ),
+  }));
+}
+
+export async function sendAccountDeletedByAdminEmail(to: string, name: string) {
+  return guard(() => transporter.sendMail({
+    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: "Akunmu di WOOCE Novel Telah Dihapus",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
+    html: emailWrapper(
+      "linear-gradient(135deg,#1f2937 0%,#111827 60%,#1f2937 100%)",
+      "Akun Dihapus",
+      "Pemberitahuan resmi dari WOOCE Novel",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami memberitahu bahwa akunmu di <strong>WOOCE Novel</strong> telah <strong>dihapus permanen</strong> oleh tim admin karena melanggar standar komunitas, ketentuan layanan, dan/atau kebijakan privasi platform kami.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Semua data yang terkait dengan akunmu telah dihapus dari sistem kami. Jika kamu merasa ini adalah kesalahan, silakan hubungi kami melalui halaman kontak.</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih atas pemahaman dan kerja samamu.</p>`
+    ),
+  }));
+}
+
+export async function sendWriterAccountDeletedByAdminEmail(to: string, name: string, pdfBuffer: Buffer) {
+  return guard(() => transporter.sendMail({
+    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: "Akun Penulismu Dihapus — Backup Cerita Terlampir",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [
+      logoAttachment,
+      {
+        filename: `backup-cerita-${name.replace(/\s+/g, "-").toLowerCase()}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+    html: emailWrapper(
+      "linear-gradient(135deg,#1f2937 0%,#111827 60%,#1f2937 100%)",
+      "Akun Penulis Dihapus",
+      "Backup cerita kamu terlampir di email ini",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Akunmu sebagai penulis di <strong>WOOCE Novel</strong> telah <strong>dihapus permanen</strong> oleh tim admin karena melanggar standar komunitas dan ketentuan layanan kami.</p>
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;color:#065f46;font-size:13px;font-weight:600;">Backup Cerita</p>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Kami telah menyertakan <strong>file PDF backup</strong> berisi semua data cerita yang pernah kamu tulis di platform ini sebagai lampiran email ini. Harap simpan file tersebut.</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, silakan hubungi kami melalui halaman kontak.</p>`
+    ),
+  }));
+}
+
+export async function sendSelfDeleteConfirmedEmail(to: string, name: string) {
+  return guard(() => transporter.sendMail({
+    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: "Akunmu Berhasil Dihapus — WOOCE Novel",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
+    html: emailWrapper(
+      "linear-gradient(135deg,#374151 0%,#1f2937 60%,#374151 100%)",
+      "Akun Berhasil Dihapus",
+      "Permintaanmu telah diproses",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Akunmu di <strong>WOOCE Novel</strong> telah berhasil dihapus sesuai permintaanmu. Semua data akun telah dihapus dari sistem kami.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">Terima kasih sudah menjadi bagian dari WOOCE Novel. Kamu selalu bisa mendaftar ulang kapan saja.</p>
+      </div>`
+    ),
+  }));
+}
+
+export async function sendWriterSelfDeleteConfirmedEmail(to: string, name: string, pdfBuffer: Buffer) {
+  return guard(() => transporter.sendMail({
+    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: "Akunmu Dihapus — Backup Cerita Terlampir",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [
+      logoAttachment,
+      {
+        filename: `backup-cerita-${name.replace(/\s+/g, "-").toLowerCase()}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+    html: emailWrapper(
+      "linear-gradient(135deg,#374151 0%,#1f2937 60%,#374151 100%)",
+      "Akun Berhasil Dihapus",
+      "Backup cerita kamu terlampir",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Akunmu di <strong>WOOCE Novel</strong> telah berhasil dihapus sesuai permintaanmu.</p>
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;color:#065f46;font-size:13px;font-weight:600;">File Backup Ceritamu</p>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Semua data cerita yang pernah kamu tulis sudah kami kemas dalam <strong>file PDF</strong> yang terlampir. Harap simpan file ini sebagai arsibmu.</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih sudah menjadi bagian dari WOOCE Novel. Semoga karyamu terus berkembang!</p>`
+    ),
+  }));
+}
+
 export async function sendWriterSuspendedEmail(to: string, name: string) {
   return guard(() => transporter.sendMail({
     from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,

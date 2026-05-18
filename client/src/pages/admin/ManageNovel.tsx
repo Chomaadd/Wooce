@@ -1848,6 +1848,28 @@ function ApprovalsView() {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/users/${id}/delete`),
+    onSuccess: () => {
+      refetch();
+      refetchActive();
+      toast({ title: "Akun berhasil dihapus permanen.", variant: "destructive" });
+    },
+    onError: () => {
+      toast({ title: "Gagal menghapus akun.", variant: "destructive" });
+    },
+  });
+
+  function handleDeleteUser(user: AppUser) {
+    const isWriter = user.role === "writer";
+    const msg = isWriter
+      ? `Hapus PERMANEN akun penulis "${user.name}"?\n\nSemua cerita akan dihapus dan penulis akan menerima email beserta PDF backup karya mereka.\n\nTindakan ini TIDAK BISA dibatalkan!`
+      : `Hapus PERMANEN akun "${user.name}"?\n\nTindakan ini TIDAK BISA dibatalkan!`;
+    if (window.confirm(msg)) {
+      deleteUserMutation.mutate(user.id);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
@@ -1912,6 +1934,15 @@ function ApprovalsView() {
                   >
                     <UserX size={13} /> Tolak
                   </button>
+                  <button
+                    onClick={() => handleDeleteUser(u)}
+                    disabled={deleteUserMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    title="Hapus permanen"
+                    data-testid={`button-delete-user-${u.id}`}
+                  >
+                    <Trash2 size={13} /> Hapus
+                  </button>
                 </div>
               </div>
             ))}
@@ -1943,14 +1974,25 @@ function ApprovalsView() {
                   <p className="font-semibold text-sm text-foreground">{u.name}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
-                <button
-                  onClick={() => suspendMutation.mutate(u.id)}
-                  disabled={suspendMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-red-500/10 hover:text-red-600 transition-colors text-xs font-semibold disabled:opacity-50"
-                  data-testid={`button-suspend-${u.id}`}
-                >
-                  <UserX size={13} /> Suspend
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => suspendMutation.mutate(u.id)}
+                    disabled={suspendMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-yellow-500/10 hover:text-yellow-600 transition-colors text-xs font-semibold disabled:opacity-50"
+                    data-testid={`button-suspend-${u.id}`}
+                  >
+                    <UserX size={13} /> Suspend
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(u)}
+                    disabled={deleteUserMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    title="Hapus permanen"
+                    data-testid={`button-delete-user-${u.id}`}
+                  >
+                    <Trash2 size={13} /> Hapus
+                  </button>
+                </div>
               </div>
             ))}
           </div>

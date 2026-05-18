@@ -774,6 +774,11 @@ export default function NovelDetail() {
                     oleh <span className="font-medium text-foreground">{(story as any).author.name}</span>
                   </span>
                 </Link>
+                {(story as any).author.userStatus === "suspended" && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                    Suspended
+                  </span>
+                )}
               </div>
             )}
           </div>

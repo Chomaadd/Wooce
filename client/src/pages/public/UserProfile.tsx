@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
-  Loader2, Copy, Upload, RotateCcw, Camera,
+  Loader2, Copy, Upload, RotateCcw, Camera, AlertTriangle, Trash2,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -187,6 +187,10 @@ export default function UserProfile() {
   const [socialVals, setSocialVals] = useState<Record<string, string>>({});
   const [donationVals, setDonationVals] = useState<Record<string, string>>({});
 
+  // Delete account OTP flow
+  const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "otp" | "deleting">("idle");
+  const [otpInput, setOtpInput] = useState("");
+
   useEffect(() => {
     if (!authLoading && (!user || user.isAdmin)) navigate("/");
   }, [user, authLoading, navigate]);
@@ -238,6 +242,33 @@ export default function UserProfile() {
       toast({ title: "Profil berhasil disimpan!" });
     },
     onError: (err: any) => toast({ title: err?.message || "Gagal menyimpan profil", variant: "destructive" }),
+  });
+
+  const requestOtpMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/auth/request-delete-otp"),
+    onSuccess: () => {
+      setDeleteStep("otp");
+      setOtpInput("");
+      toast({ title: "Kode OTP dikirim ke emailmu!" });
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "Gagal mengirim OTP";
+      toast({ title: msg, variant: "destructive" });
+    },
+  });
+
+  const confirmDeleteMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/auth/confirm-delete", { otp: otpInput }),
+    onSuccess: () => {
+      toast({ title: "Akunmu berhasil dihapus. Sampai jumpa!" });
+      setDeleteStep("idle");
+      logout();
+      navigate("/");
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "Kode OTP tidak valid";
+      toast({ title: msg, variant: "destructive" });
+    },
   });
 
   const handleSlugChange = (val: string) => {
@@ -823,6 +854,115 @@ export default function UserProfile() {
                 <div className="text-[10px] text-muted-foreground">{stat.label}</div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Danger Zone — Delete Account */}
+        <section className="pb-6">
+          <div className="border border-destructive/20 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 bg-destructive/5 border-b border-destructive/20">
+              <AlertTriangle size={14} className="text-destructive flex-shrink-0" />
+              <h2 className="font-bold text-sm text-destructive">Zona Berbahaya</h2>
+            </div>
+            <div className="px-5 py-4">
+              <AnimatePresence mode="wait">
+                {deleteStep === "idle" && (
+                  <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-0.5">Hapus Akun</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Menghapus akun bersifat permanen dan tidak bisa dibatalkan.
+                        {user?.role === "writer" && " Semua ceritamu akan dihapus dan kamu akan menerima PDF backup via email."}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDeleteStep("confirm")}
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 transition-colors"
+                      data-testid="button-delete-account-start"
+                    >
+                      <Trash2 size={12} /> Hapus Akun
+                    </button>
+                  </motion.div>
+                )}
+
+                {deleteStep === "confirm" && (
+                  <motion.div key="confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+                    <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-destructive/8 border border-destructive/15">
+                      <AlertTriangle size={15} className="text-destructive mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground mb-0.5">Yakin ingin menghapus akun?</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Tindakan ini tidak dapat dibatalkan. Klik "Kirim OTP" untuk melanjutkan — kami akan mengirim kode verifikasi ke <strong>{user?.email}</strong>.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => requestOtpMutation.mutate()}
+                        disabled={requestOtpMutation.isPending}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-destructive hover:bg-destructive/90 disabled:opacity-60 transition-opacity"
+                        data-testid="button-request-otp"
+                      >
+                        {requestOtpMutation.isPending ? <><Loader2 size={11} className="animate-spin" /> Mengirim...</> : "Kirim OTP ke Email"}
+                      </button>
+                      <button
+                        onClick={() => setDeleteStep("idle")}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        data-testid="button-cancel-delete"
+                      >
+                        <X size={12} /> Batal
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {deleteStep === "otp" && (
+                  <motion.div key="otp" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Masukkan kode 6-digit yang sudah dikirim ke <strong>{user?.email}</strong>. Kode berlaku 10 menit.
+                    </p>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={otpInput}
+                        onChange={e => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="123456"
+                        className="w-36 px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-destructive/30 focus:border-destructive placeholder:text-muted-foreground/30"
+                        data-testid="input-otp-delete"
+                      />
+                      <button
+                        onClick={() => confirmDeleteMutation.mutate()}
+                        disabled={otpInput.length !== 6 || confirmDeleteMutation.isPending}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-destructive hover:bg-destructive/90 disabled:opacity-60 transition-opacity"
+                        data-testid="button-confirm-delete"
+                      >
+                        {confirmDeleteMutation.isPending ? <><Loader2 size={11} className="animate-spin" /> Menghapus...</> : <><Trash2 size={11} /> Konfirmasi Hapus</>}
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => requestOtpMutation.mutate()}
+                        disabled={requestOtpMutation.isPending}
+                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                        data-testid="button-resend-otp"
+                      >
+                        {requestOtpMutation.isPending ? "Mengirim..." : "Kirim ulang OTP"}
+                      </button>
+                      <span className="text-muted-foreground/30 text-[11px]">·</span>
+                      <button
+                        onClick={() => { setDeleteStep("idle"); setOtpInput(""); }}
+                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid="button-cancel-otp"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </section>
       </main>

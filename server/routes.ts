@@ -18,8 +18,15 @@ import {
   sendWriterRejectedEmail,
   sendWriterSuspendedEmail,
   sendContactNotification,
+  sendOtpEmail,
+  sendAccountDeletedByAdminEmail,
+  sendWriterAccountDeletedByAdminEmail,
+  sendSelfDeleteConfirmedEmail,
+  sendWriterSelfDeleteConfirmedEmail,
 } from "./email";
-import { UserModel } from "./db";
+import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel } from "./db";
+import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
+import { generateWriterBackupPdf } from "./pdf";
 
 declare module "express-session" {
   interface SessionData {
@@ -388,23 +395,72 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserById(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-
-      if (user.authorId) {
-        try {
-          const stories = await storage.getNovelStoriesByAuthor(user.authorId);
-          for (const story of stories) {
-            await storage.deleteNovelStory(story.id);
-          }
-          await storage.deleteAuthor(user.authorId);
-        } catch (e) { console.error("Suspend cleanup error:", e); }
-      }
-
-      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date(), authorId: null } }, { strict: false });
-      const updated = await storage.updateUser(req.params.id, { status: "suspended", authorId: null });
+      // Konten (story, author) TIDAK dihapus — hanya mark akun sebagai suspended
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date() } }, { strict: false });
+      const updated = await storage.updateUser(req.params.id, { status: "suspended" });
       sendWriterSuspendedEmail(user.email, user.name).catch(console.error);
-      storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Penulis Disuspend", message: "Akun penulismu telah disuspend oleh admin. Kamu bisa mengajukan permohonan kembali setelah 30 hari." }).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Disuspend", message: "Akunmu telah disuspend oleh admin. Cerita-ceritamu masih ada namun profilmu ditandai suspended." }).catch(console.error);
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/admin/users/:id/delete", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const isWriter = user.role === "writer" && !!user.authorId;
+
+      if (isWriter && user.authorId) {
+        // Buat PDF backup semua cerita penulis sebelum hapus
+        try {
+          const stories = await storage.getNovelStoriesByAuthor(user.authorId);
+          const storyDataList = await Promise.all(stories.map(async (story) => {
+            const seasons = await storage.getNovelSeasons(story.id);
+            const seasonDataList = await Promise.all(seasons.map(async (season) => {
+              const chapters = await storage.getNovelChapters(season.id);
+              return {
+                seasonNumber: season.seasonNumber,
+                title: season.title,
+                chapters: chapters.map(ch => ({
+                  chapterNumber: ch.chapterNumber,
+                  title: ch.title,
+                  content: (ch as any).content ?? "",
+                })),
+              };
+            }));
+            return {
+              title: story.title,
+              category: story.category,
+              status: story.status,
+              synopsis: (story as any).synopsis ?? "",
+              seasons: seasonDataList,
+            };
+          }));
+
+          const pdfBuffer = await generateWriterBackupPdf({
+            name: user.name,
+            email: user.email,
+            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+            stories: storyDataList,
+          });
+
+          await sendWriterAccountDeletedByAdminEmail(user.email, user.name, pdfBuffer);
+
+          // Hapus semua cerita beserta kontennya
+          for (const story of stories) await storage.deleteNovelStory(story.id);
+          await storage.deleteAuthor(user.authorId);
+        } catch (e) { console.error("Writer delete error:", e); }
+      } else {
+        await sendAccountDeletedByAdminEmail(user.email, user.name);
+      }
+
+      await storage.deleteUser(user.id);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Admin delete user error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // ── Notifications ──────────────────────────────────────────────────────────
@@ -752,7 +808,10 @@ export async function registerRoutes(
       if (!author) return res.status(404).json({ message: "Author not found" });
       const allStories = await storage.getNovelStories(true);
       const stories = allStories.filter(s => s.authorId === author.id);
-      res.json({ ...author, stories });
+      // Cari user terkait untuk expose userStatus (suspended, active, dst.)
+      const userDoc = await UserModel.findOne({ authorId: author.id }).lean() as any;
+      const userStatus = userDoc?.status ?? "active";
+      res.json({ ...author, stories, userStatus });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
   app.post("/api/authors", requireAuth, async (req, res) => {
@@ -1069,9 +1128,99 @@ export async function registerRoutes(
     }
   });
 
+  // ── Account Self-Delete (OTP Flow) ────────────────────────────────────────
+  app.post("/api/auth/request-delete-otp", requireUser, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const rlKey = `otp:${user.id}`;
+      const rl = checkRateLimit(rlKey, 3, 60 * 60 * 1000); // 3 per jam
+      if (!rl.allowed) {
+        return res.status(429).json({ message: "Terlalu banyak permintaan. Coba lagi nanti.", retryAfterMs: rl.retryAfterMs });
+      }
+
+      const otp = generateOtp(user.email);
+      await sendOtpEmail(user.email, user.name, otp);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("OTP request error:", err);
+      res.status(500).json({ message: "Gagal mengirim OTP" });
+    }
+  });
+
+  app.post("/api/auth/confirm-delete", requireUser, async (req: any, res) => {
+    try {
+      const { otp } = req.body;
+      if (!otp) return res.status(400).json({ message: "OTP diperlukan" });
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const valid = verifyOtp(user.email, otp);
+      if (!valid) return res.status(400).json({ message: "Kode OTP tidak valid atau sudah kedaluwarsa" });
+
+      const isWriter = user.role === "writer" && !!user.authorId;
+
+      if (isWriter && user.authorId) {
+        try {
+          const stories = await storage.getNovelStoriesByAuthor(user.authorId);
+          const storyDataList = await Promise.all(stories.map(async (story) => {
+            const seasons = await storage.getNovelSeasons(story.id);
+            const seasonDataList = await Promise.all(seasons.map(async (season) => {
+              const chapters = await storage.getNovelChapters(season.id);
+              return {
+                seasonNumber: season.seasonNumber,
+                title: season.title,
+                chapters: chapters.map(ch => ({
+                  chapterNumber: ch.chapterNumber,
+                  title: ch.title,
+                  content: (ch as any).content ?? "",
+                })),
+              };
+            }));
+            return {
+              title: story.title,
+              category: story.category,
+              status: story.status,
+              synopsis: (story as any).synopsis ?? "",
+              seasons: seasonDataList,
+            };
+          }));
+
+          const pdfBuffer = await generateWriterBackupPdf({
+            name: user.name,
+            email: user.email,
+            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+            stories: storyDataList,
+          });
+
+          await sendWriterSelfDeleteConfirmedEmail(user.email, user.name, pdfBuffer);
+          for (const story of stories) await storage.deleteNovelStory(story.id);
+          await storage.deleteAuthor(user.authorId);
+        } catch (e) { console.error("Self-delete writer cleanup error:", e); }
+      } else {
+        await sendSelfDeleteConfirmedEmail(user.email, user.name);
+      }
+
+      req.session.destroy(() => {});
+      await storage.deleteUser(user.id);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Confirm delete error:", err);
+      res.status(500).json({ message: "Gagal menghapus akun" });
+    }
+  });
+
   // ── Contact Form ─────────────────────────────────────────────────────────
   app.post("/api/contact", async (req, res) => {
     try {
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+      const rl = checkRateLimit(`contact:${ip}`, 2, 60 * 60 * 1000); // 2 per jam per IP
+      if (!rl.allowed) {
+        return res.status(429).json({ message: "Terlalu banyak pesan. Coba lagi nanti.", retryAfterMs: rl.retryAfterMs });
+      }
+
       const { name, email, subject, message } = req.body;
       if (!name || !email || !subject || !message) {
         return res.status(400).json({ message: "All fields are required" });

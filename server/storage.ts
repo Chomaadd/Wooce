@@ -43,6 +43,7 @@ export interface IStorage {
   createUser(data: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
   getUsers(role?: string, status?: string): Promise<User[]>;
+  deleteUser(id: string): Promise<void>;
 
   getAuthors(): Promise<Author[]>;
   getAuthorBySlug(slug: string): Promise<Author | undefined>;
@@ -152,6 +153,9 @@ export class DatabaseStorage implements IStorage {
     if (status) query.status = status;
     const docs = await UserModel.find(query).sort({ createdAt: -1 });
     return docs.map((d: any) => mapUser(d));
+  }
+  async deleteUser(id: string): Promise<void> {
+    await UserModel.findByIdAndDelete(id);
   }
 
   // ── Authors ────────────────────────────────────────────────────────────────
