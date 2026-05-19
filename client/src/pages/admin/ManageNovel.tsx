@@ -19,7 +19,7 @@ import {
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
-  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck,
+  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
@@ -1177,6 +1177,12 @@ export default function ManageNovel() {
             <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted" data-testid="button-view-site">
               <ExternalLink size={13} />
               Lihat Situs
+            </button>
+          </Link>
+          <Link href="/admin/credentials">
+            <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted" data-testid="button-credentials">
+              <KeyRound size={13} />
+              Kredensial
             </button>
           </Link>
           <button
