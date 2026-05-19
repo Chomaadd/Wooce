@@ -3,7 +3,7 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Lock, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, Save, RefreshCw, Mail, Globe, Shield, ChevronRight, Loader2, ShieldCheck } from "lucide-react";
+import { Lock, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, Save, RefreshCw, Mail, Globe, Shield, ChevronRight, Loader2, ShieldCheck, Copy, Check, ExternalLink } from "lucide-react";
 
 interface ConfigField {
   value: string;
@@ -34,6 +34,24 @@ const GROUP_META = {
   email:   { label: "Email",       icon: Mail,   desc: "Notifikasi & pengiriman email via Gmail" },
   oauth:   { label: "Google OAuth",icon: Shield, desc: "Login dengan Google untuk pembaca & penulis" },
 };
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="shrink-0 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+      title="Salin"
+    >
+      {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+    </button>
+  );
+}
 
 function StatusBadge({ configured, fromDb }: { configured: boolean; fromDb: boolean }) {
   if (!configured) return (
@@ -274,6 +292,36 @@ export default function Credentials() {
                         <p className="text-xs text-muted-foreground">{group.desc}</p>
                       </div>
                     </div>
+
+                    {groupKey === "oauth" && (
+                      <div className="px-5 py-4 border-b border-border bg-blue-50 dark:bg-blue-950/20 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Shield size={14} className="text-blue-500 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1.5">
+                              Cara mengaktifkan Google Login
+                            </p>
+                            <ol className="text-xs text-blue-600 dark:text-blue-500 space-y-0.5 list-decimal list-inside">
+                              <li>Buka <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-0.5">Google Cloud Console <ExternalLink size={10} /></a></li>
+                              <li>Buat atau pilih project, lalu <strong>Create Credentials → OAuth Client ID</strong></li>
+                              <li>Pilih tipe <strong>Web Application</strong></li>
+                              <li>Tambahkan URL di bawah ke <strong>Authorized redirect URIs</strong></li>
+                            </ol>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1.5">
+                            Callback URL — salin & tempel ke Google Cloud Console:
+                          </p>
+                          <div className="flex items-center gap-1.5 bg-white dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                            <code className="flex-1 text-xs font-mono text-blue-800 dark:text-blue-300 break-all select-all">
+                              {typeof window !== "undefined" ? `${window.location.origin}/auth/google/callback` : "/auth/google/callback"}
+                            </code>
+                            <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/auth/google/callback` : "/auth/google/callback"} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="divide-y divide-border">
                       {fields.map(([key, meta]) => {
