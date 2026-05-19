@@ -5,6 +5,7 @@ import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X
 import { useSiteSettings } from "@/hooks/use-settings";
 import { useLanguage } from "@/hooks/use-language";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
+import { useQuery } from "@tanstack/react-query";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -13,6 +14,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const { data: siteSettings } = useSiteSettings();
   const { t, language, setLanguage } = useLanguage();
+
+  const { data: siteConfig } = useQuery<any>({
+    queryKey: ["/api/admin/site-config"],
+    retry: false,
+    staleTime: 30_000,
+  });
+  const oauthActive = siteConfig?.googleClientId?.configured && siteConfig?.googleClientSecret?.configured;
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -120,12 +128,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCredentialsOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2.5 py-1.5 rounded-md border border-border transition-all"
+              className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2.5 py-1.5 rounded-md border border-border transition-all"
               data-testid="button-open-credentials"
-              title="Kredensial"
+              title={oauthActive ? "Google Login aktif" : "Google Login belum dikonfigurasi"}
             >
               <KeyRound size={13} />
               <span className="hidden sm:inline">Kredensial</span>
+              {siteConfig && (
+                <span
+                  className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-background ${oauthActive ? "bg-emerald-500" : "bg-amber-400"}`}
+                />
+              )}
             </button>
             <button
               onClick={() => setLanguage(language === "en" ? "id" : "en")}
