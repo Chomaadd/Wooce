@@ -91,19 +91,26 @@ export async function registerRoutes(
     } catch (err) { done(err); }
   });
 
-  async function registerGoogleStrategy(): Promise<string | null> {
+  async function registerGoogleStrategy(req?: any): Promise<string | null> {
     const config = await getEffectiveConfig();
     if (!config.googleClientId || !config.googleClientSecret) return null;
 
-    const rawSiteUrl = config.siteUrl ||
-      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
-    let baseUrl: string;
-    try {
-      baseUrl = new URL(rawSiteUrl).origin;
-    } catch {
-      baseUrl = rawSiteUrl.replace(/\/+$/, "");
+    let callbackURL: string;
+    if (process.env.GOOGLE_CALLBACK_URL) {
+      callbackURL = process.env.GOOGLE_CALLBACK_URL;
+    } else if (config.siteUrl) {
+      try {
+        callbackURL = `${new URL(config.siteUrl).origin}/auth/google/callback`;
+      } catch {
+        callbackURL = `${config.siteUrl.replace(/\/+$/, "")}/auth/google/callback`;
+      }
+    } else if (req) {
+      const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+      const host = (req.headers["x-forwarded-host"] as string) || req.get("host");
+      callbackURL = `${proto}://${host}/auth/google/callback`;
+    } else {
+      callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
     }
-    const callbackURL = process.env.GOOGLE_CALLBACK_URL || `${baseUrl}/auth/google/callback`;
 
     passport.use("google", new GoogleStrategy(
       {
@@ -156,7 +163,7 @@ export async function registerRoutes(
 
   app.get("/auth/google", async (req: any, res: any, next: any) => {
     try {
-      const callbackURL = await registerGoogleStrategy();
+      const callbackURL = await registerGoogleStrategy(req);
       if (!callbackURL) {
         return res.status(503).json({ message: "Google OAuth belum dikonfigurasi. Atur Client ID & Secret di admin panel." });
       }
@@ -169,7 +176,7 @@ export async function registerRoutes(
 
   app.get("/auth/google/callback", async (req: any, res: any, next: any) => {
     try {
-      await registerGoogleStrategy();
+      await registerGoogleStrategy(req);
       passport.authenticate("google", (err: any, user: any, info: any) => {
         if (err) {
           console.error("[OAuth] Error:", err?.message || err);
