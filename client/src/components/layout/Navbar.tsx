@@ -10,10 +10,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { NovelStory, AppNotification } from "@shared/schema";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { apiRequest } from "@/lib/queryClient";
+import { LoginModal } from "@/components/layout/LoginModal";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
-function WriterModal({ onClose }: { onClose: () => void }) {
+function WriterModal({ onClose, onLoginClick }: { onClose: () => void; onLoginClick: () => void }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isLoggedIn = !!user && !user.isAdmin;
@@ -100,15 +101,14 @@ function WriterModal({ onClose }: { onClose: () => void }) {
               </button>
             </Link>
           ) : (
-            <a href="/auth/google" className="block">
-              <button
-                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-                data-testid="button-writer-contact"
-              >
-                <LogIn size={15} className="inline mr-2" />
-                {t("navbar.writer.loginToRegister")}
-              </button>
-            </a>
+            <button
+              onClick={() => { onClose(); onLoginClick(); }}
+              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+              data-testid="button-writer-contact"
+            >
+              <LogIn size={15} className="inline mr-2" />
+              {t("navbar.writer.loginToRegister")}
+            </button>
           )}
         </div>
       </motion.div>
@@ -139,6 +139,7 @@ export function Navbar() {
   const isReading = parts.length === 3;
   const isHome = location === "/";
   const [writerModalOpen, setWriterModalOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -601,16 +602,15 @@ export function Navbar() {
             )}
 
             {!user && !isLoading && (
-              <a href="/auth/google">
-                <button
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                  data-testid="button-google-login"
-                >
-                  <LogIn size={13} />
-                  <span className="hidden sm:inline">Login</span>
-                  <span className="sm:hidden">Masuk</span>
-                </button>
-              </a>
+              <button
+                onClick={() => setLoginModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                data-testid="button-google-login"
+              >
+                <LogIn size={13} />
+                <span className="hidden sm:inline">Login</span>
+                <span className="sm:hidden">Masuk</span>
+              </button>
             )}
             <button
               onClick={() => setLanguage(language === "id" ? "en" : "id")}
@@ -632,7 +632,8 @@ export function Navbar() {
       </div>
     </header>
       <AnimatePresence>
-        {writerModalOpen && <WriterModal onClose={() => setWriterModalOpen(false)} />}
+        {writerModalOpen && <WriterModal onClose={() => setWriterModalOpen(false)} onLoginClick={() => setLoginModalOpen(true)} />}
+        {loginModalOpen && <LoginModal onClose={() => setLoginModalOpen(false)} />}
       </AnimatePresence>
 
       {/* Mobile notification bottom sheet */}
