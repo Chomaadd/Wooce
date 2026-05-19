@@ -21,6 +21,7 @@ import {
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound,
 } from "lucide-react";
+import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
@@ -982,6 +983,7 @@ export default function ManageNovel() {
       })
       .catch(() => { setAdminVerified(false); window.location.href = "/login"; });
   }, []);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [view, setView] = useState<View>("stories");
   const [selectedStory, setSelectedStory] = useState<NovelStory | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
@@ -1179,12 +1181,14 @@ export default function ManageNovel() {
               Lihat Situs
             </button>
           </Link>
-          <Link href="/admin/credentials">
-            <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted" data-testid="button-credentials">
-              <KeyRound size={13} />
-              Kredensial
-            </button>
-          </Link>
+          <button
+            onClick={() => setCredentialsOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted"
+            data-testid="button-credentials"
+          >
+            <KeyRound size={13} />
+            Kredensial
+          </button>
           <button
             onClick={async () => {
               await fetch("/api/auth/admin-logout", { method: "POST", credentials: "include" });
@@ -2004,6 +2008,8 @@ function ApprovalsView() {
           </div>
         )}
       </div>
+
+      {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
     </div>
   );
 }
