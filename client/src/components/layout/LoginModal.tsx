@@ -12,7 +12,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
     if (!agreed) {
       e.preventDefault();
       setShook(true);
-      setTimeout(() => setShook(false), 600);
+      setTimeout(() => setShook(false), 2200);
     }
   };
 
