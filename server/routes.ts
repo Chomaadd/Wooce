@@ -79,33 +79,37 @@ export async function registerRoutes(
     next();
   };
 
-  // ── Passport / Google OAuth ───────────────────────────────────────────────
-  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-  const googleOAuthEnabled = !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
-
+  // ── Passport / Google OAuth (dynamic — reads credentials from DB on each request) ──
   app.use(passport.initialize());
   app.use(passport.session());
 
-  if (googleOAuthEnabled) {
-    const rawSiteUrl = process.env.SITE_URL ||
+  passport.serializeUser((user: any, done) => done(null, user.id));
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUserById(id);
+      done(null, user ?? false);
+    } catch (err) { done(err); }
+  });
+
+  async function registerGoogleStrategy(): Promise<string | null> {
+    const config = await getEffectiveConfig();
+    if (!config.googleClientId || !config.googleClientSecret) return null;
+
+    const rawSiteUrl = config.siteUrl ||
       (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
-    // Extract only the origin (scheme + host) to avoid duplicated paths if SITE_URL includes a path
     let baseUrl: string;
     try {
-      const parsed = new URL(rawSiteUrl);
-      baseUrl = parsed.origin;
+      baseUrl = new URL(rawSiteUrl).origin;
     } catch {
       baseUrl = rawSiteUrl.replace(/\/+$/, "");
     }
-    const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${baseUrl}/auth/google/callback`;
-    log(`Google OAuth callback URL: ${CALLBACK_URL}`, "express");
+    const callbackURL = process.env.GOOGLE_CALLBACK_URL || `${baseUrl}/auth/google/callback`;
 
-    passport.use(new GoogleStrategy(
+    passport.use("google", new GoogleStrategy(
       {
-        clientID: GOOGLE_CLIENT_ID!,
-        clientSecret: GOOGLE_CLIENT_SECRET!,
-        callbackURL: CALLBACK_URL,
+        clientID: config.googleClientId,
+        clientSecret: config.googleClientSecret,
+        callbackURL,
         proxy: true,
       },
       async (_accessToken, _refreshToken, profile, done) => {
@@ -147,47 +151,48 @@ export async function registerRoutes(
       }
     ));
 
-    passport.serializeUser((user: any, done) => done(null, user.id));
-    passport.deserializeUser(async (id: string, done) => {
-      try {
-        const user = await storage.getUserById(id);
-        done(null, user ?? false);
-      } catch (err) { done(err); }
-    });
-
-    app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-
-    app.get("/auth/google/callback",
-      (req: any, res: any, next: any) => {
-        passport.authenticate("google", (err: any, user: any, info: any) => {
-          if (err) {
-            console.error("[OAuth] Error:", err?.message || err);
-            return res.redirect("/?auth=error");
-          }
-          if (!user) {
-            console.error("[OAuth] No user returned. Info:", JSON.stringify(info));
-            return res.redirect("/?auth=error");
-          }
-          req.session.userId = user.id;
-          req.session.userRole = user.role;
-          req.session.save((saveErr: any) => {
-            if (saveErr) console.error("[OAuth] Session save error:", saveErr);
-            if (user.role === "writer" && user.status === "pending") {
-              return res.redirect("/?auth=pending");
-            }
-            res.redirect("/?auth=success");
-          });
-        })(req, res, next);
-      }
-    );
-  } else {
-    app.get("/auth/google", (_req, res) => {
-      res.status(503).json({ message: "Google OAuth belum dikonfigurasi" });
-    });
-    app.get("/auth/google/callback", (_req, res) => {
-      res.redirect("/?auth=error");
-    });
+    return callbackURL;
   }
+
+  app.get("/auth/google", async (req: any, res: any, next: any) => {
+    try {
+      const callbackURL = await registerGoogleStrategy();
+      if (!callbackURL) {
+        return res.status(503).json({ message: "Google OAuth belum dikonfigurasi. Atur Client ID & Secret di admin panel." });
+      }
+      log(`Google OAuth callback URL: ${callbackURL}`, "express");
+      passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get("/auth/google/callback", async (req: any, res: any, next: any) => {
+    try {
+      await registerGoogleStrategy();
+      passport.authenticate("google", (err: any, user: any, info: any) => {
+        if (err) {
+          console.error("[OAuth] Error:", err?.message || err);
+          return res.redirect("/?auth=error");
+        }
+        if (!user) {
+          console.error("[OAuth] No user returned. Info:", JSON.stringify(info));
+          return res.redirect("/?auth=error");
+        }
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+        req.session.save((saveErr: any) => {
+          if (saveErr) console.error("[OAuth] Session save error:", saveErr);
+          if (user.role === "writer" && user.status === "pending") {
+            return res.redirect("/?auth=pending");
+          }
+          res.redirect("/?auth=success");
+        });
+      })(req, res, next);
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // ── File Upload (GridFS) ──────────────────────────────────────────────────
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
