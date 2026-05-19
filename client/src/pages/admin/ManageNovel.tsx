@@ -1809,6 +1809,8 @@ export default function ManageNovel() {
       {view === "approvals" && <ApprovalsView />}
 
       </div>
+
+      {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
     </div>
   );
 }
@@ -2008,8 +2010,6 @@ function ApprovalsView() {
           </div>
         )}
       </div>
-
-      {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
     </div>
   );
 }

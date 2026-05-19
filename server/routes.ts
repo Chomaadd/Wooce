@@ -729,7 +729,7 @@ export async function registerRoutes(
         const chapters = await storage.getNovelChapters(season.id, true);
         totalChapters += chapters.length;
       }
-      res.json({ seasonCount: seasons.length, chapterCount: totalChapters });
+      res.json({ totalSeasons: seasons.length, totalChapters });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
