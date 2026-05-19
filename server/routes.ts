@@ -291,9 +291,12 @@ export async function registerRoutes(
   app.post("/api/admin/verify-password", requireAuth, async (req, res) => {
     try {
       const { password } = z.object({ password: z.string() }).parse(req.body);
-      const adminPassword = (process.env.ADMIN_PASSWORD || "admin123").trim();
-      if (password.trim() !== adminPassword) {
-        return res.status(401).json({ message: "Password salah" });
+      const credentialsSecret = process.env.CREDENTIALS_SECRET?.trim();
+      if (!credentialsSecret) {
+        return res.status(503).json({ message: "CREDENTIALS_SECRET belum diatur di environment. Hubungi administrator." });
+      }
+      if (password.trim() !== credentialsSecret) {
+        return res.status(401).json({ message: "Sandi Kredensial salah" });
       }
       res.json({ success: true });
     } catch (err) {

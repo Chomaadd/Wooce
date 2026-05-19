@@ -206,23 +206,23 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
               <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 shadow-inner">
                 <Lock size={26} className="text-primary" />
               </div>
-              <h3 className="text-base font-bold">Verifikasi Identitas</h3>
+              <h3 className="text-base font-bold">Verifikasi Sandi Kredensial</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Masukkan password admin untuk mengakses konfigurasi
+                Masukkan <strong>Sandi Kredensial</strong> — beda dengan sandi login admin
               </p>
             </div>
 
             <form onSubmit={handleUnlock} className="space-y-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Password Admin
+                  Sandi Kredensial
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={e => { setPassword(e.target.value); setPasswordError(""); }}
-                    placeholder="Masukkan password..."
+                    placeholder="Masukkan sandi kredensial..."
                     className={`w-full px-4 py-3 pr-11 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 transition-all ${
                       passwordError
                         ? "border-destructive focus:ring-destructive/30"
