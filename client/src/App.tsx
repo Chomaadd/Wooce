@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -41,6 +41,7 @@ function Router() {
       <Route path="/writer/profil" component={WriterProfileSettings} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />
+      <Route path="/admin/credentials"><Redirect to="/admin/novel" /></Route>
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />
       <Route path="/:slug" component={NovelDetail} />
       <Route component={NotFound} />
