@@ -75,8 +75,8 @@ function WriterModal({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
               <Clock size={18} className="text-yellow-500 flex-shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-foreground">Permohonan sedang ditinjau</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Admin akan menghubungimu segera.</p>
+                <p className="text-sm font-semibold text-foreground">{t("navbar.writer.pending")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("navbar.writer.pendingDesc")}</p>
               </div>
             </div>
           ) : isActive ? (
@@ -86,7 +86,7 @@ function WriterModal({ onClose }: { onClose: () => void }) {
                 className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                 data-testid="button-go-writer-dashboard"
               >
-                Kelola Cerita →
+                {t("navbar.writer.manage")}
               </button>
             </Link>
           ) : isLoggedIn ? (
@@ -96,7 +96,7 @@ function WriterModal({ onClose }: { onClose: () => void }) {
                 className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                 data-testid="button-register-writer"
               >
-                Daftar sebagai Penulis →
+                {t("navbar.writer.register")}
               </button>
             </Link>
           ) : (
@@ -106,7 +106,7 @@ function WriterModal({ onClose }: { onClose: () => void }) {
                 data-testid="button-writer-contact"
               >
                 <LogIn size={15} className="inline mr-2" />
-                Login Google untuk Mendaftar
+                {t("navbar.writer.loginToRegister")}
               </button>
             </a>
           )}
@@ -273,7 +273,7 @@ export function Navbar() {
                   >
                     {results.length === 0 ? (
                       <div className="px-4 py-5 text-center">
-                        <p className="text-sm text-muted-foreground">Tidak ada novel ditemukan</p>
+                        <p className="text-sm text-muted-foreground">{t("navbar.search.noResults")}</p>
                       </div>
                     ) : (
                       <div className="py-2 max-h-[420px] overflow-y-auto">
@@ -387,14 +387,14 @@ export function Navbar() {
                       className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-xl shadow-xl overflow-hidden z-50"
                     >
                       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground">Notifikasi</p>
+                        <p className="text-sm font-semibold text-foreground">{t("navbar.notif.title")}</p>
                         {notifications.length > 0 && (
                           <button
                             onClick={() => markAllReadMutation.mutate()}
                             className="text-[11px] text-primary hover:underline"
                             data-testid="button-mark-all-read"
                           >
-                            Tandai semua dibaca
+                            {t("navbar.notif.markAllRead")}
                           </button>
                         )}
                       </div>
@@ -402,7 +402,7 @@ export function Navbar() {
                         {notifications.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
                             <BellOff size={24} strokeWidth={1.5} />
-                            <p className="text-xs">Belum ada notifikasi</p>
+                            <p className="text-xs">{t("navbar.notif.empty")}</p>
                           </div>
                         ) : (
                           notifications.map(n => (
@@ -477,12 +477,12 @@ export function Navbar() {
                         <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                         {user.role === "writer" && user.status === "pending" && (
                           <span className="text-[10px] text-yellow-600 bg-yellow-500/10 px-1.5 py-0.5 rounded-full mt-1.5 inline-flex items-center gap-1">
-                            <Clock size={9} /> Menunggu approval
+                            <Clock size={9} /> {t("navbar.user.writerPending")}
                           </span>
                         )}
                         {user.role === "writer" && user.status === "active" && (
                           <span className="text-[10px] text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-full mt-1.5 inline-block">
-                            ✓ Penulis Aktif
+                            {t("navbar.user.writerActive")}
                           </span>
                         )}
                       </div>
@@ -493,7 +493,7 @@ export function Navbar() {
                           onClick={() => setUserMenuOpen(false)}
                           data-testid="button-profile-menu"
                         >
-                          <User size={12} /> Profil
+                          <User size={12} /> {t("navbar.user.profile")}
                         </button>
                       </Link>
 
@@ -524,7 +524,7 @@ export function Navbar() {
                         onClick={() => { setUserMenuOpen(false); setNotifOpen(true); }}
                         data-testid="button-notif-mobile-menu"
                       >
-                        <span className="flex items-center gap-2"><Bell size={12} /> Notifikasi</span>
+                        <span className="flex items-center gap-2"><Bell size={12} /> {t("navbar.user.notifications")}</span>
                         {unreadCount > 0 && <span className="w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>}
                       </button>
 
@@ -535,7 +535,7 @@ export function Navbar() {
                             onClick={() => setUserMenuOpen(false)}
                             data-testid="button-writer-menu"
                           >
-                            <PenLine size={12} /> Kelola Cerita
+                            <PenLine size={12} /> {t("navbar.user.manageStories")}
                           </button>
                         </Link>
                       )}
@@ -547,7 +547,7 @@ export function Navbar() {
                             onClick={() => setUserMenuOpen(false)}
                             data-testid="button-become-writer-menu"
                           >
-                            <PenLine size={12} /> Daftar sebagai Penulis
+                            <PenLine size={12} /> {t("navbar.user.becomeWriter")}
                           </button>
                         </Link>
                       )}

@@ -320,7 +320,7 @@ function StarRating({ slug, initialSum, initialCount }: { slug: string; initialS
         {ratingCount > 0 ? (
           <span className="text-muted-foreground">
             <span className="font-semibold text-foreground">{avgRating.toFixed(1)}</span>
-            {" "}({ratingCount.toLocaleString()} rating)
+            {" "}({ratingCount.toLocaleString()} {t("novel.detail.ratingsUnit")})
           </span>
         ) : (
           <span className="text-muted-foreground text-xs">{t("novel.detail.noRating")}</span>

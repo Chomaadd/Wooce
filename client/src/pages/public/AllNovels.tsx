@@ -36,7 +36,7 @@ function isNewlyUpdated(lastChapterAt: string | null): boolean {
 }
 
 export default function AllNovels() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState<string | null>(null);
 
@@ -58,15 +58,15 @@ export default function AllNovels() {
   }, [stories, activeCategory, activeStatus]);
 
   const statusLabels: Record<string, string> = {
-    ongoing:   language === "id" ? "Berlangsung" : "Ongoing",
-    completed: language === "id" ? "Selesai"     : "Completed",
-    hiatus:    "Hiatus",
+    ongoing:   t("novel.status.ongoing"),
+    completed: t("novel.status.completed"),
+    hiatus:    t("novel.status.hiatus"),
   };
 
   return (
     <div className="min-h-screen bg-background">
       <SeoHead
-        title={`${language === "id" ? "Semua Novel" : "All Novels"} — WOOCE Novel`}
+        title={`${t("novel.allNovels.title")} — WOOCE Novel`}
         description="Jelajahi semua novel, komik, dan cerita pendek di WOOCE Novel."
         url="/novels"
       />
@@ -80,11 +80,11 @@ export default function AllNovels() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">
-              {language === "id" ? "Semua Novel" : "All Novels"}
+              {t("novel.allNovels.title")}
             </h1>
             {!isLoading && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                {filtered.length} {language === "id" ? "cerita tersedia" : "stories available"}
+                {filtered.length} {t("novel.allNovels.count")}
               </p>
             )}
           </div>
@@ -103,7 +103,7 @@ export default function AllNovels() {
               }`}
               data-testid="button-cat-all"
             >
-              {language === "id" ? "Semua" : "All"}
+              {t("novel.filter.all")}
             </button>
             {categories.map(cat => (
               <button
@@ -164,13 +164,13 @@ export default function AllNovels() {
               <BookOpen size={28} className="text-muted-foreground/40" />
             </div>
             <p className="font-semibold text-foreground mb-1">
-              {language === "id" ? "Tidak ada cerita ditemukan" : "No stories found"}
+              {t("novel.allNovels.noResults")}
             </p>
             <button
               onClick={() => { setActiveCategory(null); setActiveStatus(null); }}
               className="mt-3 text-sm text-primary hover:underline"
             >
-              {language === "id" ? "Reset filter" : "Reset filters"}
+              {t("novel.allNovels.resetFilter")}
             </button>
           </motion.div>
         ) : (
@@ -205,7 +205,7 @@ export default function AllNovels() {
                         <div className="absolute top-1.5 left-1.5">
                           <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                             <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                            {story.status}
+                            {statusLabels[story.status] || story.status}
                           </span>
                         </div>
                         {updated && (
@@ -219,7 +219,7 @@ export default function AllNovels() {
                         {story.featured && (
                           <div className="absolute bottom-1.5 left-1.5">
                             <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900">
-                              ★ {language === "id" ? "Unggulan" : "Featured"}
+                              ★ {t("novel.allNovels.featured")}
                             </span>
                           </div>
                         )}

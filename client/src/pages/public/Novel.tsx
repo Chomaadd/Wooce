@@ -291,7 +291,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                     <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
                       <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                         <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                        {story.status}
+                        {t(`novel.status.${story.status}`)}
                       </span>
                     </div>
                     {updated && (
@@ -604,7 +604,7 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                   <div className="absolute top-1.5 left-1.5">
                     <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                       <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                      {story.status}
+                      {t(`novel.status.${story.status}`)}
                     </span>
                   </div>
                   <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-violet-600/80 backdrop-blur-sm rounded-full px-1.5 py-0.5">
@@ -687,7 +687,7 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                   <div className="absolute top-1.5 left-1.5">
                     <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                       <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                      {story.status}
+                      {t(`novel.status.${story.status}`)}
                     </span>
                   </div>
                   <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
@@ -699,7 +699,7 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                     )}
                     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/90 text-white shadow-sm">
                       <Sparkles size={7} />
-                      Baru
+                      {t("novel.new")}
                     </span>
                   </div>
                 </div>
@@ -772,7 +772,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                     <div className="absolute top-1.5 left-1.5">
                       <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                         <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                        {story.status}
+                        {t(`novel.status.${story.status}`)}
                       </span>
                     </div>
                     {updated && (
@@ -1024,7 +1024,7 @@ export default function Novel() {
                 <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
                   <BookOpen size={28} className="text-muted-foreground/40" />
                 </div>
-                <p className="text-muted-foreground font-medium">Belum ada cerita tersedia.</p>
+                <p className="text-muted-foreground font-medium">{t("novel.empty")}</p>
               </div>
             )}
           </motion.div>

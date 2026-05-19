@@ -92,8 +92,8 @@ export default function AuthorProfile() {
           >
             <ShieldOff size={16} className="text-destructive mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-destructive">Akun Disuspend</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Akun penulis ini sedang dalam status suspensi oleh admin platform.</p>
+              <p className="text-sm font-semibold text-destructive">{t("author.suspendedTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("author.suspendedDesc")}</p>
             </div>
           </motion.div>
         )}
@@ -114,7 +114,7 @@ export default function AuthorProfile() {
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{author.name}</h1>
               {isSuspended && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-                  <ShieldOff size={9} /> Suspended
+                  <ShieldOff size={9} /> {t("author.suspended")}
                 </span>
               )}
             </div>
@@ -183,7 +183,7 @@ export default function AuthorProfile() {
                           <div className="absolute top-1.5 left-1.5">
                             <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.badge}`}>
                               <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                              {story.status}
+                              {t(`novel.status.${story.status}`)}
                             </span>
                           </div>
                         </div>

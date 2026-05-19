@@ -192,14 +192,14 @@ function TOCPanel({ chapters, currentChapterNum, slug, seasonNum, onClose }: {
         <div className="flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0 bg-muted/20">
           <div className="flex items-center gap-2">
             <List size={15} className="text-primary" />
-            <span className="font-bold text-sm text-foreground">Daftar Bab</span>
+            <span className="font-bold text-sm text-foreground">{t("novel.read.toc")}</span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-toc">
             <X size={16} />
           </button>
         </div>
         <div className="text-xs text-muted-foreground px-4 py-2 border-b border-border/50 bg-muted/10">
-          {chapters.length} chapter · {t("novel.read.chapterOf")} {currentChapterNum} {t("novel.read.currentlyReading")}
+          {chapters.length} {t("novel.read.chapterUnit")} · {t("novel.read.chapterOf")} {currentChapterNum} {t("novel.read.currentlyReading")}
         </div>
         <div className="overflow-y-auto flex-1 py-2">
           {chapters.map(ch => {
