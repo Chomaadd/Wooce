@@ -380,10 +380,10 @@ export async function registerRoutes(
       const { sendTestEmail } = await import("./email");
       await sendTestEmail(to);
       res.json({ success: true });
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       console.error("test-email error:", err);
-      res.status(500).json({ message: "Gagal kirim email. Periksa kembali konfigurasi Gmail." });
+      res.status(500).json({ message: err?.message || "Gagal kirim email. Periksa kembali konfigurasi Gmail." });
     }
   });
 

@@ -70,6 +70,19 @@ async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from
   return fn(t, config.gmailUser, baseUrl).then(() => {}).catch(err => console.error("Email send error:", err));
 }
 
+async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
+  const config = await getEffectiveConfig();
+  if (!config.gmailUser || !config.gmailAppPassword) {
+    throw new Error("Gmail belum dikonfigurasi. Atur Gmail Address dan App Password terlebih dahulu.");
+  }
+  const t = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: config.gmailUser, pass: config.gmailAppPassword },
+  });
+  const baseUrl = await getBaseUrl();
+  await fn(t, config.gmailUser, baseUrl);
+}
+
 export async function sendContactNotification(data: { name: string; email: string; subject: string; message: string }) {
   return guard((t, from, BASE_URL) => t.sendMail({
     from: `"WOOCE Novel" <${from}>`,
@@ -336,7 +349,7 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
 }
 
 export async function sendTestEmail(to: string) {
-  return guard((t, from, BASE_URL) => t.sendMail({
+  return guardStrict((t, from, BASE_URL) => t.sendMail({
     from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Test Email — WOOCE Novel",
