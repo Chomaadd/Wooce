@@ -3,10 +3,10 @@ import path from "path";
 import { getEffectiveConfig } from "./site-config";
 
 const LOGO_CID = "logo@wooce-novel";
-const LOGO_PATH = path.resolve("public/image/icon-email.png");
+const LOGO_PATH = path.resolve("public/image/landscape-wooce.png");
 
 const logoAttachment = {
-  filename: "icon-email.png",
+  filename: "landscape-wooce.png",
   path: LOGO_PATH,
   cid: LOGO_CID,
 };
