@@ -317,6 +317,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/config-status", requireAuth, async (_req, res) => {
+    try {
+      const effective = await getEffectiveConfig();
+      res.json({
+        oauthConfigured: !!(effective.googleClientId && effective.googleClientSecret),
+        gmailConfigured: !!(effective.gmailUser && effective.gmailAppPassword),
+      });
+    } catch {
+      res.status(500).json({ oauthConfigured: false, gmailConfigured: false });
+    }
+  });
+
   app.get("/api/admin/site-config", requireAuth, async (_req, res) => {
     try {
       const effective = await getEffectiveConfig();

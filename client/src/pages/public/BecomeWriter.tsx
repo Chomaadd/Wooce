@@ -46,7 +46,7 @@ export default function BecomeWriter() {
   });
 
   const handleGoogleLogin = () => {
-    window.location.href = "/auth/google";
+    (window.top || window).location.href = "/auth/google";
   };
 
   const benefits = [

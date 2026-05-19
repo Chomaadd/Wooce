@@ -41,7 +41,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
             Masuk untuk menikmati semua fitur platform
           </p>
 
-          <a href="/auth/google" className="block w-full">
+          <a href="/auth/google" target="_top" className="block w-full">
             <button
               className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-border bg-background hover:bg-muted transition-colors text-sm font-medium text-foreground shadow-sm"
               data-testid="button-login-google"

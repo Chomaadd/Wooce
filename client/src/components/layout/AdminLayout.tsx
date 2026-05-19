@@ -16,15 +16,15 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: siteSettings } = useSiteSettings();
   const { t, language, setLanguage } = useLanguage();
 
-  const { data: siteConfig } = useQuery<any>({
-    queryKey: ["/api/admin/site-config"],
+  const { data: configStatus } = useQuery<{ oauthConfigured: boolean; gmailConfigured: boolean }>({
+    queryKey: ["/api/admin/config-status"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
-    staleTime: 30_000,
-    enabled: !isLoading,
+    staleTime: 60_000,
+    enabled: !isLoading && !!user,
   });
-  const oauthActive = siteConfig?.googleClientId?.configured && siteConfig?.googleClientSecret?.configured;
-  const gmailActive = siteConfig?.gmailUser?.configured && siteConfig?.gmailAppPassword?.configured;
+  const oauthActive = configStatus?.oauthConfigured ?? false;
+  const gmailActive = configStatus?.gmailConfigured ?? false;
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -135,7 +135,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2.5 py-1.5 rounded-md border border-border transition-all"
               data-testid="button-open-credentials"
               title={
-                siteConfig === undefined ? "Memuat status..." :
+                configStatus === undefined ? "Memuat status..." :
                 oauthActive && gmailActive ? "Semua kredensial aktif ✓" :
                 oauthActive || gmailActive ? "Sebagian kredensial belum diatur" :
                 "Kredensial belum dikonfigurasi"
@@ -145,7 +145,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               <span className="hidden sm:inline">Kredensial</span>
               <span
                 className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-card transition-colors ${
-                  siteConfig === undefined
+                  configStatus === undefined
                     ? "bg-muted-foreground/30"
                     : oauthActive && gmailActive
                       ? "bg-emerald-500"

@@ -182,6 +182,7 @@ export default function Credentials() {
       apiRequest("PUT", "/api/admin/site-config", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/site-config"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/config-status"] });
       setEditing({});
       toast({ title: "Tersimpan!", description: "Konfigurasi berhasil diperbarui." });
     },
