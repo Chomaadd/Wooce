@@ -23,6 +23,7 @@ import WriterStories from "./pages/writer/WriterStories";
 import WriterProfileSettings from "./pages/writer/WriterProfileSettings";
 import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
+import Credentials from "./pages/admin/Credentials";
 import NotFound from "@/pages/public/Not-Found";
 
 function Router() {
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/writer/profil" component={WriterProfileSettings} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />
+      <Route path="/admin/credentials" component={Credentials} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />
       <Route path="/:slug" component={NovelDetail} />
       <Route component={NotFound} />

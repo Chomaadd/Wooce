@@ -7,6 +7,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { storage } from "./storage";
 import { log } from "./logger";
+import { getSiteConfig, updateSiteConfig, getEffectiveConfig, invalidateConfigCache } from "./site-config";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -285,6 +286,105 @@ export async function registerRoutes(
       res.clearCookie("connect.sid");
       res.json({ success: true });
     });
+  });
+
+  app.post("/api/admin/verify-password", requireAuth, async (req, res) => {
+    try {
+      const { password } = z.object({ password: z.string() }).parse(req.body);
+      const adminPassword = (process.env.ADMIN_PASSWORD || "admin123").trim();
+      if (password.trim() !== adminPassword) {
+        return res.status(401).json({ message: "Password salah" });
+      }
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/site-config", requireAuth, async (_req, res) => {
+    try {
+      const effective = await getEffectiveConfig();
+      const db = await getSiteConfig();
+      res.json({
+        googleClientId:     { value: effective.googleClientId ? "***" + effective.googleClientId.slice(-4) : "", configured: !!effective.googleClientId, fromDb: !!(db as any).googleClientId },
+        googleClientSecret: { value: effective.googleClientSecret ? "***" + effective.googleClientSecret.slice(-4) : "", configured: !!effective.googleClientSecret, fromDb: !!(db as any).googleClientSecret },
+        gmailUser:          { value: effective.gmailUser, configured: !!effective.gmailUser, fromDb: !!(db as any).gmailUser },
+        gmailAppPassword:   { value: effective.gmailAppPassword ? "***" + effective.gmailAppPassword.slice(-4) : "", configured: !!effective.gmailAppPassword, fromDb: !!(db as any).gmailAppPassword },
+        siteUrl:            { value: effective.siteUrl, configured: !!effective.siteUrl, fromDb: !!(db as any).siteUrl },
+      });
+    } catch (err) {
+      console.error("site-config GET error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/site-config", requireAuth, async (req, res) => {
+    try {
+      const schema = z.object({
+        googleClientId:     z.string().optional(),
+        googleClientSecret: z.string().optional(),
+        gmailUser:          z.string().optional(),
+        gmailAppPassword:   z.string().optional(),
+        siteUrl:            z.string().optional(),
+      });
+      const data = schema.parse(req.body);
+      await updateSiteConfig(data);
+      invalidateConfigCache();
+
+      const effective = await getEffectiveConfig();
+      if (effective.googleClientId && effective.googleClientSecret) {
+        try {
+          const rawSiteUrl = effective.siteUrl ||
+            (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
+          let baseUrl: string;
+          try { const parsed = new URL(rawSiteUrl); baseUrl = parsed.origin; } catch { baseUrl = rawSiteUrl.replace(/\/+$/, ""); }
+          const callbackUrl = `${baseUrl}/auth/google/callback`;
+          passport.use(new GoogleStrategy(
+            { clientID: effective.googleClientId, clientSecret: effective.googleClientSecret, callbackURL: callbackUrl, proxy: true },
+            async (_at, _rt, profile, done) => {
+              try {
+                const email = profile.emails?.[0]?.value;
+                if (!email) return done(new Error("No email from Google"));
+                const latestPhotoUrl = profile.photos?.[0]?.value ?? null;
+                const latestName = profile.displayName || email.split("@")[0];
+                let user = await storage.getUserByGoogleId(profile.id);
+                if (!user) {
+                  user = await storage.getUserByEmail(email);
+                  if (user) { user = await storage.updateUser(user.id, { googleId: profile.id, photoUrl: latestPhotoUrl, name: latestName }); }
+                  else { user = await storage.createUser({ googleId: profile.id, email, name: latestName, photoUrl: latestPhotoUrl, role: "reader", status: "active" }); }
+                } else if (latestPhotoUrl && user.photoUrl !== latestPhotoUrl) {
+                  user = await storage.updateUser(user.id, { photoUrl: latestPhotoUrl, name: latestName });
+                }
+                return done(null, user);
+              } catch (err) { return done(err as Error); }
+            }
+          ));
+          log("Google OAuth strategy refreshed with new credentials", "express");
+        } catch (e) {
+          console.error("Failed to refresh Google OAuth strategy:", e);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      console.error("site-config PUT error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/test-email", requireAuth, async (req, res) => {
+    try {
+      const { to } = z.object({ to: z.string().email() }).parse(req.body);
+      const { sendTestEmail } = await import("./email");
+      await sendTestEmail(to);
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      console.error("test-email error:", err);
+      res.status(500).json({ message: "Gagal kirim email. Periksa kembali konfigurasi Gmail." });
+    }
   });
 
   app.get("/api/auth/me", async (req, res) => {

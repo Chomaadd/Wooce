@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors } from "lucide-react";
+import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors, KeyRound } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-settings";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -32,7 +32,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: "/admin/messages",   label: t("admin.nav.messages"),   icon: Mail },
     { href: "/admin/novel",      label: t("admin.nav.novel"),      icon: BookOpen },
     { href: "/admin/short-urls", label: t("admin.nav.short_urls"), icon: Scissors },
-    { href: "/admin/settings",   label: t("admin.nav.settings"),   icon: Settings },
+    { href: "/admin/settings",     label: t("admin.nav.settings"),     icon: Settings },
+    { href: "/admin/credentials",  label: t("admin.nav.credentials"),  icon: KeyRound },
   ];
 
   const currentPage = links.find(l => l.href === location)?.label || t("admin.nav.dashboard");

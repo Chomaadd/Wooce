@@ -1,13 +1,6 @@
 import nodemailer from "nodemailer";
 import path from "path";
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+import { getEffectiveConfig } from "./site-config";
 
 const LOGO_CID = "logo@wooce-novel";
 const LOGO_PATH = path.resolve("public/image/icon-email.png");
@@ -18,8 +11,9 @@ const logoAttachment = {
   cid: LOGO_CID,
 };
 
-function getBaseUrl(): string {
-  const raw = process.env.SITE_URL ||
+async function getBaseUrl(): Promise<string> {
+  const config = await getEffectiveConfig();
+  const raw = config.siteUrl ||
     (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://wooce-novel.replit.app");
   try {
     return new URL(raw).origin;
@@ -28,8 +22,7 @@ function getBaseUrl(): string {
   }
 }
 
-const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string) => {
-  const BASE_URL = getBaseUrl();
+const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, bodyContent: string, BASE_URL: string) => {
   return `
 <!DOCTYPE html>
 <html lang="id">
@@ -63,18 +56,24 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
 </html>`;
 };
 
-function guard(fn: () => Promise<any>): Promise<void> {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
+  const config = await getEffectiveConfig();
+  if (!config.gmailUser || !config.gmailAppPassword) {
     console.warn("Gmail credentials not configured, skipping email.");
     return Promise.resolve();
   }
-  return fn().then(() => {}).catch(err => console.error("Email send error:", err));
+  const t = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: config.gmailUser, pass: config.gmailAppPassword },
+  });
+  const baseUrl = await getBaseUrl();
+  return fn(t, config.gmailUser, baseUrl).then(() => {}).catch(err => console.error("Email send error:", err));
 }
 
 export async function sendContactNotification(data: { name: string; email: string; subject: string; message: string }) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
-    to: process.env.GMAIL_USER,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
+    to: from,
     replyTo: data.email,
     subject: `Pesan baru dari ${data.name} — ${data.subject}`,
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -105,14 +104,15 @@ export async function sendContactNotification(data: { name: string; email: strin
       </div>
       <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
         <a href="mailto:${data.email}?subject=Re: ${encodeURIComponent(data.subject)}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Balas Pesan</a>
-      </td></tr></table>`
+      </td></tr></table>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendWriterPendingEmail(to: string, name: string) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Pengajuan Penulismu Sedang Ditinjau — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -126,15 +126,15 @@ export async function sendWriterPendingEmail(to: string, name: string) {
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
         <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">Proses peninjauan biasanya berlangsung <strong>1-3 hari kerja</strong>. Kamu akan mendapat email lanjutan setelah keputusan diambil.</p>
       </div>
-      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Sambil menunggu, kamu tetap bisa menikmati semua novel di platform kami.</p>`
+      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Sambil menunggu, kamu tetap bisa menikmati semua novel di platform kami.</p>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendWriterApprovedEmail(to: string, name: string) {
-  const BASE_URL = getBaseUrl();
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Selamat! Kamu Diterima sebagai Penulis WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -155,14 +155,15 @@ export async function sendWriterApprovedEmail(to: string, name: string) {
       </div>
       <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
         <a href="${BASE_URL}/writer/cerita" style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Buka Dashboard Penulis</a>
-      </td></tr></table>`
+      </td></tr></table>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendWriterRejectedEmail(to: string, name: string) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Pengajuan Penulis Ditolak — Bisa Coba Lagi dalam 7 Hari",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -176,14 +177,15 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
         <p style="margin:0;color:#991b1b;font-size:14px;line-height:1.6;">Kamu bisa mengajukan permohonan kembali setelah <strong>7 hari</strong> dari sekarang. Pastikan profilmu sudah lengkap sebelum mendaftar ulang.</p>
       </div>
-      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Tetap semangat menulis! Kami selalu terbuka untuk pengajuan berikutnya.</p>`
+      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Tetap semangat menulis! Kami selalu terbuka untuk pengajuan berikutnya.</p>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendOtpEmail(to: string, name: string, otp: string) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Kode Verifikasi Hapus Akun — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -202,14 +204,15 @@ export async function sendOtpEmail(to: string, name: string, otp: string) {
       <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
         <p style="margin:0;color:#991b1b;font-size:13px;line-height:1.6;">Kode ini berlaku selama <strong>10 menit</strong>. Jika kamu tidak meminta ini, abaikan email ini — akunmu aman.</p>
       </div>
-      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;text-align:center;">Penghapusan akun bersifat <strong>permanen</strong> dan tidak dapat dibatalkan.</p>`
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;text-align:center;">Penghapusan akun bersifat <strong>permanen</strong> dan tidak dapat dibatalkan.</p>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendAccountDeletedByAdminEmail(to: string, name: string) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Akunmu di WOOCE Novel Telah Dihapus",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -223,14 +226,15 @@ export async function sendAccountDeletedByAdminEmail(to: string, name: string) {
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
         <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Semua data yang terkait dengan akunmu telah dihapus dari sistem kami. Jika kamu merasa ini adalah kesalahan, silakan hubungi kami melalui halaman kontak.</p>
       </div>
-      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih atas pemahaman dan kerja samamu.</p>`
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih atas pemahaman dan kerja samamu.</p>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendWriterAccountDeletedByAdminEmail(to: string, name: string, pdfBuffer: Buffer) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Akun Penulismu Dihapus — Backup Cerita Terlampir",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -252,14 +256,15 @@ export async function sendWriterAccountDeletedByAdminEmail(to: string, name: str
         <p style="margin:0 0 8px;color:#065f46;font-size:13px;font-weight:600;">Backup Cerita</p>
         <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Kami telah menyertakan <strong>file PDF backup</strong> berisi semua data cerita yang pernah kamu tulis di platform ini sebagai lampiran email ini. Harap simpan file tersebut.</p>
       </div>
-      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, silakan hubungi kami melalui halaman kontak.</p>`
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, silakan hubungi kami melalui halaman kontak.</p>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendSelfDeleteConfirmedEmail(to: string, name: string) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Akunmu Berhasil Dihapus — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -272,14 +277,15 @@ export async function sendSelfDeleteConfirmedEmail(to: string, name: string) {
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Akunmu di <strong>WOOCE Novel</strong> telah berhasil dihapus sesuai permintaanmu. Semua data akun telah dihapus dari sistem kami.</p>
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
         <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">Terima kasih sudah menjadi bagian dari WOOCE Novel. Kamu selalu bisa mendaftar ulang kapan saja.</p>
-      </div>`
+      </div>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendWriterSelfDeleteConfirmedEmail(to: string, name: string, pdfBuffer: Buffer) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Akunmu Dihapus — Backup Cerita Terlampir",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -301,14 +307,15 @@ export async function sendWriterSelfDeleteConfirmedEmail(to: string, name: strin
         <p style="margin:0 0 8px;color:#065f46;font-size:13px;font-weight:600;">File Backup Ceritamu</p>
         <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Semua data cerita yang pernah kamu tulis sudah kami kemas dalam <strong>file PDF</strong> yang terlampir. Harap simpan file ini sebagai arsibmu.</p>
       </div>
-      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih sudah menjadi bagian dari WOOCE Novel. Semoga karyamu terus berkembang!</p>`
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih sudah menjadi bagian dari WOOCE Novel. Semoga karyamu terus berkembang!</p>`,
+      BASE_URL
     ),
   }));
 }
 
 export async function sendWriterSuspendedEmail(to: string, name: string) {
-  return guard(() => transporter.sendMail({
-    from: `"WOOCE Novel" <${process.env.GMAIL_USER}>`,
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
     to,
     subject: "Akun Penulismu di WOOCE Novel Telah Disuspend",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
@@ -322,7 +329,28 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
       <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
         <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.6;">Akses ke dashboard penulis dan manajemen ceritamu sementara dinonaktifkan. Kamu bisa mengajukan permohonan kembali setelah <strong>30 hari</strong>.</p>
       </div>
-      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, hubungi tim kami melalui halaman kontak.</p>`
+      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, hubungi tim kami melalui halaman kontak.</p>`,
+      BASE_URL
+    ),
+  }));
+}
+
+export async function sendTestEmail(to: string) {
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
+    to,
+    subject: "Test Email — WOOCE Novel",
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [logoAttachment],
+    html: emailWrapper(
+      "linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)",
+      "Test Email Berhasil!",
+      "Konfigurasi email kamu sudah benar",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Email ini dikirim sebagai konfirmasi bahwa konfigurasi Gmail kamu di <strong>WOOCE Novel</strong> sudah berfungsi dengan baik.</p>
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+        <p style="margin:0;color:#065f46;font-size:14px;line-height:1.6;">Sistem email siap digunakan untuk notifikasi penulis, OTP, dan pesan kontak.</p>
+      </div>`,
+      BASE_URL
     ),
   }));
 }
