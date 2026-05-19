@@ -33,7 +33,7 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
         <tr>
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:36px 40px 32px;text-align:center;">
-            <img src="cid:${LOGO_CID}" alt="WOOCE Novel" width="420" style="width:420px;max-width:100%;height:auto;display:block;margin:0 auto 20px;border-radius:12px;" />
+            <img src="cid:${LOGO_CID}" alt="WOOCE Novel" width="180" style="width:180px;max-width:60%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" />
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
             <p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px;">${headerSub}</p>
           </td>
