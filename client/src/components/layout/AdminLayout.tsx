@@ -6,6 +6,7 @@ import { useSiteSettings } from "@/hooks/use-settings";
 import { useLanguage } from "@/hooks/use-language";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -17,10 +18,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const { data: siteConfig } = useQuery<any>({
     queryKey: ["/api/admin/site-config"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
     staleTime: 30_000,
+    enabled: !isLoading,
   });
   const oauthActive = siteConfig?.googleClientId?.configured && siteConfig?.googleClientSecret?.configured;
+  const gmailActive = siteConfig?.gmailUser?.configured && siteConfig?.gmailAppPassword?.configured;
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -130,15 +134,26 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               onClick={() => setCredentialsOpen(true)}
               className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2.5 py-1.5 rounded-md border border-border transition-all"
               data-testid="button-open-credentials"
-              title={oauthActive ? "Google Login aktif" : "Google Login belum dikonfigurasi"}
+              title={
+                siteConfig === undefined ? "Memuat status..." :
+                oauthActive && gmailActive ? "Semua kredensial aktif ✓" :
+                oauthActive || gmailActive ? "Sebagian kredensial belum diatur" :
+                "Kredensial belum dikonfigurasi"
+              }
             >
               <KeyRound size={13} />
               <span className="hidden sm:inline">Kredensial</span>
-              {siteConfig && (
-                <span
-                  className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-background ${oauthActive ? "bg-emerald-500" : "bg-amber-400"}`}
-                />
-              )}
+              <span
+                className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-card transition-colors ${
+                  siteConfig === undefined
+                    ? "bg-muted-foreground/30"
+                    : oauthActive && gmailActive
+                      ? "bg-emerald-500"
+                      : oauthActive || gmailActive
+                        ? "bg-amber-400"
+                        : "bg-destructive"
+                }`}
+              />
             </button>
             <button
               onClick={() => setLanguage(language === "en" ? "id" : "en")}
