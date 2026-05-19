@@ -33,7 +33,7 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
         <tr>
           <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:36px 40px 32px;text-align:center;">
-            <img src="cid:${LOGO_CID}" alt="WOOCE Novel" width="80" style="width:80px;max-width:30%;height:auto;display:block;margin:0 auto 16px;border-radius:8px;" />
+            <img src="cid:${LOGO_CID}" alt="WOOCE Novel" width="120" style="width:120px;max-width:30%;height:auto;display:block;margin:0 auto 16px;border-radius:10px;" />
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
             <p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px;">${headerSub}</p>
           </td>
@@ -321,6 +321,40 @@ export async function sendWriterSelfDeleteConfirmedEmail(to: string, name: strin
         <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Semua data cerita yang pernah kamu tulis sudah kami kemas dalam <strong>file PDF</strong> yang terlampir. Harap simpan file ini sebagai arsibmu.</p>
       </div>
       <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih sudah menjadi bagian dari WOOCE Novel. Semoga karyamu terus berkembang!</p>`,
+      BASE_URL
+    ),
+  }));
+}
+
+export async function sendStoryDeletedByWriterEmail(to: string, writerName: string, storyTitle: string, pdfBuffer: Buffer) {
+  const safeFilename = storyTitle.replace(/[^a-zA-Z0-9\s-]/g, "").replace(/\s+/g, "-").toLowerCase();
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
+    to,
+    subject: `Backup Novel "${storyTitle}" — WOOCE Novel`,
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [
+      logoAttachment,
+      {
+        filename: `backup-novel-${safeFilename}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+    html: emailWrapper(
+      "linear-gradient(135deg,#5b21b6 0%,#7c3aed 60%,#4c1d95 100%)",
+      "Backup Novel Tersimpan",
+      `"${storyTitle}" telah dihapus dari platform`,
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${writerName}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Novel <strong>"${storyTitle}"</strong> telah berhasil dihapus dari WOOCE Novel sesuai permintaanmu.</p>
+      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;color:#065f46;font-size:13px;font-weight:600;">📄 File Backup Terlampir</p>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Kami telah menyiapkan <strong>backup lengkap</strong> seluruh isi novel ini — semua season dan chapter — dalam file PDF yang terlampir. Simpan file ini sebagai arsip pribadimu.</p>
+      </div>
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;padding:16px 22px;margin-bottom:24px;">
+        <p style="margin:0;color:#5b21b6;font-size:13px;line-height:1.6;">Karya yang pernah kamu tulis adalah bagian dari perjalananmu. Siapa tahu suatu saat kamu ingin melanjutkannya kembali — dan kami selalu terbuka untukmu. ✨</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih sudah berkarya di WOOCE Novel, <strong>${writerName}</strong>. Sampai jumpa di karya selanjutnya!</p>`,
       BASE_URL
     ),
   }));

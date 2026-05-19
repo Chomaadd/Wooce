@@ -1,5 +1,130 @@
 import PDFDocument from "pdfkit";
 
+export interface StoryBackupData {
+  storyTitle: string;
+  category: string;
+  status: string;
+  synopsis?: string;
+  writerName: string;
+  writerEmail: string;
+  exportedAt: string;
+  seasons: {
+    seasonNumber: number;
+    title: string;
+    chapters: {
+      chapterNumber: number;
+      title: string;
+      content?: string;
+    }[];
+  }[];
+}
+
+export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const chunks: Buffer[] = [];
+    doc.on("data", chunk => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const PRIMARY = "#7c3aed";
+    const DARK = "#1f2937";
+    const GRAY = "#6b7280";
+    const LIGHT_GRAY = "#f3f4f6";
+    const pageW = doc.page.width;
+
+    // Header
+    doc.rect(0, 0, pageW, 90).fill(PRIMARY);
+    doc.fill("#ffffff").fontSize(20).font("Helvetica-Bold").text("WOOCE Novel", 50, 22);
+    doc.fontSize(10).font("Helvetica").text("Backup Cerita / Novel", 50, 48);
+    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, 50, 64);
+    doc.opacity(1);
+
+    // Story title box
+    doc.rect(50, 108, pageW - 100, 52).fill(PRIMARY);
+    doc.fill("#ffffff").fontSize(14).font("Helvetica-Bold")
+      .text(data.storyTitle, 62, 116, { width: pageW - 124 });
+    doc.fontSize(9).font("Helvetica").opacity(0.75)
+      .text(`${data.category}  ·  ${data.status}`, 62, 136);
+    doc.opacity(1);
+
+    // Writer info
+    doc.rect(50, 160, pageW - 100, 44).fill(LIGHT_GRAY);
+    doc.fill(DARK).fontSize(9).font("Helvetica")
+      .text(`Penulis: ${data.writerName}`, 62, 170)
+      .text(`Email: ${data.writerEmail}`, 62, 184);
+
+    let y = 220;
+
+    // Synopsis
+    if (data.synopsis) {
+      doc.fill(DARK).fontSize(10).font("Helvetica-Bold").text("Sinopsis", 50, y);
+      y += 16;
+      doc.fill(GRAY).fontSize(9).font("Helvetica")
+        .text(data.synopsis, 50, y, { width: pageW - 100 });
+      y += doc.heightOfString(data.synopsis, { width: pageW - 100 }) + 18;
+    }
+
+    doc.moveTo(50, y).lineTo(pageW - 50, y).stroke(PRIMARY);
+    y += 14;
+
+    const totalChapters = data.seasons.reduce((a, s) => a + s.chapters.length, 0);
+    doc.fill(GRAY).fontSize(9).font("Helvetica")
+      .text(`Total Season: ${data.seasons.length}  ·  Total Chapter: ${totalChapters}`, 50, y);
+    y += 22;
+
+    for (const season of data.seasons) {
+      if (y > doc.page.height - 100) { doc.addPage(); y = 50; }
+
+      // Season header
+      doc.rect(50, y, pageW - 100, 28).fill("#ede9fe");
+      doc.fill(PRIMARY).fontSize(11).font("Helvetica-Bold")
+        .text(`Season ${season.seasonNumber}: ${season.title}`, 60, y + 8, { width: pageW - 120 });
+      y += 36;
+
+      for (const ch of season.chapters) {
+        if (y > doc.page.height - 80) { doc.addPage(); y = 50; }
+
+        // Chapter title
+        doc.fill(DARK).fontSize(10).font("Helvetica-Bold")
+          .text(`Bab ${ch.chapterNumber}. ${ch.title}`, 60, y);
+        y += 16;
+
+        if (ch.content && ch.content.trim()) {
+          const lines = ch.content.trim();
+          const lineH = doc.heightOfString(lines, { width: pageW - 120 });
+          if (y + lineH > doc.page.height - 60) {
+            // Write what fits, then paginate
+            const remaining = lines;
+            let offset = 0;
+            while (offset < remaining.length) {
+              const chunk = remaining.slice(offset, offset + 2000);
+              const h = doc.heightOfString(chunk, { width: pageW - 120 });
+              if (y + h > doc.page.height - 60) { doc.addPage(); y = 50; }
+              doc.fill(DARK).fontSize(9).font("Helvetica")
+                .text(chunk, 60, y, { width: pageW - 120 });
+              y += doc.heightOfString(chunk, { width: pageW - 120 }) + 4;
+              offset += 2000;
+            }
+          } else {
+            doc.fill(DARK).fontSize(9).font("Helvetica")
+              .text(lines, 60, y, { width: pageW - 120 });
+            y += lineH + 4;
+          }
+        }
+        y += 10;
+      }
+      y += 10;
+    }
+
+    // Footer
+    doc.fill(GRAY).fontSize(8).font("Helvetica")
+      .text("WOOCE Novel — Platform Baca Novel, Komik, dan Cerita Pendek", 50, doc.page.height - 36, { align: "center", width: pageW - 100 });
+
+    doc.end();
+  });
+}
+
 interface ChapterData {
   chapterNumber: number;
   title: string;

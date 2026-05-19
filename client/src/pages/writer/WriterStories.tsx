@@ -965,8 +965,20 @@ export default function WriterStories() {
 
       <Dialog open={!!deleteConfirm} onOpenChange={o => { if (!o) setDeleteConfirm(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Hapus {deleteConfirm?.type}?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Yakin mau hapus <span className="font-semibold text-foreground">"{deleteConfirm?.name}"</span>? Aksi ini tidak bisa dibatalkan.</p>
+          <DialogHeader>
+            <DialogTitle>Hapus {deleteConfirm?.type === "story" ? "Novel" : deleteConfirm?.type}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Yakin mau hapus <span className="font-semibold text-foreground">"{deleteConfirm?.name}"</span>? Aksi ini tidak bisa dibatalkan.</p>
+            {deleteConfirm?.type === "story" && (
+              <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex gap-3 items-start">
+                <span className="text-base mt-0.5">📄</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Tenang — kami akan kirim <span className="font-semibold text-foreground">file backup PDF</span> berisi seluruh isi novel ini ke emailmu secara otomatis sebelum dihapus.
+                </p>
+              </div>
+            )}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Batal</Button>
             <Button variant="destructive" onClick={() => {
@@ -974,7 +986,9 @@ export default function WriterStories() {
               if (deleteConfirm.type === "story") deleteStory.mutate(deleteConfirm.id);
               if (deleteConfirm.type === "season") deleteSeason.mutate(deleteConfirm.id);
               if (deleteConfirm.type === "chapter") deleteChapter.mutate(deleteConfirm.id);
-            }} data-testid="button-confirm-delete">Hapus</Button>
+            }} data-testid="button-confirm-delete">
+              {deleteConfirm?.type === "story" ? "Hapus & Kirim Backup" : "Hapus"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

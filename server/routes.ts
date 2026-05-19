@@ -24,10 +24,11 @@ import {
   sendWriterAccountDeletedByAdminEmail,
   sendSelfDeleteConfirmedEmail,
   sendWriterSelfDeleteConfirmedEmail,
+  sendStoryDeletedByWriterEmail,
 } from "./email";
 import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel } from "./db";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
-import { generateWriterBackupPdf } from "./pdf";
+import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
 declare module "express-session" {
   interface SessionData {
@@ -1092,6 +1093,42 @@ export async function registerRoutes(
       const story = await storage.getNovelStoryById(req.params.id);
       if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
       if (story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+
+      // Kumpulkan data sebelum dihapus untuk backup PDF
+      try {
+        const seasons = await storage.getNovelSeasons(story.id);
+        const seasonsWithChapters = await Promise.all(
+          seasons.map(async (season) => {
+            const chapters = await storage.getNovelChapters(season.id);
+            return {
+              seasonNumber: season.seasonNumber,
+              title: season.title,
+              chapters: chapters.map(ch => ({
+                chapterNumber: ch.chapterNumber,
+                title: ch.title,
+                content: ch.content,
+              })),
+            };
+          })
+        );
+
+        const pdfBuffer = await generateStoryBackupPdf({
+          storyTitle: story.title,
+          category: story.category,
+          status: story.status,
+          synopsis: story.synopsis,
+          writerName: user.name,
+          writerEmail: user.email,
+          exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+          seasons: seasonsWithChapters,
+        });
+
+        sendStoryDeletedByWriterEmail(user.email, user.name, story.title, pdfBuffer)
+          .catch(err => console.error("[Email] Gagal kirim backup story:", err));
+      } catch (backupErr) {
+        console.error("[Backup] Gagal generate PDF backup story:", backupErr);
+      }
+
       await storage.deleteNovelStory(req.params.id);
       res.status(204).send();
     } catch { res.status(500).json({ message: "Internal server error" }); }
