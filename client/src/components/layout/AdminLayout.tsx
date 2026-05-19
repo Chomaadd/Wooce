@@ -4,11 +4,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors, KeyRound } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-settings";
 import { useLanguage } from "@/hooks/use-language";
+import { CredentialsModal } from "@/components/admin/CredentialsModal";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, isLoading, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   const { data: siteSettings } = useSiteSettings();
   const { t, language, setLanguage } = useLanguage();
 
@@ -32,8 +34,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: "/admin/messages",   label: t("admin.nav.messages"),   icon: Mail },
     { href: "/admin/novel",      label: t("admin.nav.novel"),      icon: BookOpen },
     { href: "/admin/short-urls", label: t("admin.nav.short_urls"), icon: Scissors },
-    { href: "/admin/settings",     label: t("admin.nav.settings"),     icon: Settings },
-    { href: "/admin/credentials",  label: t("admin.nav.credentials"),  icon: KeyRound },
+    { href: "/admin/settings",   label: t("admin.nav.settings"),   icon: Settings },
   ];
 
   const currentPage = links.find(l => l.href === location)?.label || t("admin.nav.dashboard");
@@ -116,7 +117,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               <span className="font-semibold">{currentPage}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCredentialsOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2.5 py-1.5 rounded-md border border-border transition-all"
+              data-testid="button-open-credentials"
+              title="Kredensial"
+            >
+              <KeyRound size={13} />
+              <span className="hidden sm:inline">Kredensial</span>
+            </button>
             <button
               onClick={() => setLanguage(language === "en" ? "id" : "en")}
               className="text-xs font-bold px-2.5 py-1 rounded-md border border-border bg-background hover:bg-accent transition-colors uppercase tracking-wider"
@@ -136,6 +146,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </main>
+
+      {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
     </div>
   );
 }
