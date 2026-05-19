@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
-import { SiGoogle } from "react-icons/si";
+import { FcGoogle } from "react-icons/fc";
 
 export function LoginModal({ onClose }: { onClose: () => void }) {
   return (
@@ -46,7 +46,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
               className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-border bg-background hover:bg-muted transition-colors text-sm font-medium text-foreground shadow-sm"
               data-testid="button-login-google"
             >
-              <SiGoogle size={16} className="text-[#4285F4]" />
+              <FcGoogle size={18} />
               Lanjutkan dengan Google
             </button>
           </a>
