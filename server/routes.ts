@@ -26,7 +26,7 @@ import {
   sendWriterSelfDeleteConfirmedEmail,
   sendStoryDeletedByWriterEmail,
 } from "./email";
-import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel } from "./db";
+import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel } from "./db";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
@@ -565,11 +565,16 @@ export async function registerRoutes(
       }).lean();
       const reqMap: Record<string, any> = {};
       for (const r of requests) reqMap[(r as any).userId.toString()] = r;
+      const authorIds = users.map((u: any) => u.authorId).filter(Boolean);
+      const authors = await AuthorModel.find({ _id: { $in: authorIds } }).lean();
+      const authorMap: Record<string, any> = {};
+      for (const a of authors) authorMap[(a as any)._id.toString()] = a;
       res.json(users.map((u: any) => ({
         ...u,
         id: u._id.toString(),
         authorId: u.authorId?.toString() ?? null,
         verificationRequest: reqMap[u._id.toString()] ?? null,
+        authorProfile: u.authorId ? (authorMap[u.authorId.toString()] ?? null) : null,
       })));
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });

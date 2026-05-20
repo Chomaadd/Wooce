@@ -33,10 +33,12 @@ export default function Privacy() {
       ],
       items: [
         "Data Akun Google (saat login): Nama lengkap, alamat email, foto profil, dan ID unik Google-mu dikumpulkan melalui proses autentikasi Google OAuth 2.0. Data ini diperlukan untuk membuat dan mengelola akunmu.",
-        "Data Profil Penulis: Jika kamu mendaftar sebagai penulis, kami menyimpan informasi tambahan seperti username penulis, bio singkat, alasan bergabung, dan status akun penulis (pending, aktif, suspend).",
+        "Data Profil Penulis: Jika kamu mendaftar sebagai penulis, kami menyimpan informasi tambahan seperti username penulis, bio singkat, alasan bergabung, dan status akun penulis (pending, aktif, suspend). Data profil publik yang kamu tambahkan sendiri — termasuk tautan media sosial (TikTok, Instagram, Facebook, Twitter/X, Website, Email publik) dan tautan donasi (Saweria, Trakteer) — juga disimpan dan dapat diakses secara publik di halaman profil penulismu.",
         "Data Karya: Seluruh konten yang kamu unggah sebagai penulis — termasuk judul novel, sinopsis, konten chapter, cover gambar, kategori, dan status publikasi — disimpan di server kami.",
         "Data Sesi: Informasi sesi login (session ID terenkripsi) disimpan sementara di server untuk menjaga status autentikasimu selama menggunakan platform.",
         "Data Permohonan Penulis: Informasi yang kamu isi di formulir permohonan jadi penulis, termasuk alasan bergabung dan informasi kontak.",
+        "Data Pengajuan Verifikasi: Jika kamu mengajukan verifikasi penulis, kami menyimpan informasi yang kamu masukkan dalam formulir verifikasi, meliputi: judul novel, genre, tautan novel, jumlah total chapter, sinopsis, dan alasan pengajuan verifikasi. Data ini digunakan semata-mata untuk keperluan tinjauan admin.",
+        "Data Notifikasi In-App: Notifikasi dalam aplikasi yang dikirimkan kepada akunmu (terkait status permohonan, verifikasi, atau pembaruan akun) disimpan di server kami dan terhubung ke ID akunmu.",
         "Data Penggunaan Anonim: Jumlah tampilan (view count) dan data rating per cerita dikumpulkan secara anonim untuk memahami popularitas konten. Data ini tidak terhubung ke identitas pribadimu.",
         "Data Preferensi Lokal: Preferensi bahasa (Indonesia/Inggris) dan tema (terang/gelap) disimpan di localStorage browser perangkatmu, bukan di server kami.",
       ],
@@ -63,7 +65,8 @@ export default function Privacy() {
         "Autentikasi dan Keamanan Akun: Memverifikasi identitasmu saat login dan menjaga keamanan sesi aktifmu di platform.",
         "Pengelolaan Akun dan Profil: Menampilkan nama, foto, dan informasi profilmu di halaman yang relevan.",
         "Proses Permohonan Penulis: Meninjau dan memproses permohonan kamu untuk menjadi penulis di platform.",
-        "Notifikasi Email: Mengirimkan email penting terkait akun dan karya, termasuk konfirmasi permohonan, persetujuan/penolakan, pemberitahuan suspend, OTP verifikasi penghapusan akun, dan backup PDF karya.",
+        "Tinjauan Verifikasi Penulis: Memeriksa formulir pengajuan verifikasi dan profil publik penulis (bio, tautan media sosial, tautan donasi) untuk memastikan keaslian identitas dan mencegah potensi penipuan atau penyalahgunaan nama platform.",
+        "Notifikasi Email dan In-App: Mengirimkan notifikasi penting terkait akun dan karya — baik melalui email maupun notifikasi dalam aplikasi (in-app) — termasuk konfirmasi permohonan, persetujuan/penolakan, pembaruan verifikasi, pemberitahuan suspend, OTP verifikasi penghapusan akun, dan backup PDF karya.",
         "Backup Data Otomatis: Menghasilkan dan mengirimkan file PDF backup saat penulis menghapus novel atau akunnya, sebagai bentuk perlindungan data pengguna.",
         "Pengelolaan Konten: Menyimpan, menampilkan, dan mengelola karya yang dipublikasikan oleh penulis terdaftar.",
         "Analitik Platform: Menggunakan data view count anonim untuk memahami popularitas konten dan meningkatkan kualitas platform.",
@@ -86,9 +89,19 @@ export default function Privacy() {
       note: "Meskipun kami menerapkan langkah-langkah keamanan yang wajar, tidak ada sistem yang 100% kebal terhadap ancaman siber. Kami mendorong pengguna untuk menjaga keamanan akun Google mereka sebagai lapisan perlindungan tambahan.",
     },
     {
-      title: "6. Notifikasi Email",
+      title: "6. Notifikasi Email dan In-App",
       paragraphs: [
-        "WOOCE Novel menggunakan layanan Gmail SMTP untuk mengirim notifikasi email kepada pengguna. Email hanya dikirimkan untuk keperluan yang relevan dan penting, yaitu:",
+        "WOOCE Novel menggunakan dua saluran notifikasi untuk menjaga penggunanya tetap terinformasi:",
+      ],
+      items: [
+        "Notifikasi Email (via Gmail SMTP): Dikirimkan untuk kejadian penting yang memerlukan perhatian di luar platform, seperti konfirmasi tindakan dan backup data.",
+        "Notifikasi In-App: Ditampilkan langsung di dalam platform saat kamu login, untuk memberikan informasi terkini mengenai status akun dan aktivitas terkait.",
+      ],
+    },
+    {
+      title: "6a. Daftar Notifikasi Email",
+      paragraphs: [
+        "Email hanya dikirimkan untuk keperluan yang relevan dan penting, yaitu:",
       ],
       items: [
         "Konfirmasi penerimaan permohonan penulis (saat formulir permohonan berhasil dikirim)",
@@ -101,6 +114,21 @@ export default function Privacy() {
         "Email tes konfigurasi (hanya untuk admin platform)",
       ],
       note: "WOOCE Novel tidak mengirimkan email pemasaran, newsletter, atau iklan tanpa persetujuan eksplisit dari pengguna. Email yang kami kirim murni bersifat transaksional dan fungsional.",
+    },
+    {
+      title: "6b. Daftar Notifikasi In-App",
+      paragraphs: [
+        "Notifikasi dalam aplikasi (in-app) disimpan di server kami dan ditampilkan di dashboard pengguna. Notifikasi ini mencakup:",
+      ],
+      items: [
+        "Pemberitahuan persetujuan permohonan penulis",
+        "Pemberitahuan penolakan permohonan penulis",
+        "Pemberitahuan persetujuan pengajuan verifikasi penulis",
+        "Pemberitahuan penolakan pengajuan verifikasi penulis",
+        "Pemberitahuan suspend akun",
+        "Pembaruan penting lainnya terkait akun dan status penulismu",
+      ],
+      note: "Data notifikasi in-app disimpan di server kami dan terhubung ke ID akunmu. Notifikasi ini tidak dibagikan kepada pihak ketiga.",
     },
     {
       title: "7. Backup dan Ekspor Data",
@@ -208,10 +236,12 @@ export default function Privacy() {
       ],
       items: [
         "Google Account Data (upon login): Your full name, email address, profile photo, and unique Google ID are collected through the Google OAuth 2.0 authentication process. This data is necessary to create and manage your account.",
-        "Writer Profile Data: If you register as a writer, we store additional information such as your writer username, short bio, reason for joining, and writer account status (pending, active, suspended).",
+        "Writer Profile Data: If you register as a writer, we store additional information such as your writer username, short bio, reason for joining, and writer account status (pending, active, suspended). Public profile data you add yourself — including social media links (TikTok, Instagram, Facebook, Twitter/X, Website, public email) and donation links (Saweria, Trakteer) — is also stored and accessible publicly on your writer profile page.",
         "Works Data: All content you upload as a writer — including novel titles, synopses, chapter content, cover images, categories, and publication status — is stored on our servers.",
         "Session Data: Encrypted login session information (session ID) is temporarily stored on the server to maintain your authentication status while using the platform.",
         "Writer Application Data: Information you fill in the writer application form, including your reason for joining and contact information.",
+        "Verification Request Data: If you apply for writer verification, we store the information you enter in the verification form, including: novel title, genre, novel link, total chapter count, synopsis, and reason for applying. This data is used solely for admin review purposes.",
+        "In-App Notification Data: In-app notifications sent to your account (regarding application status, verification, or account updates) are stored on our servers and linked to your account ID.",
         "Anonymous Usage Data: View counts and rating data per story are collected anonymously to understand content popularity. This data is not linked to your personal identity.",
         "Local Preference Data: Language preference (Indonesian/English) and theme (light/dark) are stored in your device's browser localStorage, not on our servers.",
       ],
@@ -238,7 +268,8 @@ export default function Privacy() {
         "Authentication and Account Security: Verifying your identity upon login and maintaining the security of your active session on the platform.",
         "Account and Profile Management: Displaying your name, photo, and profile information on relevant pages.",
         "Writer Application Process: Reviewing and processing your application to become a writer on the platform.",
-        "Email Notifications: Sending important emails regarding your account and works, including application confirmation, approval/rejection, suspension notices, account deletion OTP verification, and work PDF backups.",
+        "Writer Verification Review: Examining the verification application form and the writer's public profile (bio, social media links, donation links) to verify identity and prevent potential fraud or misuse of the platform's name.",
+        "Email and In-App Notifications: Sending important notifications regarding your account and works — both via email and in-app notifications — including application confirmation, approval/rejection, verification updates, suspension notices, account deletion OTP verification, and work PDF backups.",
         "Automatic Data Backup: Generating and sending PDF backup files when writers delete novels or their accounts, as a user data protection measure.",
         "Content Management: Storing, displaying, and managing works published by registered writers.",
         "Platform Analytics: Using anonymous view count data to understand content popularity and improve platform quality.",
@@ -261,9 +292,19 @@ export default function Privacy() {
       note: "Although we implement reasonable security measures, no system is 100% immune to cyber threats. We encourage users to maintain the security of their Google account as an additional layer of protection.",
     },
     {
-      title: "6. Email Notifications",
+      title: "6. Email and In-App Notifications",
       paragraphs: [
-        "WOOCE Novel uses Gmail SMTP service to send email notifications to users. Emails are only sent for relevant and important purposes, namely:",
+        "WOOCE Novel uses two notification channels to keep users informed:",
+      ],
+      items: [
+        "Email Notifications (via Gmail SMTP): Sent for important events that require attention outside the platform, such as action confirmations and data backups.",
+        "In-App Notifications: Displayed directly within the platform when you log in, to provide real-time updates about your account status and related activities.",
+      ],
+    },
+    {
+      title: "6a. Email Notification List",
+      paragraphs: [
+        "Emails are only sent for relevant and important purposes, namely:",
       ],
       items: [
         "Confirmation of writer application receipt (when the application form is successfully submitted)",
@@ -276,6 +317,21 @@ export default function Privacy() {
         "Configuration test email (admin platform only)",
       ],
       note: "WOOCE Novel does not send marketing emails, newsletters, or advertisements without explicit user consent. All emails we send are purely transactional and functional in nature.",
+    },
+    {
+      title: "6b. In-App Notification List",
+      paragraphs: [
+        "In-app notifications are stored on our servers and displayed on the user dashboard. These notifications include:",
+      ],
+      items: [
+        "Writer application approval notification",
+        "Writer application rejection notification",
+        "Writer verification approval notification",
+        "Writer verification rejection notification",
+        "Account suspension notification",
+        "Other important updates regarding your account and writer status",
+      ],
+      note: "In-app notification data is stored on our servers and linked to your account ID. These notifications are not shared with third parties.",
     },
     {
       title: "7. Backup and Data Export",

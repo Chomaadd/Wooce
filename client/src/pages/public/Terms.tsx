@@ -59,11 +59,26 @@ export default function Terms() {
       items: [
         "Permohonan: Calon penulis mengisi formulir permohonan melalui halaman Jadi Penulis, termasuk nama, bio singkat, dan alasan bergabung.",
         "Proses Persetujuan: Setiap permohonan akan ditinjau oleh admin WOOCE Novel. Keputusan persetujuan atau penolakan sepenuhnya ada di tangan admin dan bersifat final.",
-        "Notifikasi Status: Penulis akan menerima notifikasi email ketika permohonan diterima, disetujui, atau ditolak.",
+        "Notifikasi Status: Penulis akan menerima notifikasi email dan notifikasi dalam aplikasi (in-app) ketika permohonan diterima, disetujui, atau ditolak.",
         "Username Penulis: Setelah disetujui, penulis wajib memilih username unik yang akan ditampilkan di halaman publik karya mereka.",
         "Pengelolaan Karya: Penulis dapat membuat novel dengan struktur Season dan Bab, mengatur status publikasi (diterbitkan atau draft), serta mengelola konten kapan saja melalui dashboard penulis.",
         "Backup Karya: Saat penulis menghapus novel/karya mereka, sistem secara otomatis mengirimkan file PDF backup berisi seluruh isi karya ke email terdaftar penulis.",
       ],
+    },
+    {
+      title: "4a. Sistem Verifikasi Penulis",
+      paragraphs: [
+        "WOOCE Novel menyediakan sistem verifikasi tambahan bagi penulis aktif yang ingin mendapatkan tanda verifikasi resmi (centang biru) di profil mereka. Sistem ini dirancang untuk memastikan akuntabilitas dan mencegah penyalahgunaan platform.",
+      ],
+      items: [
+        "Pengajuan Verifikasi: Penulis aktif dapat mengajukan verifikasi melalui halaman Verifikasi Penulis dengan mengisi formulir yang mencakup judul novel, genre, tautan novel, total chapter yang ditulis, sinopsis, dan alasan pengajuan verifikasi.",
+        "Tinjauan Admin: Setiap pengajuan akan ditinjau secara manual oleh admin WOOCE Novel. Dalam proses ini, admin berhak memeriksa profil publik penulis, termasuk bio, tautan media sosial, dan tautan donasi yang tercantum, untuk memastikan identitas dan keaslian penulis.",
+        "Keputusan Verifikasi: Keputusan untuk menyetujui atau menolak pengajuan verifikasi sepenuhnya ada di tangan admin dan bersifat final.",
+        "Masa Tunggu Penolakan: Jika pengajuan verifikasi ditolak, penulis tidak dapat mengajukan kembali dalam jangka waktu 30 hari kalender sejak tanggal penolakan. Hal ini untuk mencegah pengajuan berulang tanpa perbaikan yang berarti.",
+        "Notifikasi Verifikasi: Penulis akan menerima notifikasi dalam aplikasi (in-app) dan email mengenai status pengajuan verifikasi mereka.",
+        "Pencabutan Verifikasi: Admin berhak mencabut status verifikasi penulis jika ditemukan pelanggaran ketentuan layanan atau indikasi penipuan.",
+      ],
+      note: "Tanda verifikasi tidak memberikan hak atau keistimewaan tambahan di luar tampilan visual di profil. Verifikasi semata-mata menandakan bahwa identitas penulis telah ditinjau dan diakui oleh admin WOOCE Novel.",
     },
     {
       title: "5. Hak dan Kewajiban Penulis",
@@ -234,11 +249,26 @@ export default function Terms() {
       items: [
         "Application: Prospective writers fill out an application form via the Become a Writer page, including name, short bio, and reason for joining.",
         "Approval Process: Each application will be reviewed by WOOCE Novel admin. The decision to approve or reject is entirely at the admin's discretion and is final.",
-        "Status Notification: Writers will receive email notifications when their application is received, approved, or rejected.",
+        "Status Notification: Writers will receive email and in-app notifications when their application is received, approved, or rejected.",
         "Writer Username: Once approved, writers must choose a unique username that will be displayed on their public work pages.",
         "Work Management: Writers can create novels with Season and Chapter structures, manage publication status (published or draft), and manage content at any time via the writer dashboard.",
         "Work Backup: When a writer deletes a novel/work, the system automatically sends a PDF backup file containing all of the work's content to the writer's registered email.",
       ],
+    },
+    {
+      title: "4a. Writer Verification System",
+      paragraphs: [
+        "WOOCE Novel provides an additional verification system for active writers who wish to obtain an official verification badge (blue checkmark) on their profile. This system is designed to ensure accountability and prevent platform abuse.",
+      ],
+      items: [
+        "Verification Application: Active writers can apply for verification through the Writer Verification page by filling out a form that includes the novel title, genre, novel link, total chapters written, synopsis, and reason for applying for verification.",
+        "Admin Review: Each application will be manually reviewed by WOOCE Novel admin. During this process, the admin has the right to examine the writer's public profile, including bio, social media links, and donation links listed, to verify the writer's identity and authenticity.",
+        "Verification Decision: The decision to approve or reject a verification application is entirely at the admin's discretion and is final.",
+        "Rejection Waiting Period: If a verification application is rejected, the writer may not reapply for 30 calendar days from the date of rejection. This is to prevent repeated applications without meaningful improvement.",
+        "Verification Notification: Writers will receive in-app and email notifications regarding the status of their verification application.",
+        "Verification Revocation: Admins reserve the right to revoke a writer's verification status if violations of the terms of service or indications of fraud are found.",
+      ],
+      note: "The verification badge does not grant additional rights or privileges beyond the visual display on the profile. Verification solely indicates that the writer's identity has been reviewed and acknowledged by WOOCE Novel admin.",
     },
     {
       title: "5. Writer Rights and Obligations",
@@ -389,7 +419,7 @@ export default function Terms() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t("terms.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("terms.updated")}: 19 Mei 2026
+            {t("terms.updated")}: 20 Mei 2026
           </p>
         </div>
 

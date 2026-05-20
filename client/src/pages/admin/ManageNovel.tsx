@@ -1815,6 +1815,180 @@ export default function ManageNovel() {
   );
 }
 
+// ── VerifCard ─────────────────────────────────────────────────────────────────
+function VerifCard({ u, onVerify, onReject, verifyPending, rejectPending }: {
+  u: any;
+  onVerify: () => void;
+  onReject: () => void;
+  verifyPending: boolean;
+  rejectPending: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const vr = u.verificationRequest;
+  const ap = u.authorProfile;
+  const initials = (u.name || "?").charAt(0).toUpperCase();
+  const socialLinks = [
+    { key: "tiktok", label: "TikTok", val: ap?.tiktok },
+    { key: "instagram", label: "Instagram", val: ap?.instagram },
+    { key: "facebook", label: "Facebook", val: ap?.facebook },
+    { key: "twitter", label: "Twitter/X", val: ap?.twitter },
+    { key: "website", label: "Website", val: ap?.website },
+    { key: "email", label: "Email Publik", val: ap?.email },
+  ].filter(s => s.val);
+  const donationLinks = [
+    { key: "saweria", label: "Saweria", val: ap?.saweria },
+    { key: "trakteer", label: "Trakteer", val: ap?.trakteer },
+  ].filter(d => d.val);
+
+  return (
+    <div className="border border-blue-500/20 bg-blue-500/5 rounded-xl overflow-hidden">
+      {/* Summary row */}
+      <div className="flex items-center gap-3 p-4">
+        {ap?.photoUrl
+          ? <img src={ap.photoUrl} alt={ap.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-blue-500/20" />
+          : <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-sm ring-2 ring-blue-500/20">{initials}</div>
+        }
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="font-semibold text-sm text-foreground">{ap?.name || u.name}</p>
+            {ap?.slug && <span className="text-xs text-muted-foreground">@{ap.slug}</span>}
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+          {vr?.novelTitle && (
+            <p className="text-xs text-blue-600 mt-0.5 font-medium truncate">📖 {vr.novelTitle}</p>
+          )}
+        </div>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+          data-testid={`button-expand-verif-${u.id}`}
+        >
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {expanded ? "Tutup" : "Detail"}
+        </button>
+      </div>
+
+      {/* Detail panel */}
+      {expanded && (
+        <div className="border-t border-blue-500/15 px-4 pb-4 pt-3 space-y-4">
+          {/* Author Profile */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <User size={11} /> Profil Penulis
+            </p>
+            {ap?.bio ? (
+              <p className="text-sm text-foreground/80 leading-relaxed bg-muted/40 rounded-lg p-3 mb-2">{ap.bio}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground italic mb-2">Belum ada bio.</p>
+            )}
+            {socialLinks.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {socialLinks.map(s => (
+                  <a
+                    key={s.key}
+                    href={s.val!.startsWith("http") ? s.val! : `https://${s.val}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-xs text-foreground/70 hover:text-blue-600 hover:bg-blue-500/10 transition-colors"
+                  >
+                    <ExternalLink size={10} /> {s.label}
+                  </a>
+                ))}
+              </div>
+            )}
+            {donationLinks.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {donationLinks.map(d => (
+                  <a
+                    key={d.key}
+                    href={d.val!.startsWith("http") ? d.val! : `https://${d.val}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs hover:bg-amber-500/20 transition-colors"
+                  >
+                    <ExternalLink size={10} /> {d.label}
+                  </a>
+                ))}
+              </div>
+            )}
+            {socialLinks.length === 0 && donationLinks.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">Tidak ada link sosial media / donasi.</p>
+            )}
+          </div>
+
+          {/* Novel / Verification Form Data */}
+          {vr ? (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <BookOpen size={11} /> Data Novel yang Diajukan
+              </p>
+              <div className="bg-muted/40 rounded-xl p-3 space-y-2.5">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">Judul Novel</p>
+                    <p className="text-sm font-medium text-foreground">{vr.novelTitle}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">Genre</p>
+                    <p className="text-sm font-medium text-foreground">{vr.novelGenre}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">Total Chapter</p>
+                    <p className="text-sm font-medium text-foreground">{vr.totalChapters} chapter</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-0.5">Link Novel</p>
+                    {vr.novelLink ? (
+                      <a
+                        href={vr.novelLink.startsWith("http") ? vr.novelLink : `https://${vr.novelLink}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 break-all"
+                      >
+                        <ExternalLink size={10} /> Buka Link
+                      </a>
+                    ) : <p className="text-xs text-muted-foreground">—</p>}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-1">Sinopsis</p>
+                  <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">{vr.synopsis}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-1">Alasan Mengajukan Verifikasi</p>
+                  <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">{vr.reason}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Data formulir verifikasi tidak ditemukan.</p>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={onVerify}
+              disabled={verifyPending}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors text-xs font-semibold disabled:opacity-50"
+              data-testid={`button-verify-${u.id}`}
+            >
+              <BadgeCheck size={13} /> Berikan Verifikasi
+            </button>
+            <button
+              onClick={onReject}
+              disabled={rejectPending}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors text-xs font-semibold disabled:opacity-50"
+              data-testid={`button-reject-verification-${u.id}`}
+            >
+              <UserX size={13} /> Tolak Verifikasi
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ApprovalsView ─────────────────────────────────────────────────────────────
 function ApprovalsView() {
   const { toast } = useToast();
@@ -2053,36 +2227,16 @@ function ApprovalsView() {
             <p className="text-sm text-muted-foreground">Tidak ada pengajuan verifikasi</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {pendingVerifications.map((u: any) => (
-              <div key={u.id} className="flex items-center gap-3 p-4 border border-blue-500/20 bg-blue-500/5 rounded-xl">
-                {u.photoUrl
-                  ? <img src={u.photoUrl} alt={u.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                  : <div className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 text-blue-500 font-bold text-sm">{u.name?.charAt(0).toUpperCase()}</div>
-                }
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-foreground">{u.name}</p>
-                  <p className="text-xs text-muted-foreground">{u.email}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => verifyMutation.mutate(u.id)}
-                    disabled={verifyMutation.isPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors text-xs font-semibold disabled:opacity-50"
-                    data-testid={`button-verify-${u.id}`}
-                  >
-                    <BadgeCheck size={13} /> Verifikasi
-                  </button>
-                  <button
-                    onClick={() => rejectVerificationMutation.mutate(u.id)}
-                    disabled={rejectVerificationMutation.isPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-red-500/10 hover:text-red-600 transition-colors text-xs font-semibold disabled:opacity-50"
-                    data-testid={`button-reject-verification-${u.id}`}
-                  >
-                    <UserX size={13} /> Tolak
-                  </button>
-                </div>
-              </div>
+              <VerifCard
+                key={u.id}
+                u={u}
+                onVerify={() => verifyMutation.mutate(u.id)}
+                onReject={() => rejectVerificationMutation.mutate(u.id)}
+                verifyPending={verifyMutation.isPending}
+                rejectPending={rejectVerificationMutation.isPending}
+              />
             ))}
           </div>
         )}
