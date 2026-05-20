@@ -209,8 +209,9 @@ export default function UserProfile() {
 
   const { data: writerStories, isLoading: writerLoading } = useQuery<(NovelStory & { totalChapters: number })[]>({
     queryKey: ["/api/writer/stories"],
-    queryFn: () => fetch("/api/writer/stories", { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch("/api/writer/stories", { credentials: "include" }).then(r => r.ok ? r.json() : []),
     enabled: !!user && user.role === "writer" && user.status === "active",
+    select: (data) => Array.isArray(data) ? data : [],
   });
 
   const { data: writerMe } = useQuery<WriterMeData>({
