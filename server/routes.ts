@@ -578,6 +578,12 @@ export async function registerRoutes(
     try {
       await UserModel.updateOne({ _id: req.params.id }, { $set: { verificationStatus: "verified" } });
       await VerificationRequestModel.updateOne({ userId: req.params.id, status: "pending" }, { $set: { status: "approved" } });
+      storage.createNotification({
+        userId: req.params.id,
+        type: "approved",
+        title: "Verifikasi Penulis Diterima! 🎉",
+        message: "Selamat! Pengajuan verifikasi penulismu telah disetujui oleh admin. Centang biru kini tampil di profilmu.",
+      }).catch(console.error);
       res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -589,6 +595,12 @@ export async function registerRoutes(
         { $set: { verificationStatus: "none", verificationRejectedAt: new Date() } }
       );
       await VerificationRequestModel.updateOne({ userId: req.params.id, status: "pending" }, { $set: { status: "rejected" } });
+      storage.createNotification({
+        userId: req.params.id,
+        type: "rejected",
+        title: "Pengajuan Verifikasi Ditolak",
+        message: "Pengajuan verifikasi penulismu belum memenuhi syarat saat ini. Kamu bisa mengajukan kembali setelah 30 hari.",
+      }).catch(console.error);
       res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
