@@ -581,8 +581,8 @@ export async function registerRoutes(
       storage.createNotification({
         userId: req.params.id,
         type: "approved",
-        title: "Verifikasi Penulis Diterima! 🎉",
-        message: "Selamat! Pengajuan verifikasi penulismu telah disetujui oleh admin. Centang biru kini tampil di profilmu.",
+        title: "Verifikasi Penulis Diterima!",
+        message: "Selamat! Pengajuan verifikasi penulismu telah disetujui. Centang biru kini tampil di profilmu.",
       }).catch(console.error);
       res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
@@ -1206,7 +1206,7 @@ export async function registerRoutes(
           storyTitle: story.title,
           category: story.category,
           status: story.status,
-          synopsis: story.synopsis,
+          synopsis: story.description ?? "",
           writerName: user.name || "Penulis",
           writerEmail: user.email || "",
           exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
@@ -1337,7 +1337,7 @@ export async function registerRoutes(
         storyTitle: story.title,
         category: story.category,
         status: story.status,
-        synopsis: story.synopsis,
+        synopsis: story.description ?? "",
         writerName: user.name || "Penulis",
         writerEmail: user.email || "",
         exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
