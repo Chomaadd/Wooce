@@ -100,7 +100,21 @@ const userMongoSchema = new mongoose.Schema({
   authorId: { type: mongoose.Schema.Types.ObjectId, default: null, ref: 'Author' },
   suspendedAt: { type: Date, default: null },
   verificationStatus: { type: String, enum: ['none', 'pending', 'verified'], default: 'none' },
+  verificationRejectedAt: { type: Date, default: null },
 }, { timestamps: { createdAt: true, updatedAt: false } });
+
+const verificationRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  novelTitle: { type: String, required: true },
+  novelGenre: { type: String, required: true },
+  novelLink: { type: String, required: true },
+  totalChapters: { type: Number, required: true },
+  synopsis: { type: String, required: true },
+  reason: { type: String, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+}, { timestamps: true });
 
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 export const UserModel = mongoose.models.User || mongoose.model('User', userMongoSchema);
@@ -110,3 +124,4 @@ export const NovelSeasonModel = mongoose.models.NovelSeason || mongoose.model('N
 export const NovelChapterModel = mongoose.models.NovelChapter || mongoose.model('NovelChapter', novelChapterSchema);
 export const BannerSlideModel = mongoose.models.BannerSlide || mongoose.model('BannerSlide', bannerSlideMongoSchema);
 export const AnnouncementModel = mongoose.models.Announcement || mongoose.model('Announcement', announcementMongoSchema);
+export const VerificationRequestModel = mongoose.models.VerificationRequest || mongoose.model('VerificationRequest', verificationRequestSchema);

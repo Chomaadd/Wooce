@@ -26,7 +26,7 @@ import {
   sendWriterSelfDeleteConfirmedEmail,
   sendStoryDeletedByWriterEmail,
 } from "./email";
-import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel } from "./db";
+import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel } from "./db";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
@@ -559,20 +559,36 @@ export async function registerRoutes(
   app.get("/api/admin/users/pending-verification", requireAuth, async (_req, res) => {
     try {
       const users = await UserModel.find({ verificationStatus: "pending", role: "writer" }).lean();
-      res.json(users.map((u: any) => ({ ...u, id: u._id.toString(), authorId: u.authorId?.toString() ?? null })));
+      const requests = await VerificationRequestModel.find({
+        userId: { $in: users.map((u: any) => u._id) },
+        status: "pending",
+      }).lean();
+      const reqMap: Record<string, any> = {};
+      for (const r of requests) reqMap[(r as any).userId.toString()] = r;
+      res.json(users.map((u: any) => ({
+        ...u,
+        id: u._id.toString(),
+        authorId: u.authorId?.toString() ?? null,
+        verificationRequest: reqMap[u._id.toString()] ?? null,
+      })));
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.patch("/api/admin/users/:id/verify", requireAuth, async (req, res) => {
     try {
       await UserModel.updateOne({ _id: req.params.id }, { $set: { verificationStatus: "verified" } });
+      await VerificationRequestModel.updateOne({ userId: req.params.id, status: "pending" }, { $set: { status: "approved" } });
       res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.patch("/api/admin/users/:id/reject-verification", requireAuth, async (req, res) => {
     try {
-      await UserModel.updateOne({ _id: req.params.id }, { $set: { verificationStatus: "none" } });
+      await UserModel.updateOne(
+        { _id: req.params.id },
+        { $set: { verificationStatus: "none", verificationRejectedAt: new Date() } }
+      );
+      await VerificationRequestModel.updateOne({ userId: req.params.id, status: "pending" }, { $set: { status: "rejected" } });
       res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1327,12 +1343,48 @@ export async function registerRoutes(
   app.post("/api/writer/request-verification", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
-      const currentStatus = (user as any).verificationStatus ?? "none";
+      const userDoc = await UserModel.findById(user.id).lean() as any;
+      const currentStatus = userDoc?.verificationStatus ?? "none";
+
       if (currentStatus === "verified") return res.status(400).json({ message: "Kamu sudah terverifikasi" });
       if (currentStatus === "pending") return res.status(400).json({ message: "Permintaan verifikasi sedang diproses" });
+
+      const verificationRejectedAt = userDoc?.verificationRejectedAt;
+      if (verificationRejectedAt) {
+        const daysSince = (Date.now() - new Date(verificationRejectedAt).getTime()) / 86400000;
+        if (daysSince < 30) {
+          const daysLeft = Math.ceil(30 - daysSince);
+          return res.status(403).json({ message: `Pengajuan verifikasi ditolak. Bisa mengajukan lagi dalam ${daysLeft} hari.`, cooldown: true, daysLeft });
+        }
+      }
+
+      const schema = z.object({
+        novelTitle:    z.string().min(2, "Judul novel wajib diisi"),
+        novelGenre:    z.string().min(1, "Genre wajib dipilih"),
+        novelLink:     z.string().url("Link novel harus berupa URL yang valid"),
+        totalChapters: z.coerce.number().min(1, "Jumlah chapter minimal 1"),
+        synopsis:      z.string().min(50, "Sinopsis minimal 50 karakter"),
+        reason:        z.string().min(30, "Alasan minimal 30 karakter"),
+      });
+
+      const body = schema.parse(req.body);
+
+      await VerificationRequestModel.deleteMany({ userId: user.id });
+
+      await VerificationRequestModel.create({
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        ...body,
+        status: "pending",
+      });
+
       await UserModel.updateOne({ _id: user.id }, { $set: { verificationStatus: "pending" } });
-      res.json({ success: true, message: "Permintaan verifikasi telah dikirim. Admin akan meninjau akunmu." });
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+      res.json({ success: true, message: "Permintaan verifikasi telah dikirim. Admin akan meninjau pengajuanmu." });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // ── Translation API ───────────────────────────────────────────────────────

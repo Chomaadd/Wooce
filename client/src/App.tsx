@@ -18,6 +18,7 @@ import Privacy from "./pages/public/Privacy";
 import Contact from "./pages/public/Contact";
 import AuthorProfile from "./pages/public/AuthorProfile";
 import BecomeWriter from "./pages/public/BecomeWriter";
+import VerifyAuthor from "./pages/public/VerifyAuthor";
 import UserProfile from "./pages/public/UserProfile";
 import WriterStories from "./pages/writer/WriterStories";
 import WriterProfileSettings from "./pages/writer/WriterProfileSettings";
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/penulis/:slug" component={AuthorProfile} />
       <Route path="/daftar-penulis" component={BecomeWriter} />
+      <Route path="/verify-author" component={VerifyAuthor} />
       <Route path="/profile" component={UserProfile} />
       <Route path="/writer/cerita" component={WriterStories} />
       <Route path="/writer/profil" component={WriterProfileSettings} />

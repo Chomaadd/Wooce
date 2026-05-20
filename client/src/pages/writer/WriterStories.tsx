@@ -281,11 +281,6 @@ export default function WriterStories() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/stories"] }); setDeleteConfirm(null); setView("stories"); setSelectedStory(null); toast({ title: "Cerita dihapus." }); },
   });
 
-  const requestVerification = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/writer/request-verification").then(r => r.json()),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/me"] }); toast({ title: "Permintaan verifikasi dikirim! Admin akan segera meninjau akunmu." }); },
-    onError: (e: any) => toast({ title: e.message ?? "Gagal mengajukan verifikasi", variant: "destructive" }),
-  });
 
   const downloadPdf = async (storyId: string, storyTitle: string) => {
     setDownloadingPdf(storyId);
@@ -492,27 +487,24 @@ export default function WriterStories() {
             <Home size={13} /> Kembali ke Beranda
           </button>
         </Link>
-        <button
-          onClick={() => {
-            const vs = (user as any)?.verificationStatus;
-            if (vs === "verified" || vs === "pending") return;
-            if (window.confirm("Ajukan verifikasi akun penulis? Admin akan meninjau profil dan karya kamu.")) {
-              requestVerification.mutate();
-            }
-          }}
-          disabled={requestVerification.isPending || (user as any)?.verificationStatus === "pending" || (user as any)?.verificationStatus === "verified"}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${
-            (user as any)?.verificationStatus === "verified"
-              ? "text-blue-500 cursor-default"
-              : (user as any)?.verificationStatus === "pending"
-              ? "text-yellow-600 cursor-default"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          }`}
-          data-testid="button-request-verification"
-        >
-          <BadgeCheck size={13} />
-          {(user as any)?.verificationStatus === "verified" ? "Terverifikasi" : (user as any)?.verificationStatus === "pending" ? "Verifikasi Diproses..." : "Ajukan Verifikasi"}
-        </button>
+        {(user as any)?.verificationStatus === "verified" ? (
+          <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-blue-500 cursor-default" data-testid="button-request-verification">
+            <BadgeCheck size={13} /> Terverifikasi
+          </div>
+        ) : (user as any)?.verificationStatus === "pending" ? (
+          <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-yellow-600 cursor-default" data-testid="button-request-verification">
+            <BadgeCheck size={13} /> Verifikasi Diproses...
+          </div>
+        ) : (
+          <Link href="/verify-author">
+            <button
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              data-testid="button-request-verification"
+            >
+              <BadgeCheck size={13} /> Ajukan Verifikasi
+            </button>
+          </Link>
+        )}
         <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors" data-testid="button-writer-logout">
           <LogOut size={13} /> Keluar
         </button>
