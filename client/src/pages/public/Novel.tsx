@@ -10,11 +10,11 @@ import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, BookMarked, Sparkles, Eye,
-  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap,
+  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap, BadgeCheck,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 
-type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null; authorName?: string | null; authorSlug?: string | null };
+type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null; authorName?: string | null; authorSlug?: string | null; authorVerified?: boolean };
 
 interface BannerSlide {
   id: string;
@@ -810,15 +810,16 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                       {story.title}
                     </h3>
                     {story.authorName && (
-                      <p className="text-[10px] text-muted-foreground/70 truncate text-center">
-                        oleh{" "}
+                      <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/70">
+                        <span>oleh</span>
                         <span
                           onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
-                          className="hover:text-primary transition-colors cursor-pointer"
+                          className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
                         >
-                          {story.authorName}
+                          <span className="truncate">{story.authorName}</span>
+                          {story.authorVerified && <BadgeCheck size={10} className="text-blue-500 shrink-0" />}
                         </span>
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>

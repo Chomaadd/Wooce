@@ -19,7 +19,7 @@ import {
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
-  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound,
+  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
@@ -1833,12 +1833,37 @@ function ApprovalsView() {
     refetchOnMount: "always",
   });
 
+  const { data: pendingVerifications, refetch: refetchVerif } = useQuery<AppUser[]>({
+    queryKey: ["/api/admin/users/pending-verification"],
+    queryFn: () => fetch("/api/admin/users/pending-verification", { credentials: "include" }).then(r => r.json()),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/approve`),
     onSuccess: () => {
       refetch();
       refetchActive();
       toast({ title: "Penulis disetujui!" });
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/verify`),
+    onSuccess: () => {
+      refetchVerif();
+      refetchActive();
+      toast({ title: "Penulis berhasil diverifikasi!" });
+    },
+  });
+
+  const rejectVerificationMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/reject-verification`),
+    onSuccess: () => {
+      refetchVerif();
+      refetchActive();
+      toast({ title: "Verifikasi ditolak." });
     },
   });
 
@@ -1892,7 +1917,7 @@ function ApprovalsView() {
           <p className="text-sm text-muted-foreground mt-1">Tinjau dan kelola permohonan bergabung sebagai penulis</p>
         </div>
         <button
-          onClick={() => { refetch(); refetchActive(); }}
+          onClick={() => { refetch(); refetchActive(); refetchVerif(); }}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border shrink-0 mt-1"
           data-testid="button-refresh-approvals"
         >
@@ -1983,7 +2008,10 @@ function ApprovalsView() {
                   : <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-bold text-sm">{u.name.charAt(0).toUpperCase()}</div>
                 }
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-foreground">{u.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-sm text-foreground">{u.name}</p>
+                    {(u as any).verificationStatus === "verified" && <BadgeCheck size={13} className="text-blue-500 shrink-0" />}
+                  </div>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -2003,6 +2031,55 @@ function ApprovalsView() {
                     data-testid={`button-delete-user-${u.id}`}
                   >
                     <Trash2 size={13} /> Hapus
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Verification Requests */}
+      <div>
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+          <BadgeCheck size={14} className="text-blue-500" /> Pengajuan Verifikasi
+          {!!pendingVerifications?.length && (
+            <span className="bg-blue-500/10 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full">{pendingVerifications.length}</span>
+          )}
+        </h2>
+        {!pendingVerifications?.length ? (
+          <div className="text-center py-8 border border-dashed border-border rounded-xl">
+            <BadgeCheck size={28} className="mx-auto mb-2 text-muted-foreground opacity-30" />
+            <p className="text-sm text-muted-foreground">Tidak ada pengajuan verifikasi</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pendingVerifications.map((u: any) => (
+              <div key={u.id} className="flex items-center gap-3 p-4 border border-blue-500/20 bg-blue-500/5 rounded-xl">
+                {u.photoUrl
+                  ? <img src={u.photoUrl} alt={u.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  : <div className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0 text-blue-500 font-bold text-sm">{u.name?.charAt(0).toUpperCase()}</div>
+                }
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground">{u.name}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => verifyMutation.mutate(u.id)}
+                    disabled={verifyMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    data-testid={`button-verify-${u.id}`}
+                  >
+                    <BadgeCheck size={13} /> Verifikasi
+                  </button>
+                  <button
+                    onClick={() => rejectVerificationMutation.mutate(u.id)}
+                    disabled={rejectVerificationMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-red-500/10 hover:text-red-600 transition-colors text-xs font-semibold disabled:opacity-50"
+                    data-testid={`button-reject-verification-${u.id}`}
+                  >
+                    <UserX size={13} /> Tolak
                   </button>
                 </div>
               </div>

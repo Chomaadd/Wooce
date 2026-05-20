@@ -15,7 +15,7 @@ import {
   BookOpen, Plus, Pencil, Trash2, ChevronRight, Eye, EyeOff,
   ArrowLeft, Layers, FileText, LogOut, Upload, ImageIcon, RotateCcw,
   Clock, CalendarClock, X, User, AtSign, CheckCircle, XCircle, Loader2,
-  Menu, Home, BarChart2, TrendingUp,
+  Menu, Home, BarChart2, TrendingUp, FileDown, BadgeCheck,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
@@ -24,6 +24,7 @@ type WriterMe = {
   id: string; name: string; email: string; photoUrl?: string | null;
   role: string; status: string; authorId?: string | null;
   author?: { id: string; name: string; slug: string; } | null;
+  verificationStatus?: string;
 };
 
 type WriterView = "stories" | "seasons" | "chapters" | "write" | "stats";
@@ -193,6 +194,7 @@ export default function WriterStories() {
   const [chapterPublished, setChapterPublished] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string; name: string } | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
   const isWriter = !authLoading && !!user && !user.isAdmin && user.role === "writer" && user.status === "active";
 
@@ -278,6 +280,33 @@ export default function WriterStories() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/writer/stories/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/stories"] }); setDeleteConfirm(null); setView("stories"); setSelectedStory(null); toast({ title: "Cerita dihapus." }); },
   });
+
+  const requestVerification = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/writer/request-verification").then(r => r.json()),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/me"] }); toast({ title: "Permintaan verifikasi dikirim! Admin akan segera meninjau akunmu." }); },
+    onError: (e: any) => toast({ title: e.message ?? "Gagal mengajukan verifikasi", variant: "destructive" }),
+  });
+
+  const downloadPdf = async (storyId: string, storyTitle: string) => {
+    setDownloadingPdf(storyId);
+    try {
+      const response = await fetch(`/api/writer/stories/${storyId}/backup-pdf`, { credentials: "include" });
+      if (!response.ok) throw new Error("Gagal generate PDF");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${storyTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-backup.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: err.message ?? "Gagal download PDF", variant: "destructive" });
+    } finally {
+      setDownloadingPdf(null);
+    }
+  };
 
   const createSeason = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/writer/seasons", data).then(r => r.json()),
@@ -422,7 +451,13 @@ export default function WriterStories() {
           )}
           <div className="min-w-0">
             <p className="text-[11px] font-semibold text-foreground truncate">{user?.name}</p>
-            <p className="text-[9px] text-muted-foreground">Penulis</p>
+            {(user as any)?.verificationStatus === "verified" ? (
+              <p className="text-[9px] text-blue-500 flex items-center gap-0.5"><BadgeCheck size={9} /> Terverifikasi</p>
+            ) : (user as any)?.verificationStatus === "pending" ? (
+              <p className="text-[9px] text-yellow-600">Verifikasi Diproses...</p>
+            ) : (
+              <p className="text-[9px] text-muted-foreground">Penulis</p>
+            )}
           </div>
         </div>
       </div>
@@ -457,6 +492,27 @@ export default function WriterStories() {
             <Home size={13} /> Kembali ke Beranda
           </button>
         </Link>
+        <button
+          onClick={() => {
+            const vs = (user as any)?.verificationStatus;
+            if (vs === "verified" || vs === "pending") return;
+            if (window.confirm("Ajukan verifikasi akun penulis? Admin akan meninjau profil dan karya kamu.")) {
+              requestVerification.mutate();
+            }
+          }}
+          disabled={requestVerification.isPending || (user as any)?.verificationStatus === "pending" || (user as any)?.verificationStatus === "verified"}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${
+            (user as any)?.verificationStatus === "verified"
+              ? "text-blue-500 cursor-default"
+              : (user as any)?.verificationStatus === "pending"
+              ? "text-yellow-600 cursor-default"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+          data-testid="button-request-verification"
+        >
+          <BadgeCheck size={13} />
+          {(user as any)?.verificationStatus === "verified" ? "Terverifikasi" : (user as any)?.verificationStatus === "pending" ? "Verifikasi Diproses..." : "Ajukan Verifikasi"}
+        </button>
         <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors" data-testid="button-writer-logout">
           <LogOut size={13} /> Keluar
         </button>
@@ -662,6 +718,9 @@ export default function WriterStories() {
                           <Layers size={13} className="mr-1 hidden sm:block" /> Season <ChevronRight size={12} />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => openStoryForm(story)} data-testid={`button-edit-story-${story.id}`}><Pencil size={13} /></Button>
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => downloadPdf(story.id, story.title)} disabled={downloadingPdf === story.id} title="Download PDF backup" data-testid={`button-download-pdf-${story.id}`}>
+                          {downloadingPdf === story.id ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />}
+                        </Button>
                         <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ type: "story", id: story.id, name: story.title })} data-testid={`button-delete-story-${story.id}`}><Trash2 size={13} /></Button>
                       </div>
                     </div>

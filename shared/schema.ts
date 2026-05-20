@@ -133,6 +133,7 @@ export const userSchema = z.object({
   authorId: z.string().nullable().optional(),
   rejectedAt: z.union([z.date(), z.string()]).nullable().optional(),
   suspendedAt: z.union([z.date(), z.string()]).nullable().optional(),
+  verificationStatus: z.enum(["none", "pending", "verified"]).default("none").optional(),
   createdAt: z.union([z.date(), z.string()]).optional(),
 });
 export const insertUserSchema = userSchema.omit({ id: true, createdAt: true, rejectedAt: true, suspendedAt: true });

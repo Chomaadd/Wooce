@@ -214,8 +214,23 @@ export async function registerRoutes(
   const requireWriter = async (req: any, res: any, next: any) => {
     if (!req.session.userId) return res.status(401).json({ message: "Login diperlukan" });
     try {
-      const user = await storage.getUserById(req.session.userId);
-      if (!user || user.role !== "writer" || user.status !== "active") {
+      let user = await storage.getUserById(req.session.userId);
+      if (!user) return res.status(401).json({ message: "Login diperlukan" });
+      // Auto-unsuspend: jika sudah >= 30 hari sejak suspend, otomatis aktifkan kembali
+      if (user.status === "suspended") {
+        const suspendedAt = (user as any).suspendedAt;
+        if (suspendedAt) {
+          const daysSince = (Date.now() - new Date(suspendedAt).getTime()) / 86400000;
+          if (daysSince >= 30) {
+            await storage.updateUser(user.id, { status: "active" });
+            await UserModel.updateOne({ _id: user.id }, { $unset: { suspendedAt: 1 } });
+            const refreshed = await storage.getUserById(user.id);
+            if (refreshed) user = refreshed;
+            log(`[Auto-unsuspend] Penulis ${user.email} aktif kembali setelah 30 hari`, "express");
+          }
+        }
+      }
+      if (user.role !== "writer" || user.status !== "active") {
         return res.status(403).json({ message: "Akses ditolak. Hanya penulis aktif yang dapat mengakses." });
       }
       req.writerUser = user;
@@ -462,8 +477,17 @@ export async function registerRoutes(
       if (user.status === "suspended") {
         const suspendedAt = (user as any).suspendedAt;
         if (suspendedAt) {
-          const daysLeft = Math.ceil(30 - (Date.now() - new Date(suspendedAt).getTime()) / 86400000);
-          if (daysLeft > 0) return res.status(403).json({ message: `Akunmu disuspend. Bisa daftar lagi dalam ${daysLeft} hari.`, cooldown: true, daysLeft, cooldownType: "suspended" });
+          const daysSince = (Date.now() - new Date(suspendedAt).getTime()) / 86400000;
+          if (daysSince >= 30) {
+            // Auto-unsuspend setelah 30 hari
+            await storage.updateUser(user.id, { status: "active" });
+            await UserModel.updateOne({ _id: user.id }, { $unset: { suspendedAt: 1 } });
+            const refreshed = await storage.getUserById(user.id);
+            if (refreshed) Object.assign(user, refreshed);
+          } else {
+            const daysLeft = Math.ceil(30 - daysSince);
+            return res.status(403).json({ message: `Akunmu disuspend. Bisa daftar lagi dalam ${daysLeft} hari.`, cooldown: true, daysLeft, cooldownType: "suspended" });
+          }
         }
       }
 
@@ -529,6 +553,27 @@ export async function registerRoutes(
       sendWriterSuspendedEmail(user.email, user.name).catch(console.error);
       storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Disuspend", message: "Akunmu telah disuspend oleh admin. Cerita-ceritamu masih ada namun profilmu ditandai suspended." }).catch(console.error);
       res.json(updated);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/admin/users/pending-verification", requireAuth, async (_req, res) => {
+    try {
+      const users = await UserModel.find({ verificationStatus: "pending", role: "writer" }).lean();
+      res.json(users.map((u: any) => ({ ...u, id: u._id.toString(), authorId: u.authorId?.toString() ?? null })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/users/:id/verify", requireAuth, async (req, res) => {
+    try {
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { verificationStatus: "verified" } });
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/users/:id/reject-verification", requireAuth, async (req, res) => {
+    try {
+      await UserModel.updateOne({ _id: req.params.id }, { $set: { verificationStatus: "none" } });
+      res.json({ success: true });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
@@ -662,6 +707,14 @@ export async function registerRoutes(
       for (const aId of authorIds) {
         try { const a = await storage.getAuthorById(aId); if (a) authorsMap[a.id] = { name: a.name, slug: a.slug }; } catch {}
       }
+      // Build verificationMap: authorId → verified boolean
+      const verificationMap: Record<string, boolean> = {};
+      if (authorIds.length) {
+        const userDocs = await UserModel.find({ authorId: { $in: authorIds } }).lean() as any[];
+        for (const u of userDocs) {
+          if (u.authorId) verificationMap[u.authorId.toString()] = (u.verificationStatus === "verified");
+        }
+      }
       const storiesWithStats = await Promise.all(
         stories.map(async (story) => {
           const seasons = await storage.getNovelSeasons(story.id);
@@ -679,7 +732,8 @@ export async function registerRoutes(
             }
           }
           const authorInfo = story.authorId ? (authorsMap[story.authorId] ?? null) : null;
-          return { ...story, totalChapters, lastChapterAt, authorName: authorInfo?.name ?? null, authorSlug: authorInfo?.slug ?? null };
+          const authorVerified = story.authorId ? (verificationMap[story.authorId] ?? false) : false;
+          return { ...story, totalChapters, lastChapterAt, authorName: authorInfo?.name ?? null, authorSlug: authorInfo?.slug ?? null, authorVerified };
         })
       );
       res.json(storiesWithStats);
@@ -939,7 +993,8 @@ export async function registerRoutes(
       // Cari user terkait untuk expose userStatus (suspended, active, dst.)
       const userDoc = await UserModel.findOne({ authorId: author.id }).lean() as any;
       const userStatus = userDoc?.status ?? "active";
-      res.json({ ...author, stories, userStatus });
+      const verificationStatus = userDoc?.verificationStatus ?? "none";
+      res.json({ ...author, stories, userStatus, verificationStatus });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
   app.post("/api/authors", requireAuth, async (req, res) => {
@@ -1229,6 +1284,55 @@ export async function registerRoutes(
       console.error("Writer stats error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // ── Writer PDF Backup & Verification ─────────────────────────────────────
+  app.get("/api/writer/stories/:id/backup-pdf", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const story = await storage.getNovelStoryById(req.params.id);
+      if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+      const authorId = await ensureAuthorId(user);
+      if (!authorId || story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+      const seasons = await storage.getNovelSeasons(story.id);
+      const seasonsWithChapters = await Promise.all(
+        seasons.map(async (season) => {
+          const chapters = await storage.getNovelChapters(season.id);
+          return {
+            seasonNumber: season.seasonNumber,
+            title: season.title,
+            chapters: chapters.map(ch => ({ chapterNumber: ch.chapterNumber, title: ch.title, content: ch.content ?? "" })),
+          };
+        })
+      );
+      const pdfBuffer = await generateStoryBackupPdf({
+        storyTitle: story.title,
+        category: story.category,
+        status: story.status,
+        synopsis: story.synopsis,
+        writerName: user.name || "Penulis",
+        writerEmail: user.email || "",
+        exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+        seasons: seasonsWithChapters,
+      });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${story.slug}-backup.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      log(`[PDF Download] Error: ${err?.message}`, "express");
+      res.status(500).json({ message: "Gagal generate PDF" });
+    }
+  });
+
+  app.post("/api/writer/request-verification", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const currentStatus = (user as any).verificationStatus ?? "none";
+      if (currentStatus === "verified") return res.status(400).json({ message: "Kamu sudah terverifikasi" });
+      if (currentStatus === "pending") return res.status(400).json({ message: "Permintaan verifikasi sedang diproses" });
+      await UserModel.updateOne({ _id: user.id }, { $set: { verificationStatus: "pending" } });
+      res.json({ success: true, message: "Permintaan verifikasi telah dikirim. Admin akan meninjau akunmu." });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   // ── Translation API ───────────────────────────────────────────────────────

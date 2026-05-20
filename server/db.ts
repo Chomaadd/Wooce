@@ -98,6 +98,8 @@ const userMongoSchema = new mongoose.Schema({
   role: { type: String, enum: ['reader', 'writer', 'admin'], default: 'reader' },
   status: { type: String, enum: ['active', 'pending', 'suspended'], default: 'active' },
   authorId: { type: mongoose.Schema.Types.ObjectId, default: null, ref: 'Author' },
+  suspendedAt: { type: Date, default: null },
+  verificationStatus: { type: String, enum: ['none', 'pending', 'verified'], default: 'none' },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
