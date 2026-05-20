@@ -553,7 +553,7 @@ export async function registerRoutes(
                 chapters: chapters.map(ch => ({
                   chapterNumber: ch.chapterNumber,
                   title: ch.title,
-                  content: (ch as any).content ?? "",
+                  content: ch.content ?? "",
                 })),
               };
             }));
@@ -1096,7 +1096,11 @@ export async function registerRoutes(
 
       // Kumpulkan data sebelum dihapus untuk backup PDF
       try {
+        log(`[Backup] Mulai backup story "${story.title}" untuk ${user.email}`, "express");
+
         const seasons = await storage.getNovelSeasons(story.id);
+        log(`[Backup] Ditemukan ${seasons.length} season`, "express");
+
         const seasonsWithChapters = await Promise.all(
           seasons.map(async (season) => {
             const chapters = await storage.getNovelChapters(season.id);
@@ -1106,27 +1110,34 @@ export async function registerRoutes(
               chapters: chapters.map(ch => ({
                 chapterNumber: ch.chapterNumber,
                 title: ch.title,
-                content: ch.content,
+                content: ch.content ?? "",
               })),
             };
           })
         );
+
+        const totalChapters = seasonsWithChapters.reduce((a, s) => a + s.chapters.length, 0);
+        log(`[Backup] Total chapter: ${totalChapters} — generating PDF...`, "express");
 
         const pdfBuffer = await generateStoryBackupPdf({
           storyTitle: story.title,
           category: story.category,
           status: story.status,
           synopsis: story.synopsis,
-          writerName: user.name,
-          writerEmail: user.email,
+          writerName: user.name || "Penulis",
+          writerEmail: user.email || "",
           exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
           seasons: seasonsWithChapters,
         });
 
-        sendStoryDeletedByWriterEmail(user.email, user.name, story.title, pdfBuffer)
-          .catch(err => console.error("[Email] Gagal kirim backup story:", err));
-      } catch (backupErr) {
-        console.error("[Backup] Gagal generate PDF backup story:", backupErr);
+        log(`[Backup] PDF generated (${(pdfBuffer.length / 1024).toFixed(1)} KB) — mengirim email ke ${user.email}...`, "express");
+
+        await sendStoryDeletedByWriterEmail(user.email, user.name || "Penulis", story.title, pdfBuffer);
+
+        log(`[Backup] Email backup berhasil dikirim ke ${user.email}`, "express");
+      } catch (backupErr: any) {
+        log(`[Backup] GAGAL: ${backupErr?.message || backupErr}`, "express");
+        console.error("[Backup] Stack:", backupErr);
       }
 
       await storage.deleteNovelStory(req.params.id);
@@ -1339,7 +1350,7 @@ export async function registerRoutes(
                 chapters: chapters.map(ch => ({
                   chapterNumber: ch.chapterNumber,
                   title: ch.title,
-                  content: (ch as any).content ?? "",
+                  content: ch.content ?? "",
                 })),
               };
             }));

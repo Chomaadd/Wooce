@@ -59,15 +59,15 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
 async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
   if (!config.gmailUser || !config.gmailAppPassword) {
-    console.warn("Gmail credentials not configured, skipping email.");
-    return Promise.resolve();
+    console.warn("[Email] Gmail belum dikonfigurasi, email dilewati.");
+    return;
   }
   const t = nodemailer.createTransport({
     service: "gmail",
     auth: { user: config.gmailUser, pass: config.gmailAppPassword },
   });
   const baseUrl = await getBaseUrl();
-  return fn(t, config.gmailUser, baseUrl).then(() => {}).catch(err => console.error("Email send error:", err));
+  await fn(t, config.gmailUser, baseUrl);
 }
 
 async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
