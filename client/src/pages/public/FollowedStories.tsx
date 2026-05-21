@@ -99,7 +99,12 @@ export default function FollowedStories() {
 
   const { data: stories, isLoading } = useQuery<FollowedStory[]>({
     queryKey: ["/api/novel/me/followed"],
-    queryFn: () => fetch("/api/novel/me/followed", { credentials: "include" }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/novel/me/followed", { credentials: "include" });
+      if (!r.ok) return [];
+      const data = await r.json();
+      return Array.isArray(data) ? data : [];
+    },
     enabled: isLoggedIn,
   });
 

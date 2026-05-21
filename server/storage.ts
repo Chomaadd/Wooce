@@ -100,6 +100,7 @@ export interface IStorage {
   isFollowing(userId: string, storyId: string): Promise<boolean>;
   getStoryFollowerIds(storyId: string): Promise<string[]>;
   getUserFollowedStoryIds(userId: string): Promise<string[]>;
+  unfollowAllStories(userId: string): Promise<number>;
 }
 
 function mapId<T>(doc: any): T {
@@ -400,12 +401,22 @@ export class DatabaseStorage implements IStorage {
     return docs.map((d: any) => d.userId.toString());
   }
   async getUserFollowedStoryIds(userId: string): Promise<string[]> {
-    const docs = await FollowModel.find({ userId }).lean();
-    return docs.map((d: any) => d.storyId.toString());
+    try {
+      const oid = new mongoose.Types.ObjectId(userId);
+      const docs = await FollowModel.find({ userId: oid }).lean();
+      return docs.map((d: any) => d.storyId.toString());
+    } catch {
+      return [];
+    }
   }
   async unfollowAllStories(userId: string): Promise<number> {
-    const result = await FollowModel.deleteMany({ userId });
-    return result.deletedCount ?? 0;
+    try {
+      const oid = new mongoose.Types.ObjectId(userId);
+      const result = await FollowModel.deleteMany({ userId: oid });
+      return result.deletedCount ?? 0;
+    } catch {
+      return 0;
+    }
   }
 }
 

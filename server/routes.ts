@@ -712,7 +712,7 @@ export async function registerRoutes(
       const storyIds = await storage.getUserFollowedStoryIds(req.session.userId);
       if (!storyIds.length) return res.json([]);
       const stories = await Promise.all(
-        storyIds.map(id => NovelStoryModel.findById(id).lean())
+        storyIds.map(id => NovelStoryModel.findById(id).lean().catch(() => null))
       );
       const valid = stories.filter(Boolean).map((s: any) => ({
         id: s._id.toString(),
@@ -726,14 +726,20 @@ export async function registerRoutes(
         viewCount: s.viewCount ?? 0,
       }));
       res.json(valid);
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+    } catch (err) {
+      console.error("[followed] GET /api/novel/me/followed error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.delete("/api/novel/me/followed/all", requireUser, async (req: any, res) => {
     try {
       const count = await storage.unfollowAllStories(req.session.userId);
       res.json({ unfollowed: count });
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+    } catch (err) {
+      console.error("[followed] DELETE /api/novel/me/followed/all error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // ── Admin Broadcast Notification ──────────────────────────────────────────

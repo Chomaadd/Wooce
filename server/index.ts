@@ -4,6 +4,7 @@ import { connectToDatabase } from "./db";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { log, colorMethod, colorStatus, clr } from "./logger";
+import { NotificationModel } from "./notificationModel";
 
 export { log };
 
@@ -78,6 +79,16 @@ httpServer.listen(
 (async () => {
   try {
     await connectToDatabase();
+
+    // Delete notifications older than 3 days on startup
+    try {
+      const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+      const { deletedCount } = await NotificationModel.deleteMany({ createdAt: { $lt: cutoff } });
+      if (deletedCount > 0) log(`Cleaned up ${deletedCount} expired notifications`, "mongodb");
+    } catch (e) {
+      log(`Notification cleanup error: ${e}`, "mongodb");
+    }
+
     await registerRoutes(httpServer, app);
 
     app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
