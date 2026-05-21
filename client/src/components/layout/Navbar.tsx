@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -120,6 +120,8 @@ function notifIcon(type: AppNotification["type"]) {
   if (type === "approved") return <CheckCircle2 size={14} className="text-green-500 flex-shrink-0 mt-0.5" />;
   if (type === "rejected") return <AlertCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />;
   if (type === "suspended") return <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />;
+  if (type === "announcement") return <Megaphone size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />;
+  if (type === "chapter_new") return <BookMarked size={14} className="text-purple-500 flex-shrink-0 mt-0.5" />;
   return <Clock size={14} className="text-yellow-500 flex-shrink-0 mt-0.5" />;
 }
 
@@ -406,25 +408,31 @@ export function Navbar() {
                             <p className="text-xs">{t("navbar.notif.empty")}</p>
                           </div>
                         ) : (
-                          notifications.map(n => (
-                            <div
-                              key={n.id}
-                              className={`flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
-                              data-testid={`notif-item-${n.id}`}
-                            >
-                              {notifIcon(n.type)}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-foreground leading-tight">{n.title}</p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
-                                {n.createdAt && (
-                                  <p className="text-[10px] text-muted-foreground/60 mt-1">
-                                    {new Date(n.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                  </p>
-                                )}
-                              </div>
-                              {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
-                            </div>
-                          ))
+                          notifications.map(n => {
+                            const inner = (
+                              <>
+                                {notifIcon(n.type)}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-foreground leading-tight">{n.title}</p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+                                  {n.createdAt && (
+                                    <p className="text-[10px] text-muted-foreground/60 mt-1">
+                                      {new Date(n.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                    </p>
+                                  )}
+                                </div>
+                                {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
+                              </>
+                            );
+                            const cls = `flex gap-3 px-4 py-3 border-b border-border/50 transition-colors ${!n.read ? "bg-primary/5" : ""} ${(n as any).link ? "hover:bg-muted/60 cursor-pointer" : ""}`;
+                            return (n as any).link ? (
+                              <Link key={n.id} href={(n as any).link}>
+                                <div className={cls} data-testid={`notif-item-${n.id}`}>{inner}</div>
+                              </Link>
+                            ) : (
+                              <div key={n.id} className={cls} data-testid={`notif-item-${n.id}`}>{inner}</div>
+                            );
+                          })
                         )}
                       </div>
                     </motion.div>

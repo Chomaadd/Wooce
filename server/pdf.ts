@@ -1,5 +1,23 @@
 import PDFDocument from "pdfkit";
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<hr[^>]*>/gi, "\n---\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export interface StoryBackupData {
   storyTitle: string;
   category: string;
@@ -58,11 +76,12 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
 
     // Synopsis
     if (data.synopsis) {
+      const synopsisText = stripHtml(data.synopsis);
       doc.fill(DARK).fontSize(10).font("Helvetica-Bold").text("Sinopsis", 50, y);
       y += 16;
       doc.fill(GRAY).fontSize(9).font("Helvetica")
-        .text(data.synopsis, 50, y, { width: pageW - 100 });
-      y += doc.heightOfString(data.synopsis, { width: pageW - 100 }) + 18;
+        .text(synopsisText, 50, y, { width: pageW - 100 });
+      y += doc.heightOfString(synopsisText, { width: pageW - 100 }) + 18;
     }
 
     doc.moveTo(50, y).lineTo(pageW - 50, y).stroke(PRIMARY);
@@ -91,25 +110,19 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
         y += 16;
 
         if (ch.content && ch.content.trim()) {
-          const lines = ch.content.trim();
-          const lineH = doc.heightOfString(lines, { width: pageW - 120 });
-          if (y + lineH > doc.page.height - 60) {
-            // Write what fits, then paginate
-            const remaining = lines;
-            let offset = 0;
-            while (offset < remaining.length) {
-              const chunk = remaining.slice(offset, offset + 2000);
-              const h = doc.heightOfString(chunk, { width: pageW - 120 });
-              if (y + h > doc.page.height - 60) { doc.addPage(); y = 50; }
-              doc.fill(DARK).fontSize(9).font("Helvetica")
-                .text(chunk, 60, y, { width: pageW - 120 });
-              y += doc.heightOfString(chunk, { width: pageW - 120 }) + 4;
-              offset += 2000;
-            }
-          } else {
+          const cleanContent = stripHtml(ch.content);
+          if (!cleanContent) { y += 10; continue; }
+
+          const CHUNK_SIZE = 2000;
+          let offset = 0;
+          while (offset < cleanContent.length) {
+            const chunk = cleanContent.slice(offset, offset + CHUNK_SIZE);
+            const h = doc.heightOfString(chunk, { width: pageW - 120 });
+            if (y + h > doc.page.height - 60) { doc.addPage(); y = 50; }
             doc.fill(DARK).fontSize(9).font("Helvetica")
-              .text(lines, 60, y, { width: pageW - 120 });
-            y += lineH + 4;
+              .text(chunk, 60, y, { width: pageW - 120 });
+            y += doc.heightOfString(chunk, { width: pageW - 120 }) + 4;
+            offset += CHUNK_SIZE;
           }
         }
         y += 10;
@@ -208,8 +221,9 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
       y += 24;
 
       if (story.synopsis) {
-        doc.fill(DARK).fontSize(9).font("Helvetica").text(`Sinopsis: ${story.synopsis}`, 60, y + 8, { width: doc.page.width - 120 });
-        y += Math.ceil(doc.heightOfString(story.synopsis, { width: doc.page.width - 120 }) / 12) * 12 + 14;
+        const synText = stripHtml(story.synopsis);
+        doc.fill(DARK).fontSize(9).font("Helvetica").text(`Sinopsis: ${synText}`, 60, y + 8, { width: doc.page.width - 120 });
+        y += Math.ceil(doc.heightOfString(synText, { width: doc.page.width - 120 }) / 12) * 12 + 14;
       }
 
       y += 6;
@@ -229,12 +243,15 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
           y += 13;
 
           if (ch.content) {
-            const preview = ch.content.slice(0, 300) + (ch.content.length > 300 ? "..." : "");
-            const h = doc.heightOfString(preview, { width: doc.page.width - 150 });
-            if (y + h > doc.page.height - 60) { doc.addPage(); y = 50; }
-            doc.fill(DARK).fontSize(8).font("Helvetica")
-              .text(preview, 80, y, { width: doc.page.width - 150 });
-            y += h + 6;
+            const cleanContent = stripHtml(ch.content);
+            const preview = cleanContent.slice(0, 300) + (cleanContent.length > 300 ? "..." : "");
+            if (preview.trim()) {
+              const h = doc.heightOfString(preview, { width: doc.page.width - 150 });
+              if (y + h > doc.page.height - 60) { doc.addPage(); y = 50; }
+              doc.fill(DARK).fontSize(8).font("Helvetica")
+                .text(preview, 80, y, { width: doc.page.width - 150 });
+              y += h + 6;
+            }
           }
         }
         y += 6;

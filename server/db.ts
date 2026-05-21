@@ -116,6 +116,12 @@ const verificationRequestSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
 }, { timestamps: true });
 
+const followSchema = new mongoose.Schema({
+  userId:  { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+  storyId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'NovelStory' },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+followSchema.index({ userId: 1, storyId: 1 }, { unique: true });
+
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 export const UserModel = mongoose.models.User || mongoose.model('User', userMongoSchema);
 export const AuthorModel = mongoose.models.Author || mongoose.model('Author', authorMongoSchema);
@@ -125,3 +131,4 @@ export const NovelChapterModel = mongoose.models.NovelChapter || mongoose.model(
 export const BannerSlideModel = mongoose.models.BannerSlide || mongoose.model('BannerSlide', bannerSlideMongoSchema);
 export const AnnouncementModel = mongoose.models.Announcement || mongoose.model('Announcement', announcementMongoSchema);
 export const VerificationRequestModel = mongoose.models.VerificationRequest || mongoose.model('VerificationRequest', verificationRequestSchema);
+export const FollowModel = mongoose.models.Follow || mongoose.model('Follow', followSchema);

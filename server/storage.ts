@@ -30,6 +30,7 @@ import {
   NovelChapterModel,
   BannerSlideModel,
   AnnouncementModel,
+  FollowModel,
 } from "./db";
 import { NotificationModel } from "./notificationModel";
 
@@ -93,6 +94,12 @@ export interface IStorage {
   getNotifications(userId: string): Promise<AppNotification[]>;
   markAllNotificationsRead(userId: string): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+
+  followStory(userId: string, storyId: string): Promise<void>;
+  unfollowStory(userId: string, storyId: string): Promise<void>;
+  isFollowing(userId: string, storyId: string): Promise<boolean>;
+  getStoryFollowerIds(storyId: string): Promise<string[]>;
+  getUserFollowedStoryIds(userId: string): Promise<string[]>;
 }
 
 function mapId<T>(doc: any): T {
@@ -371,6 +378,30 @@ export class DatabaseStorage implements IStorage {
   }
   async getUnreadNotificationCount(userId: string): Promise<number> {
     return NotificationModel.countDocuments({ userId, read: false });
+  }
+
+  // ── Follow ─────────────────────────────────────────────────────────────────
+  async followStory(userId: string, storyId: string): Promise<void> {
+    await FollowModel.findOneAndUpdate(
+      { userId, storyId },
+      { userId, storyId },
+      { upsert: true, new: true }
+    );
+  }
+  async unfollowStory(userId: string, storyId: string): Promise<void> {
+    await FollowModel.deleteOne({ userId, storyId });
+  }
+  async isFollowing(userId: string, storyId: string): Promise<boolean> {
+    const doc = await FollowModel.findOne({ userId, storyId }).lean();
+    return !!doc;
+  }
+  async getStoryFollowerIds(storyId: string): Promise<string[]> {
+    const docs = await FollowModel.find({ storyId }).lean();
+    return docs.map((d: any) => d.userId.toString());
+  }
+  async getUserFollowedStoryIds(userId: string): Promise<string[]> {
+    const docs = await FollowModel.find({ userId }).lean();
+    return docs.map((d: any) => d.storyId.toString());
   }
 }
 

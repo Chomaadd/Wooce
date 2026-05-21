@@ -175,6 +175,7 @@ export default function WriterStories() {
   const [selectedStory, setSelectedStory] = useState<StoryWithStats | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
   const [editingChapter, setEditingChapter] = useState<NovelChapter | null>(null);
+  const [editingChapterTitle, setEditingChapterTitle] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [chapterPreviewOpen, setChapterPreviewOpen] = useState(false);
 
@@ -327,9 +328,13 @@ export default function WriterStories() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/seasons", selectedSeason?.id, "chapters"] }); setChapterDialog(false); toast({ title: "Chapter diperbarui!" }); },
   });
   const saveChapterContent = useMutation({
-    mutationFn: ({ id, content, published, scheduledAt }: any) =>
-      apiRequest("PUT", `/api/writer/chapters/${id}`, { content, published, scheduledAt: scheduledAt || null }).then(r => r.json()),
-    onSuccess: () => { refetchChapters(); toast({ title: "Konten tersimpan!" }); },
+    mutationFn: ({ id, content, published, scheduledAt, title }: any) =>
+      apiRequest("PUT", `/api/writer/chapters/${id}`, { content, published, scheduledAt: scheduledAt || null, title }).then(r => r.json()),
+    onSuccess: (updated) => {
+      refetchChapters();
+      setEditingChapter(prev => prev ? { ...prev, title: updated.title ?? prev.title } : prev);
+      toast({ title: "Konten tersimpan!" });
+    },
     onError: () => toast({ title: "Gagal menyimpan", variant: "destructive" }),
   });
   const toggleChapterPublish = useMutation({
@@ -387,6 +392,7 @@ export default function WriterStories() {
 
   const openWrite = (ch: NovelChapter) => {
     setEditingChapter(ch);
+    setEditingChapterTitle(ch.title);
     setChapterContent(ch.content ?? "");
     setChapterPublished(ch.published);
     const toLocal = (val?: string | Date | null) => {
@@ -820,13 +826,10 @@ export default function WriterStories() {
           {/* ── Write View ── */}
           {view === "write" && editingChapter && (
             <div>
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-3">
                 <Button variant="ghost" size="sm" onClick={() => setView("chapters")} data-testid="button-back-to-chapters"><ArrowLeft size={14} className="mr-1" /> Kembali</Button>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-base font-bold text-foreground truncate">Bab {editingChapter.chapterNumber}: {editingChapter.title}</h1>
-                  <p className="text-xs text-muted-foreground hidden sm:block">{selectedStory?.title} · {selectedSeason?.title}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <p className="text-xs text-muted-foreground truncate hidden sm:block flex-1 min-w-0">{selectedStory?.title} · {selectedSeason?.title} · Bab {editingChapter.chapterNumber}</p>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
                   <button
                     onClick={() => setChapterPreviewOpen(true)}
                     className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted"
@@ -838,10 +841,22 @@ export default function WriterStories() {
                     <input type="checkbox" checked={chapterPublished} onChange={e => setChapterPublished(e.target.checked)} className="accent-primary" />
                     Published
                   </label>
-                  <Button size="sm" onClick={() => saveChapterContent.mutate({ id: editingChapter.id, content: chapterContent, published: chapterPublished, scheduledAt })} disabled={saveChapterContent.isPending} data-testid="button-save-chapter">
+                  <Button size="sm" onClick={() => saveChapterContent.mutate({ id: editingChapter.id, content: chapterContent, published: chapterPublished, scheduledAt, title: editingChapterTitle })} disabled={saveChapterContent.isPending} data-testid="button-save-chapter">
                     {saveChapterContent.isPending ? "Menyimpan..." : "Simpan"}
                   </Button>
                 </div>
+              </div>
+
+              {/* Inline chapter title */}
+              <div className="mb-3">
+                <Input
+                  value={editingChapterTitle}
+                  onChange={e => setEditingChapterTitle(e.target.value)}
+                  placeholder="Judul chapter..."
+                  className="text-base font-semibold h-10 border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 bg-transparent"
+                  data-testid="input-write-chapter-title"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Judul chapter — akan tersimpan saat kamu klik Simpan</p>
               </div>
 
               {/* Mobile controls */}

@@ -620,6 +620,55 @@ export default function NovelRead() {
           <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
         </div>
 
+        {/* Donation section */}
+        {(() => {
+          const author = (story as any)?.author;
+          const hasSaweria  = !!author?.saweria;
+          const hasTrakteer = !!author?.trakteer;
+          const hasDonation = !!(story as any)?.donationUrl;
+          if (!hasSaweria && !hasTrakteer && !hasDonation) return null;
+          return (
+            <div className="mb-10 text-center">
+              <p className="text-xs text-muted-foreground mb-3">{t("novel.read.donatePrompt")}</p>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                {hasSaweria && (
+                  <a
+                    href={author.saweria}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all bg-orange-500 hover:bg-orange-600 text-white shadow-sm hover:shadow-md active:scale-95"
+                    data-testid="button-donate-saweria"
+                  >
+                    ☕ Saweria
+                  </a>
+                )}
+                {hasTrakteer && (
+                  <a
+                    href={author.trakteer}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all bg-red-500 hover:bg-red-600 text-white shadow-sm hover:shadow-md active:scale-95"
+                    data-testid="button-donate-trakteer"
+                  >
+                    🎁 Trakteer
+                  </a>
+                )}
+                {hasDonation && !hasSaweria && !hasTrakteer && (
+                  <a
+                    href={(story as any).donationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md active:scale-95"
+                    data-testid="button-donate-link"
+                  >
+                    💝 {t("novel.read.donateBtn")}
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Chapter navigation cards */}
         <div className="grid grid-cols-2 gap-3 mb-8" data-testid="section-chapter-nav">
           {/* Prev */}

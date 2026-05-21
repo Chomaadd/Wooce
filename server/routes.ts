@@ -684,6 +684,44 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── Follow ────────────────────────────────────────────────────────────────
+  app.post("/api/novel/stories/:id/follow", requireUser, async (req: any, res) => {
+    try {
+      await storage.followStory(req.session.userId, req.params.id);
+      res.json({ following: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/novel/stories/:id/follow", requireUser, async (req: any, res) => {
+    try {
+      await storage.unfollowStory(req.session.userId, req.params.id);
+      res.json({ following: false });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/novel/stories/:id/follow", requireUser, async (req: any, res) => {
+    try {
+      const following = await storage.isFollowing(req.session.userId, req.params.id);
+      res.json({ following });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Admin Broadcast Notification ──────────────────────────────────────────
+  app.post("/api/admin/broadcast-notification", requireAuth, async (_req, res) => {
+    try {
+      const { title, message, target } = _req.body as { title: string; message: string; target?: string };
+      if (!title || !message) return res.status(400).json({ message: "title and message required" });
+      let users;
+      if (target === "writers") users = await storage.getUsers("writer");
+      else if (target === "readers") users = await storage.getUsers("reader");
+      else users = await storage.getUsers();
+      await Promise.all(users.map((u: any) =>
+        storage.createNotification({ userId: u.id, type: "announcement", title, message })
+      ));
+      res.json({ sent: users.length });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // ── Settings (minimal — for SeoHead/frontend) ─────────────────────────────
   app.get("/api/settings", (_req, res) => {
     res.json({
@@ -1283,7 +1321,27 @@ export async function registerRoutes(
 
   app.put("/api/writer/chapters/:id", requireWriter, async (req: any, res) => {
     try {
+      const existing = await storage.getNovelChapter(req.params.id);
       const chapter = await storage.updateNovelChapter(req.params.id, req.body);
+      if (req.body.published === true && existing && !existing.published) {
+        try {
+          const storyId = (chapter as any).storyId?.toString?.() ?? String((chapter as any).storyId);
+          const [followerIds, story] = await Promise.all([
+            storage.getStoryFollowerIds(storyId),
+            storage.getNovelStoryById(storyId),
+          ]);
+          if (story && followerIds.length > 0) {
+            await Promise.all(followerIds.map((uid: string) =>
+              storage.createNotification({
+                userId: uid,
+                type: "chapter_new",
+                title: `Chapter baru — ${story.title}`,
+                message: `Bab ${(chapter as any).chapterNumber}: ${(chapter as any).title} sudah tersedia!`,
+              })
+            ));
+          }
+        } catch (e) { console.error("Chapter notification error:", e); }
+      }
       res.json(chapter);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
