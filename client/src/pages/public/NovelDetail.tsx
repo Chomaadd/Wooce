@@ -9,11 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
-  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User,
+  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User, Bell, BellOff,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 
 const STATUS_CONFIG: Record<string, { badge: string; dot: string; label: string }> = {
   ongoing:   { badge: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400", label: "Ongoing" },
@@ -247,6 +248,35 @@ function useBookmark(slug: string) {
   };
 
   return { bookmarked, toggle };
+}
+
+function useFollow(storyId: string | undefined, isLoggedIn: boolean) {
+  const [following, setFollowing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!storyId || !isLoggedIn) return;
+    fetch(`/api/novel/stories/${storyId}/follow`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : { following: false })
+      .then(data => setFollowing(data.following))
+      .catch(() => {});
+  }, [storyId, isLoggedIn]);
+
+  const toggle = async () => {
+    if (!storyId || loading) return;
+    setLoading(true);
+    try {
+      const method = following ? "DELETE" : "POST";
+      const res = await fetch(`/api/novel/stories/${storyId}/follow`, {
+        method,
+        credentials: "include",
+      });
+      if (res.ok) setFollowing(!following);
+    } catch {}
+    setLoading(false);
+  };
+
+  return { following, toggle, loading };
 }
 
 function StarRating({ slug, initialSum, initialCount }: { slug: string; initialSum: number; initialCount: number }) {
@@ -504,6 +534,7 @@ function ShareCardModal({ story, onClose }: { story: NovelStory; onClose: () => 
 export default function NovelDetail() {
   const [, params] = useRoute("/:slug");
   const { t } = useLanguage();
+  const { user } = useAuth();
   const slug = params?.slug ?? "";
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
@@ -553,6 +584,9 @@ export default function NovelDetail() {
     queryFn: () => fetch(`/api/novel/stories/${story!.id}/stats`).then(r => r.json()),
     enabled: !!story?.id,
   });
+
+  const isLoggedIn = !!(user && !user.isAdmin);
+  const { following, toggle: toggleFollow, loading: followLoading } = useFollow(story?.id, isLoggedIn);
 
   const isLoading = storyLoading || seasonsLoading;
 
@@ -733,6 +767,21 @@ export default function NovelDetail() {
                 {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
                 {bookmarked ? t("novel.detail.saved") : t("novel.detail.save")}
               </button>
+              {isLoggedIn && (
+                <button
+                  onClick={toggleFollow}
+                  disabled={followLoading}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all disabled:opacity-60 ${
+                    following
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                      : "border-border hover:bg-muted"
+                  }`}
+                  data-testid="button-follow-story"
+                >
+                  {following ? <BellOff size={14} /> : <Bell size={14} />}
+                  {following ? t("novel.detail.unfollow") : t("novel.detail.follow")}
+                </button>
+              )}
               <button
                 onClick={() => handleShare(story.title, story.description)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"

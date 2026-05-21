@@ -1132,6 +1132,19 @@ export default function ManageNovel() {
     onError: () => toast({ title: "Gagal menghapus pengumuman", variant: "destructive" }),
   });
 
+  const [broadcastForm, setBroadcastForm] = useState({ title: "", message: "", target: "all" });
+  const broadcastNotification = useMutation({
+    mutationFn: (data: { title: string; message: string; target: string }) =>
+      apiRequest("POST", "/api/admin/broadcast-notification", data),
+    onSuccess: (res: any) => {
+      res.json().then((data: any) => {
+        toast({ title: `Notifikasi terkirim ke ${data.sent ?? 0} pengguna!` });
+      }).catch(() => toast({ title: "Notifikasi berhasil dikirim!" }));
+      setBroadcastForm({ title: "", message: "", target: "all" });
+    },
+    onError: () => toast({ title: "Gagal mengirim notifikasi", variant: "destructive" }),
+  });
+
   const reorderBanner = useMutation({
     mutationFn: (ids: string[]) => apiRequest("PATCH", "/api/banners/reorder", { ids }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/banners/all"] }),
@@ -1672,6 +1685,71 @@ export default function ManageNovel() {
               <Button onClick={() => setAnnouncementDialog({ open: true })}>
                 <Plus size={16} className="mr-1.5" /> Tambah
               </Button>
+            </div>
+
+            {/* ── Broadcast Notification ── */}
+            <div className="mb-8 p-5 rounded-2xl border border-border bg-card/60">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Bell size={15} className="text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">Kirim Notifikasi ke Pengguna</h2>
+                  <p className="text-xs text-muted-foreground">Notifikasi akan muncul di lonceng notifikasi akun pengguna</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Judul notifikasi</label>
+                    <Input
+                      value={broadcastForm.title}
+                      onChange={e => setBroadcastForm(f => ({ ...f, title: e.target.value }))}
+                      placeholder="Pembaruan WOOCE Novel..."
+                      data-testid="input-broadcast-title"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Kirim ke</label>
+                    <Select
+                      value={broadcastForm.target}
+                      onValueChange={v => setBroadcastForm(f => ({ ...f, target: v }))}
+                    >
+                      <SelectTrigger data-testid="select-broadcast-target">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua pengguna</SelectItem>
+                        <SelectItem value="writers">Penulis saja</SelectItem>
+                        <SelectItem value="readers">Pembaca saja</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Isi pesan</label>
+                  <Textarea
+                    value={broadcastForm.message}
+                    onChange={e => setBroadcastForm(f => ({ ...f, message: e.target.value }))}
+                    placeholder="Tulis pesan notifikasi di sini..."
+                    rows={3}
+                    data-testid="input-broadcast-message"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    disabled={!broadcastForm.title.trim() || !broadcastForm.message.trim() || broadcastNotification.isPending}
+                    onClick={() => broadcastNotification.mutate(broadcastForm)}
+                    data-testid="button-send-broadcast"
+                  >
+                    {broadcastNotification.isPending ? (
+                      <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground animate-spin" /> Mengirim...</span>
+                    ) : (
+                      <span className="flex items-center gap-1.5"><Bell size={14} /> Kirim Notifikasi</span>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {!announcements?.length ? (
