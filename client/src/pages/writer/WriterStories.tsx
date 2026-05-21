@@ -175,7 +175,8 @@ export default function WriterStories() {
   const [selectedStory, setSelectedStory] = useState<StoryWithStats | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
   const [editingChapter, setEditingChapter] = useState<NovelChapter | null>(null);
-  const [editingChapterTitle, setEditingChapterTitle] = useState("");
+  const [isNewChapter, setIsNewChapter] = useState(false);
+  const [writeForm, setWriteForm] = useState({ chapterNumber: 1, title: "", content: "", published: false, scheduledAt: "" });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [chapterPreviewOpen, setChapterPreviewOpen] = useState(false);
 
@@ -191,9 +192,6 @@ export default function WriterStories() {
   const [editingChapterMeta, setEditingChapterMeta] = useState<NovelChapter | null>(null);
   const [chapterForm, setChapterForm] = useState({ title: "", chapterNumber: 1, published: false });
 
-  const [chapterContent, setChapterContent] = useState("");
-  const [chapterPublished, setChapterPublished] = useState(false);
-  const [scheduledAt, setScheduledAt] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string; name: string } | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
@@ -327,13 +325,30 @@ export default function WriterStories() {
     mutationFn: ({ id, data }: any) => apiRequest("PUT", `/api/writer/chapters/${id}`, data).then(r => r.json()),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/writer/seasons", selectedSeason?.id, "chapters"] }); setChapterDialog(false); toast({ title: "Chapter diperbarui!" }); },
   });
-  const saveChapterContent = useMutation({
-    mutationFn: ({ id, content, published, scheduledAt, title }: any) =>
-      apiRequest("PUT", `/api/writer/chapters/${id}`, { content, published, scheduledAt: scheduledAt || null, title }).then(r => r.json()),
+  const saveWrite = useMutation({
+    mutationFn: async () => {
+      const payload: any = {
+        title: writeForm.title,
+        chapterNumber: writeForm.chapterNumber,
+        content: writeForm.content,
+        published: writeForm.published,
+        scheduledAt: writeForm.scheduledAt ? new Date(writeForm.scheduledAt).toISOString() : null,
+        storyId: selectedStory!.id,
+        seasonId: selectedSeason!.id,
+      };
+      if (isNewChapter) {
+        return apiRequest("POST", "/api/writer/chapters", payload).then(r => r.json());
+      } else {
+        return apiRequest("PUT", `/api/writer/chapters/${editingChapter!.id}`, payload).then(r => r.json());
+      }
+    },
     onSuccess: (updated) => {
-      refetchChapters();
-      setEditingChapter(prev => prev ? { ...prev, title: updated.title ?? prev.title } : prev);
-      toast({ title: "Konten tersimpan!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/writer/seasons", selectedSeason?.id, "chapters"] });
+      if (isNewChapter) {
+        setEditingChapter(updated);
+        setIsNewChapter(false);
+      }
+      toast({ title: "Bab berhasil disimpan!" });
     },
     onError: () => toast({ title: "Gagal menyimpan", variant: "destructive" }),
   });
@@ -390,19 +405,31 @@ export default function WriterStories() {
     else createChapter.mutate(data);
   };
 
+  const toDatetimeLocal = (val?: string | Date | null) => {
+    if (!val) return "";
+    const d = new Date(val as string);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const openWrite = (ch: NovelChapter) => {
     setEditingChapter(ch);
-    setEditingChapterTitle(ch.title);
-    setChapterContent(ch.content ?? "");
-    setChapterPublished(ch.published);
-    const toLocal = (val?: string | Date | null) => {
-      if (!val) return "";
-      const d = new Date(val as string);
-      if (isNaN(d.getTime())) return "";
-      const pad = (n: number) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-    setScheduledAt(toLocal(ch.scheduledAt));
+    setIsNewChapter(false);
+    setWriteForm({
+      chapterNumber: ch.chapterNumber,
+      title: ch.title,
+      content: ch.content ?? "",
+      published: ch.published,
+      scheduledAt: toDatetimeLocal(ch.scheduledAt),
+    });
+    setView("write");
+  };
+
+  const openNewWrite = () => {
+    setEditingChapter(null);
+    setIsNewChapter(true);
+    setWriteForm({ chapterNumber: (chapters?.length ?? 0) + 1, title: "", content: "", published: false, scheduledAt: "" });
     setView("write");
   };
 
@@ -411,9 +438,9 @@ export default function WriterStories() {
     setMobileSidebarOpen(false);
   };
 
-  const wordCount = chapterContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length;
+  const wordCount = writeForm.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length;
   const readTime = Math.max(1, Math.ceil(wordCount / 200));
-  const isScheduled = !chapterPublished && !!scheduledAt && new Date(scheduledAt) > new Date();
+  const isScheduled = !writeForm.published && !!writeForm.scheduledAt && new Date(writeForm.scheduledAt) > new Date();
 
   if (authLoading) {
     return (
@@ -432,7 +459,7 @@ export default function WriterStories() {
     : view === "stats" ? "Statistik"
     : view === "seasons" ? (selectedStory?.title ?? "Season")
     : view === "chapters" ? (selectedSeason?.title ?? "Chapter")
-    : `Bab ${editingChapter?.chapterNumber}: ${editingChapter?.title ?? "Tulis"}`;
+    : isNewChapter ? "Bab Baru" : `Bab ${editingChapter?.chapterNumber}: ${writeForm.title || "Tulis"}`;
 
   // ── Sidebar content ────────────────────────────────────────────────────────
   const sidebarContent = (
@@ -541,11 +568,11 @@ export default function WriterStories() {
       )}
 
       {/* ── Chapter Preview Modal ── */}
-      {chapterPreviewOpen && editingChapter && (
+      {chapterPreviewOpen && (
         <ChapterPreviewModal
-          title={editingChapter.title}
-          chapterNumber={editingChapter.chapterNumber}
-          content={chapterContent}
+          title={writeForm.title}
+          chapterNumber={writeForm.chapterNumber}
+          content={writeForm.content}
           onClose={() => setChapterPreviewOpen(false)}
         />
       )}
@@ -776,13 +803,13 @@ export default function WriterStories() {
                   <h1 className="text-xl font-bold text-foreground">{selectedSeason.title}</h1>
                   <p className="text-xs text-muted-foreground">{selectedStory?.title} · {chapters?.length ?? 0} chapter</p>
                 </div>
-                <Button size="sm" onClick={() => openChapterForm()} data-testid="button-create-chapter"><Plus size={14} className="mr-1.5" /> Tambah Chapter</Button>
+                <Button size="sm" onClick={() => openNewWrite()} data-testid="button-create-chapter"><Plus size={14} className="mr-1.5" /> Tambah Bab</Button>
               </div>
               {!chapters || chapters.length === 0 ? (
                 <div className="border border-dashed border-border rounded-2xl py-16 text-center">
                   <FileText size={32} className="mx-auto text-muted-foreground/30 mb-3" />
                   <p className="font-semibold text-foreground mb-1">Belum ada chapter</p>
-                  <Button size="sm" className="mt-2" onClick={() => openChapterForm()} data-testid="button-create-first-chapter"><Plus size={13} className="mr-1" /> Tambah Chapter</Button>
+                  <Button size="sm" className="mt-2" onClick={() => openNewWrite()} data-testid="button-create-first-chapter"><Plus size={13} className="mr-1" /> Tambah Bab</Button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -824,55 +851,84 @@ export default function WriterStories() {
           )}
 
           {/* ── Write View ── */}
-          {view === "write" && editingChapter && (
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Button variant="ghost" size="sm" onClick={() => setView("chapters")} data-testid="button-back-to-chapters"><ArrowLeft size={14} className="mr-1" /> Kembali</Button>
-                <p className="text-xs text-muted-foreground truncate hidden sm:block flex-1 min-w-0">{selectedStory?.title} · {selectedSeason?.title} · Bab {editingChapter.chapterNumber}</p>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+          {view === "write" && (
+            <div className="space-y-4">
+              {/* Header: back + preview */}
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setView("chapters")}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-back-to-chapters"
+                >
+                  <ArrowLeft size={16} /> Kembali ke daftar bab
+                </button>
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setChapterPreviewOpen(true)}
-                    className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg border border-border hover:bg-muted"
                     data-testid="button-preview-chapter"
                   >
-                    <Eye size={13} /> Preview
+                    <Eye size={14} /> Preview
                   </button>
-                  <label className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                    <input type="checkbox" checked={chapterPublished} onChange={e => setChapterPublished(e.target.checked)} className="accent-primary" />
-                    Published
-                  </label>
-                  <Button size="sm" onClick={() => saveChapterContent.mutate({ id: editingChapter.id, content: chapterContent, published: chapterPublished, scheduledAt, title: editingChapterTitle })} disabled={saveChapterContent.isPending} data-testid="button-save-chapter">
-                    {saveChapterContent.isPending ? "Menyimpan..." : "Simpan"}
+                  <Button size="sm" onClick={() => saveWrite.mutate()} disabled={saveWrite.isPending || !writeForm.title} data-testid="button-save-chapter">
+                    {saveWrite.isPending ? "Menyimpan..." : "Simpan"}
                   </Button>
                 </div>
               </div>
 
-              {/* Inline chapter title */}
-              <div className="mb-3">
+              {/* No. Bab + Terbitkan */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">No. Bab *</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={writeForm.chapterNumber}
+                    onChange={e => setWriteForm(f => ({ ...f, chapterNumber: Number(e.target.value) }))}
+                    data-testid="input-chapter-number"
+                  />
+                </div>
+                <div className="flex items-end pb-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={writeForm.published}
+                      onChange={e => setWriteForm(f => ({ ...f, published: e.target.checked, scheduledAt: e.target.checked ? "" : f.scheduledAt }))}
+                      className="rounded accent-primary"
+                      data-testid="checkbox-chapter-published"
+                    />
+                    Terbitkan
+                  </label>
+                </div>
+              </div>
+
+              {/* Judul Bab */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Judul Bab *</label>
                 <Input
-                  value={editingChapterTitle}
-                  onChange={e => setEditingChapterTitle(e.target.value)}
+                  value={writeForm.title}
+                  onChange={e => setWriteForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Judul chapter..."
-                  className="text-base font-semibold h-10 border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 bg-transparent"
                   data-testid="input-write-chapter-title"
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Judul chapter — akan tersimpan saat kamu klik Simpan</p>
               </div>
 
-              {/* Mobile controls */}
-              <div className="sm:hidden flex items-center gap-3 mb-3">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-                  <input type="checkbox" checked={chapterPublished} onChange={e => setChapterPublished(e.target.checked)} className="accent-primary" />
-                  Publish chapter ini
-                </label>
-                <button onClick={() => setChapterPreviewOpen(true)} className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-lg border border-border hover:bg-muted">
-                  <Eye size={12} /> Preview
-                </button>
+              {/* Konten Cerita */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Konten Cerita *</label>
+                <div className="border border-border rounded-xl overflow-hidden">
+                  <RichTextEditor
+                    value={writeForm.content}
+                    onChange={html => setWriteForm(f => ({ ...f, content: html }))}
+                    minHeight={450}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{wordCount} kata · ~{readTime} menit baca</p>
               </div>
 
-              {/* Schedule release card */}
-              {!chapterPublished && (
-                <div className="border border-border rounded-xl p-4 mb-4 space-y-3">
+              {/* Jadwal Terbit (hanya saat draft) */}
+              {!writeForm.published && (
+                <div className="border border-border rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <CalendarClock size={15} className="text-muted-foreground" />
                     <span className="text-sm font-medium">Jadwal Terbit</span>
@@ -882,31 +938,33 @@ export default function WriterStories() {
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="flex-1 text-sm h-8" data-testid="input-schedule-date" />
-                    {scheduledAt && (
-                      <Button type="button" variant="ghost" size="icon" className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setScheduledAt("")} data-testid="button-clear-schedule">
-                        <X size={14} />
-                      </Button>
-                    )}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Tanggal &amp; Waktu</label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        type="datetime-local"
+                        value={writeForm.scheduledAt}
+                        onChange={e => setWriteForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                        className="flex-1 text-sm"
+                        data-testid="input-schedule-date"
+                      />
+                      {writeForm.scheduledAt && (
+                        <Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setWriteForm(f => ({ ...f, scheduledAt: "" }))} data-testid="button-clear-schedule">
+                          <X size={14} />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">Kosongkan jika tidak ingin menjadwalkan. Chapter akan tetap tersimpan sebagai draft.</p>
                 </div>
               )}
 
-              <div className="border border-border rounded-xl overflow-hidden">
-                <RichTextEditor value={chapterContent} onChange={setChapterContent} />
+              {/* Save button (bottom) */}
+              <div className="flex justify-end pt-2">
+                <Button onClick={() => saveWrite.mutate()} disabled={saveWrite.isPending || !writeForm.title} data-testid="button-save-chapter-bottom">
+                  {saveWrite.isPending ? <><Loader2 size={14} className="animate-spin mr-2" />Menyimpan...</> : "Simpan Bab"}
+                </Button>
               </div>
-
-              {/* Word count */}
-              <p className="text-xs text-muted-foreground mt-2 px-1">{wordCount} kata · ~{readTime} menit baca</p>
-
-              {chapterContent && (
-                <details className="mt-4">
-                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground p-3 bg-muted/30 rounded-xl border border-border">Preview konten (inline)</summary>
-                  <div className="mt-2 p-4 bg-muted/20 rounded-xl border border-border prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderRichContent(chapterContent) }} />
-                </details>
-              )}
             </div>
           )}
         </main>

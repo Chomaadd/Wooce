@@ -21,6 +21,7 @@ import {
   type AppNotification,
   type InsertNotification,
 } from "@shared/schema";
+import mongoose from "mongoose";
 import {
   AdminModel,
   UserModel,
