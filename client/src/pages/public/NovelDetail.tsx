@@ -9,8 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
-  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User, BadgeCheck,
+  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User,
 } from "lucide-react";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -772,7 +773,7 @@ export default function NovelDetail() {
                 <Link href={`/penulis/${(story as any).author.slug}`}>
                   <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1" data-testid="link-story-author">
                     oleh <span className="font-medium text-foreground">{(story as any).author.name}</span>
-                    {(story as any).author.verificationStatus === "verified" && <BadgeCheck size={14} className="text-blue-500 shrink-0" />}
+                    {(story as any).author.verificationStatus === "verified" && <VerifiedBadge size="sm" />}
                   </span>
                 </Link>
                 {(story as any).author.userStatus === "suspended" && (

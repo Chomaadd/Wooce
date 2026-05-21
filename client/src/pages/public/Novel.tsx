@@ -10,8 +10,9 @@ import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, BookMarked, Sparkles, Eye,
-  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap, BadgeCheck,
+  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap,
 } from "lucide-react";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
 import type { NovelStory } from "@shared/schema";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null; authorName?: string | null; authorSlug?: string | null; authorVerified?: boolean };
@@ -817,7 +818,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                           className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
                         >
                           <span className="truncate">{story.authorName}</span>
-                          {story.authorVerified && <BadgeCheck size={10} className="text-blue-500 shrink-0" />}
+                          {story.authorVerified && <VerifiedBadge size="sm" />}
                         </span>
                       </div>
                     )}
@@ -962,6 +963,7 @@ function HomeSkeleton() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Novel() {
   const { search, setSearch } = useSearchContext();
+  const { t } = useLanguage();
 
   const { data: stories, isLoading } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/novel/stories"],

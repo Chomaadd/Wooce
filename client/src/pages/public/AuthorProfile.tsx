@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Globe, Mail, ArrowLeft, Heart, ShieldOff, BadgeCheck } from "lucide-react";
+import { BookOpen, Globe, Mail, ArrowLeft, Heart, ShieldOff } from "lucide-react";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { SiTiktok, SiFacebook, SiInstagram, SiX } from "react-icons/si";
 import { useLanguage } from "@/hooks/use-language";
 import type { Author, NovelStory } from "@shared/schema";
@@ -113,14 +114,7 @@ export default function AuthorProfile() {
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{author.name}</h1>
-              {isVerified && (
-                <span
-                  title="Penulis Terverifikasi"
-                  className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/25 select-none"
-                >
-                  <BadgeCheck size={13} /> Terverifikasi
-                </span>
-              )}
+              {isVerified && <VerifiedBadge size="lg" showLabel={true} />}
               {isSuspended && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
                   <ShieldOff size={9} /> {t("author.suspended")}

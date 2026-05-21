@@ -799,7 +799,17 @@ export async function registerRoutes(
       if (!story) return res.status(404).json({ message: "Story not found" });
       let author = null;
       if (story.authorId) {
-        try { author = await storage.getAuthorById(story.authorId); } catch {}
+        try {
+          const a = await storage.getAuthorById(story.authorId);
+          if (a) {
+            const userDoc = await UserModel.findOne({ authorId: story.authorId }).lean() as any;
+            author = {
+              ...a,
+              verificationStatus: userDoc?.verificationStatus ?? "none",
+              userStatus: userDoc?.status ?? "active",
+            };
+          }
+        } catch {}
       }
       res.json({ ...story, author });
     } catch { res.status(500).json({ message: "Internal server error" }); }
