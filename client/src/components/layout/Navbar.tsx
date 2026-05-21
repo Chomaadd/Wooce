@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -516,6 +516,15 @@ export function Navbar() {
                             <Bookmark size={12} /> Bookmark
                           </button>
                         </Link>
+                        <Link href="/mengikuti">
+                          <button
+                            className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                            onClick={() => setUserMenuOpen(false)}
+                            data-testid="button-followed-menu"
+                          >
+                            <BookHeart size={12} /> Cerita Diikuti
+                          </button>
+                        </Link>
                       </div>
 
                       {/* Mobile-only: Bookmark & Notifikasi */}
@@ -526,6 +535,15 @@ export function Navbar() {
                           data-testid="button-bookmarks-mobile-menu"
                         >
                           <Bookmark size={12} /> Bookmark
+                        </button>
+                      </Link>
+                      <Link href="/mengikuti">
+                        <button
+                          className="sm:hidden w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-followed-mobile-menu"
+                        >
+                          <BookHeart size={12} /> Cerita Diikuti
                         </button>
                       </Link>
                       <button

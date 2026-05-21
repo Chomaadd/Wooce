@@ -403,6 +403,10 @@ export class DatabaseStorage implements IStorage {
     const docs = await FollowModel.find({ userId }).lean();
     return docs.map((d: any) => d.storyId.toString());
   }
+  async unfollowAllStories(userId: string): Promise<number> {
+    const result = await FollowModel.deleteMany({ userId });
+    return result.deletedCount ?? 0;
+  }
 }
 
 export const storage = new DatabaseStorage();
