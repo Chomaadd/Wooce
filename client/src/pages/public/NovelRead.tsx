@@ -4,7 +4,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List,
+  Settings2, X, Share2, Check, List, Quote, Download,
 } from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -300,6 +300,9 @@ export default function NovelRead() {
   const [shareCopied, setShareCopied] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const restoredRef = useRef(false);
+  const [quoteText, setQuoteText] = useState("");
+  const [quoteCardOpen, setQuoteCardOpen] = useState(false);
+  const quoteCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -394,6 +397,90 @@ export default function NovelRead() {
     window.addEventListener("scroll", handler, { passive: true, once: true });
     return () => window.removeEventListener("scroll", handler);
   }, [settingsOpen]);
+
+  // Quote text selection
+  useEffect(() => {
+    const handler = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const text = sel.toString().trim();
+      if (text.length >= 10 && text.length <= 500) {
+        setQuoteText(text);
+      } else if (!text) {
+        setQuoteText("");
+      }
+    };
+    document.addEventListener("mouseup", handler);
+    document.addEventListener("touchend", handler);
+    return () => {
+      document.removeEventListener("mouseup", handler);
+      document.removeEventListener("touchend", handler);
+    };
+  }, []);
+
+  // Draw quote card on canvas
+  useEffect(() => {
+    if (!quoteCardOpen || !quoteCanvasRef.current) return;
+    const canvas = quoteCanvasRef.current;
+    const W = 540, H = 540;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, "#1a1030");
+    bg.addColorStop(0.5, "#0e0b1f");
+    bg.addColorStop(1, "#0a0818");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    const accent = ctx.createLinearGradient(0, 0, W, 0);
+    accent.addColorStop(0, "#7c3aed");
+    accent.addColorStop(1, "#4f46e5");
+    ctx.fillStyle = accent;
+    ctx.fillRect(40, 70, 4, H - 140);
+    ctx.fillRect(W - 44, 70, 4, H - 140);
+
+    ctx.font = `bold 72px serif`;
+    ctx.fillStyle = "rgba(124,58,237,0.25)";
+    ctx.fillText("\u201C", 42, 140);
+
+    const maxW = W - 110;
+    const words = quoteText.split(" ");
+    const lines: string[] = [];
+    let line = "";
+    ctx.font = `italic ${quoteText.length > 200 ? 18 : quoteText.length > 100 ? 21 : 24}px serif`;
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxW) {
+        if (line) lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+
+    const lineH = quoteText.length > 200 ? 28 : quoteText.length > 100 ? 32 : 36;
+    const totalTextH = lines.length * lineH;
+    let y = (H - totalTextH) / 2 + lineH * 0.5;
+
+    ctx.fillStyle = "#e2d9f3";
+    for (const l of lines) {
+      ctx.fillText(l, 65, y);
+      y += lineH;
+    }
+
+    ctx.fillStyle = "rgba(124,58,237,0.7)";
+    ctx.fillRect(65, H - 90, W - 130, 1);
+    ctx.font = "bold 13px sans-serif";
+    ctx.fillStyle = "#a78bfa";
+    ctx.fillText(story?.title ?? "WOOCE Novel", 65, H - 68);
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "rgba(167,139,250,0.6)";
+    ctx.fillText("wooce.replit.app", 65, H - 50);
+  }, [quoteCardOpen, quoteText, story?.title]);
 
   // Keyboard navigation (← prev, → next)
   useEffect(() => {
@@ -758,6 +845,23 @@ export default function NovelRead() {
 
       {/* Floating action buttons */}
       <div className="fixed bottom-5 right-4 z-50 flex flex-col items-center gap-2">
+        <AnimatePresence>
+          {quoteText && !quoteCardOpen && (
+            <motion.button
+              key="quote-btn"
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setQuoteCardOpen(true)}
+              className="w-10 h-10 rounded-full bg-violet-600 text-white shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              data-testid="button-open-quote-card"
+              title="Buat kartu kutipan"
+            >
+              <Quote size={15} />
+            </motion.button>
+          )}
+        </AnimatePresence>
         <button
           onClick={() => handleShare(chapter.title, story?.title)}
           className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
@@ -785,6 +889,54 @@ export default function NovelRead() {
             seasonNum={seasonNum}
             onClose={() => setTocOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Quote Card Modal */}
+      <AnimatePresence>
+        {quoteCardOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setQuoteCardOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-background border border-border rounded-2xl shadow-2xl max-w-xs w-full overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <p className="text-sm font-semibold flex items-center gap-2"><Quote size={14} className="text-violet-500" /> Kartu Kutipan</p>
+                <button onClick={() => setQuoteCardOpen(false)} className="p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-quote-card">
+                  <X size={15} />
+                </button>
+              </div>
+              <div className="p-3">
+                <canvas ref={quoteCanvasRef} className="w-full rounded-xl" style={{ imageRendering: "auto" }} />
+                <p className="text-[11px] text-muted-foreground text-center mt-2 mb-3">Tap download untuk simpan kartu kutipan</p>
+                <button
+                  onClick={() => {
+                    const canvas = quoteCanvasRef.current;
+                    if (!canvas) return;
+                    const a = document.createElement("a");
+                    a.download = `kutipan-${story?.slug ?? "wooce"}.png`;
+                    a.href = canvas.toDataURL("image/png");
+                    a.click();
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+                  data-testid="button-download-quote-card"
+                >
+                  <Download size={15} />
+                  Download Kartu
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -34,6 +34,7 @@ import {
   FollowModel,
 } from "./db";
 import { NotificationModel } from "./notificationModel";
+import { CharacterModel } from "./characterModel";
 
 export interface IStorage {
   getAdminByUsername(username: string): Promise<Admin | undefined>;
@@ -102,6 +103,11 @@ export interface IStorage {
   getStoryFollowerIds(storyId: string): Promise<string[]>;
   getUserFollowedStoryIds(userId: string): Promise<string[]>;
   unfollowAllStories(userId: string): Promise<number>;
+
+  getCharacters(storyId: string): Promise<any[]>;
+  createCharacter(data: { storyId: string; name: string; role?: string; description?: string; imageUrl?: string; relations?: string; order?: number }): Promise<any>;
+  updateCharacter(id: string, data: Partial<{ name: string; role: string; description: string; imageUrl: string; relations: string; order: number }>): Promise<any>;
+  deleteCharacter(id: string): Promise<void>;
 }
 
 function mapId<T>(doc: any): T {
@@ -418,6 +424,27 @@ export class DatabaseStorage implements IStorage {
     } catch {
       return 0;
     }
+  }
+
+  async getCharacters(storyId: string): Promise<any[]> {
+    const docs = await CharacterModel.find({ storyId }).sort({ order: 1, createdAt: 1 }).lean();
+    return docs.map((d: any) => ({ ...d, id: d._id.toString(), storyId: d.storyId?.toString(), _id: undefined, __v: undefined }));
+  }
+
+  async createCharacter(data: any): Promise<any> {
+    const doc = await CharacterModel.create(data);
+    const obj = doc.toObject();
+    return { ...obj, id: obj._id.toString(), storyId: obj.storyId?.toString(), _id: undefined, __v: undefined };
+  }
+
+  async updateCharacter(id: string, data: any): Promise<any> {
+    const doc = await CharacterModel.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
+    if (!doc) return undefined;
+    return { ...(doc as any), id: (doc as any)._id.toString(), storyId: (doc as any).storyId?.toString(), _id: undefined, __v: undefined };
+  }
+
+  async deleteCharacter(id: string): Promise<void> {
+    await CharacterModel.findByIdAndDelete(id);
   }
 }
 

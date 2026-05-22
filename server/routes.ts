@@ -27,6 +27,7 @@ import {
   sendStoryDeletedByWriterEmail,
 } from "./email";
 import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel } from "./db";
+import { CharacterModel } from "./characterModel";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
@@ -740,6 +741,40 @@ export async function registerRoutes(
       console.error("[followed] DELETE /api/novel/me/followed/all error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // ── Characters ────────────────────────────────────────────────────────────
+  app.get("/api/novel/stories/:storyId/characters", async (req, res) => {
+    try {
+      const chars = await storage.getCharacters(req.params.storyId);
+      res.json(chars);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/writer/stories/:storyId/characters", requireWriter, async (req: any, res) => {
+    try {
+      const { name, role, description, imageUrl, relations, order } = req.body;
+      if (!name?.trim()) return res.status(400).json({ message: "Nama karakter wajib diisi" });
+      const story = await storage.getNovelStory(req.params.storyId);
+      if (!story) return res.status(404).json({ message: "Story not found" });
+      const char = await storage.createCharacter({ storyId: req.params.storyId, name: name.trim(), role, description, imageUrl, relations, order: order ?? 0 });
+      res.json(char);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.put("/api/writer/characters/:id", requireWriter, async (req: any, res) => {
+    try {
+      const updated = await storage.updateCharacter(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Character not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/writer/characters/:id", requireWriter, async (req: any, res) => {
+    try {
+      await storage.deleteCharacter(req.params.id);
+      res.json({ ok: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   // ── Admin Broadcast Notification ──────────────────────────────────────────
@@ -1700,14 +1735,16 @@ export async function registerRoutes(
 
     let title = SITE_NAME;
     let description = SITE_DESC;
+    let ogImage = `${SITE_URL}/image/landscape-wooce.png`;
 
     try {
       const slugParts = req.path.replace(/^\//, "").split("/");
-      if (slugParts.length === 1 && slugParts[0]) {
+      if (slugParts.length >= 1 && slugParts[0]) {
         const story = await storage.getNovelStory(slugParts[0]);
         if (story) {
           title = `${story.title} | ${SITE_NAME}`;
           description = story.description || SITE_DESC;
+          if (story.coverUrl) ogImage = story.coverUrl;
         }
       }
     } catch {}
@@ -1720,11 +1757,15 @@ export async function registerRoutes(
   <meta property="og:site_name" content="${SITE_NAME}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${ogImage}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:url" content="${canonicalUrl}">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
+  <meta name="twitter:image" content="${ogImage}">
   <link rel="canonical" href="${canonicalUrl}">
 </head><body></body></html>`;
 

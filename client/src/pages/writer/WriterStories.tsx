@@ -55,6 +55,7 @@ import {
   TrendingUp,
   FileDown,
   BadgeCheck,
+  Users,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
@@ -71,7 +72,7 @@ type WriterMe = {
   verificationStatus?: string;
 };
 
-type WriterView = "stories" | "seasons" | "chapters" | "write" | "stats";
+type WriterView = "stories" | "seasons" | "chapters" | "write" | "stats" | "characters";
 type StoryWithStats = NovelStory & {
   totalChapters: number;
   publishedChapters?: number;
@@ -441,6 +442,11 @@ export default function WriterStories() {
   } | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
+  const [characterStory, setCharacterStory] = useState<StoryWithStats | null>(null);
+  const [characterDialog, setCharacterDialog] = useState(false);
+  const [editingCharacter, setEditingCharacter] = useState<any | null>(null);
+  const [characterForm, setCharacterForm] = useState({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" });
+
   const isWriter =
     !authLoading &&
     !!user &&
@@ -760,6 +766,46 @@ export default function WriterStories() {
       });
       setDeleteConfirm(null);
       toast({ title: "Chapter dihapus." });
+    },
+  });
+
+  const { data: characters, refetch: refetchCharacters } = useQuery<any[]>({
+    queryKey: ["/api/novel/stories", characterStory?.id, "characters"],
+    queryFn: () => fetch(`/api/novel/stories/${characterStory!.id}/characters`).then(r => r.json()),
+    enabled: !!characterStory?.id && view === "characters",
+  });
+
+  const createCharacter = useMutation({
+    mutationFn: (data: any) =>
+      apiRequest("POST", `/api/writer/stories/${characterStory!.id}/characters`, data).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories", characterStory?.id, "characters"] });
+      setCharacterDialog(false);
+      setEditingCharacter(null);
+      setCharacterForm({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" });
+      toast({ title: "Karakter ditambahkan!" });
+    },
+    onError: () => toast({ title: "Gagal menyimpan karakter", variant: "destructive" }),
+  });
+
+  const updateCharacter = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      apiRequest("PUT", `/api/writer/characters/${id}`, data).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories", characterStory?.id, "characters"] });
+      setCharacterDialog(false);
+      setEditingCharacter(null);
+      setCharacterForm({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" });
+      toast({ title: "Karakter diperbarui!" });
+    },
+    onError: () => toast({ title: "Gagal memperbarui karakter", variant: "destructive" }),
+  });
+
+  const deleteCharacter = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/writer/characters/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories", characterStory?.id, "characters"] });
+      toast({ title: "Karakter dihapus." });
     },
   });
 
@@ -1446,6 +1492,18 @@ export default function WriterStories() {
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setCharacterStory(story);
+                            setView("characters");
+                          }}
+                          data-testid={`button-characters-${story.id}`}
+                        >
+                          <Users size={13} className="mr-1 hidden sm:block" />{" "}
+                          Karakter
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={() => openStoryForm(story)}
                           data-testid={`button-edit-story-${story.id}`}
@@ -1911,6 +1969,85 @@ export default function WriterStories() {
                   )}
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* ── Characters View ── */}
+          {view === "characters" && characterStory && (
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <button
+                  onClick={() => { setView("stories"); setCharacterStory(null); }}
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+                <div className="flex-1">
+                  <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <Users size={18} /> Daftar Karakter
+                  </h1>
+                  <p className="text-xs text-muted-foreground mt-0.5">{characterStory.title}</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditingCharacter(null);
+                    setCharacterForm({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" });
+                    setCharacterDialog(true);
+                  }}
+                  data-testid="button-add-character"
+                >
+                  <Plus size={14} className="mr-1.5" /> Tambah
+                </Button>
+              </div>
+
+              {!characters ? (
+                <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+              ) : characters.length === 0 ? (
+                <div className="border border-dashed border-border rounded-2xl py-16 text-center">
+                  <Users size={28} className="mx-auto text-muted-foreground/40 mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">Belum ada karakter</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Tambah karakter untuk cerita ini</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {characters.map((char: any) => (
+                    <div key={char.id} className="bg-card border border-border rounded-xl p-4 flex items-start gap-4 hover:border-primary/30 transition-colors" data-testid={`row-character-${char.id}`}>
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                        {char.imageUrl ? (
+                          <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                            <User size={16} className="text-primary/50" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-semibold text-sm text-foreground">{char.name}</span>
+                          {char.role && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{char.role}</span>
+                          )}
+                        </div>
+                        {char.description && <p className="text-xs text-muted-foreground line-clamp-2">{char.description}</p>}
+                        {char.relations && <p className="text-[11px] text-muted-foreground/70 mt-1 italic line-clamp-1">Hubungan: {char.relations}</p>}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          setEditingCharacter(char);
+                          setCharacterForm({ name: char.name, role: char.role || "pendukung", description: char.description || "", imageUrl: char.imageUrl || "", relations: char.relations || "" });
+                          setCharacterDialog(true);
+                        }} data-testid={`button-edit-character-${char.id}`}>
+                          <Pencil size={13} />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteCharacter.mutate(char.id)} data-testid={`button-delete-character-${char.id}`}>
+                          <Trash2 size={13} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -2383,6 +2520,61 @@ export default function WriterStories() {
               ) : (
                 "Simpan Username"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Character Dialog ── */}
+      <Dialog open={characterDialog} onOpenChange={(open) => { setCharacterDialog(open); if (!open) { setEditingCharacter(null); setCharacterForm({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" }); } }}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingCharacter ? "Edit Karakter" : "Tambah Karakter"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Nama *</label>
+              <Input value={characterForm.name} onChange={e => setCharacterForm(f => ({ ...f, name: e.target.value }))} placeholder="Nama karakter" data-testid="input-char-name" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Peran</label>
+              <Select value={characterForm.role} onValueChange={v => setCharacterForm(f => ({ ...f, role: v }))}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-char-role"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="protagonis">Protagonis</SelectItem>
+                  <SelectItem value="antagonis">Antagonis</SelectItem>
+                  <SelectItem value="pendukung">Pendukung</SelectItem>
+                  <SelectItem value="figuran">Figuran</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Deskripsi</label>
+              <Textarea value={characterForm.description} onChange={e => setCharacterForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Kepribadian, latar belakang, dll..." data-testid="input-char-desc" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">URL Foto (opsional)</label>
+              <Input value={characterForm.imageUrl} onChange={e => setCharacterForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://..." data-testid="input-char-image" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Hubungan dengan karakter lain</label>
+              <Input value={characterForm.relations} onChange={e => setCharacterForm(f => ({ ...f, relations: e.target.value }))} placeholder="e.g. Adik Arya, musuh bebuyutan..." data-testid="input-char-relations" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCharacterDialog(false)}>Batal</Button>
+            <Button
+              disabled={!characterForm.name.trim() || createCharacter.isPending || updateCharacter.isPending}
+              onClick={() => {
+                if (editingCharacter) {
+                  updateCharacter.mutate({ id: editingCharacter.id, data: characterForm });
+                } else {
+                  createCharacter.mutate(characterForm);
+                }
+              }}
+              data-testid="button-submit-character"
+            >
+              {(createCharacter.isPending || updateCharacter.isPending) ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
-  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User, Bell, BellOff,
+  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User, Users, Bell, BellOff,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
@@ -540,6 +540,7 @@ export default function NovelDetail() {
   const [readingProgress, setReadingProgress] = useState<ReadingProgress | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
+  const [characterPanelOpen, setCharacterPanelOpen] = useState(false);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(slug);
 
   const handleShare = async (title: string, description?: string | null) => {
@@ -583,6 +584,12 @@ export default function NovelDetail() {
     queryKey: ["/api/novel/stories", story?.id, "stats"],
     queryFn: () => fetch(`/api/novel/stories/${story!.id}/stats`).then(r => r.json()),
     enabled: !!story?.id,
+  });
+
+  const { data: characters } = useQuery<any[]>({
+    queryKey: ["/api/novel/stories", story?.id, "characters"],
+    queryFn: () => fetch(`/api/novel/stories/${story!.id}/characters`).then(r => r.json()),
+    enabled: !!story?.id && characterPanelOpen,
   });
 
   const isLoggedIn = !!(user && !user.isAdmin);
@@ -798,6 +805,14 @@ export default function NovelDetail() {
                 <ImageDown size={14} />
                 {t("novel.shareCard.title")}
               </button>
+              <button
+                onClick={() => setCharacterPanelOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+                data-testid="button-open-characters"
+              >
+                <Users size={14} />
+                Daftar Karakter
+              </button>
               {(story as any).donationUrl && (
                 <a
                   href={(story as any).donationUrl}
@@ -892,6 +907,70 @@ export default function NovelDetail() {
       <AnimatePresence>
         {showShareCard && (
           <ShareCardModal story={story} onClose={() => setShowShareCard(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {characterPanelOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
+            onClick={() => setCharacterPanelOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ duration: 0.2 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[80vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border flex-shrink-0">
+                <p className="text-sm font-semibold flex items-center gap-2"><Users size={15} className="text-primary" /> Daftar Karakter</p>
+                <button onClick={() => setCharacterPanelOpen(false)} className="p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-characters">
+                  <X size={15} />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4">
+                {!characters ? (
+                  <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted/40 rounded-xl animate-pulse" />)}</div>
+                ) : characters.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Users size={28} className="mx-auto text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">Penulis belum menambahkan karakter</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {characters.map((char: any) => (
+                      <div key={char.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors" data-testid={`card-character-${char.id}`}>
+                        <div className="w-11 h-11 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                          {char.imageUrl ? (
+                            <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                              <User size={14} className="text-primary/50" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="font-semibold text-sm text-foreground">{char.name}</span>
+                            {char.role && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{char.role}</span>
+                            )}
+                          </div>
+                          {char.description && <p className="text-xs text-muted-foreground leading-relaxed">{char.description}</p>}
+                          {char.relations && <p className="text-[11px] text-muted-foreground/70 mt-1 italic">Hubungan: {char.relations}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
