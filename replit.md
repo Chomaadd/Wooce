@@ -112,3 +112,4 @@ Ide fitur yang sudah disetujui, menunggu eksekusi:
 | # | Fitur | Deskripsi Singkat | Status |
 |---|-------|-------------------|--------|
 | 1 | **Karakter Database per Novel** | Writer tambah daftar karakter (nama, peran, foto, deskripsi, hubungan). Reader bisa buka panel karakter saat baca tanpa keluar halaman. | Antrian |
+| 2 | **Share Quote Card** | Reader select teks di chapter → muncul tombol → generate kartu gambar cantik (kutipan + judul novel + nama penulis) → download/share ke Instagram Story. Canvas API, tanpa tambahan database. | Antrian |
