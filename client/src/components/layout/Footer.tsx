@@ -5,28 +5,28 @@ import { Link } from "wouter";
 
 const SOCIAL_LINKS = [
   {
-    href: "https://www.tiktok.com/@wooce_novel",
+    href: "https://www.tiktok.com/@woocenovel",
     icon: <SiTiktok size={15} />,
     label: "TikTok",
     testId: "link-social-tiktok",
     external: true,
   },
   {
-    href: "https://www.facebook.com/wooce.novel",
+    href: "https://www.facebook.com/woocenovel",
     icon: <SiFacebook size={15} />,
     label: "Facebook",
     testId: "link-social-facebook",
     external: true,
   },
   {
-    href: "https://instagram.com/wooce.novel",
+    href: "https://instagram.com/woocenovel",
     icon: <Instagram size={15} strokeWidth={1.75} />,
     label: "Instagram",
     testId: "link-social-instagram",
     external: true,
   },
   {
-    href: "mailto:wooce.novel@gmail.com",
+    href: "mailto:support.woocenovel@gmail.com",
     icon: <Mail size={15} strokeWidth={1.75} />,
     label: "Email",
     testId: "link-social-email",

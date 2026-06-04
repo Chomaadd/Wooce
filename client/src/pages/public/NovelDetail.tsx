@@ -53,21 +53,24 @@ function timeAgo(date: string | Date, lang: string): string {
   return `${years}y ago`;
 }
 
-function countdown(scheduledAt: string, lang: string): string {
-  const diff = new Date(scheduledAt).getTime() - Date.now();
+// now parameter makes this pure/testable and allows live ticking from a reactive source
+function countdown(scheduledAt: string, lang: string, now: number): string {
+  const diff = new Date(scheduledAt).getTime() - now;
   if (diff <= 0) return lang === "id" ? "Sebentar lagi" : "Very soon";
   const days  = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins  = Math.floor((diff % 3600000) / 60000);
+  const secs  = Math.floor((diff % 60000) / 1000);
   if (lang === "id") {
     if (days > 0) {
       let s = `${days} hari`;
       if (hours > 0) s += ` ${hours} jam`;
-      if (mins > 0)  s += ` ${mins} menit`;
+      if (mins > 0)  s += ` ${mins} mnt`;
       return s;
     }
-    if (hours > 0) return `${hours} jam ${mins} menit`;
-    return `${mins} menit`;
+    if (hours > 0) return `${hours} jam ${mins} mnt`;
+    if (mins > 0)  return `${mins} mnt ${secs} dtk`;
+    return `${secs} dtk`;
   }
   if (days > 0) {
     let s = `${days}d`;
@@ -76,7 +79,8 @@ function countdown(scheduledAt: string, lang: string): string {
     return s;
   }
   if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
+  if (mins > 0)  return `${mins}m ${secs}s`;
+  return `${secs}s`;
 }
 
 interface UpcomingChapter {
@@ -84,6 +88,31 @@ interface UpcomingChapter {
   chapterNumber: number;
   title: string;
   scheduledAt: string | null;
+}
+
+// Adaptive ticker — ticks every second when any countdown < 60s, else every 60s
+// Stops entirely when no upcoming chapters exist (saves resource)
+function useCountdownNow(upcomingChapters?: UpcomingChapter[]): number {
+  const [now, setNow] = useState(() => Date.now());
+
+  const intervalMs = useMemo(() => {
+    if (!upcomingChapters?.length) return null; // no upcoming — no timer needed
+    const smallest = upcomingChapters
+      .filter(ch => ch.scheduledAt)
+      .map(ch => new Date(ch.scheduledAt!).getTime() - Date.now())
+      .filter(d => d > 0)
+      .sort((a, b) => a - b)[0];
+    if (smallest === undefined) return null; // all past — refetch will clean up
+    return smallest < 60000 ? 1000 : 60000; // sub-minute: tick/s, else tick/min
+  }, [upcomingChapters, now]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (intervalMs === null) return;
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+
+  return now;
 }
 
 function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSeason }) {
@@ -104,6 +133,9 @@ function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSe
     refetchOnMount: "always",
     refetchInterval: 60000,
   });
+
+  // Live ticker — adaptive interval based on nearest upcoming chapter
+  const now = useCountdownNow(upcoming);
 
   useEffect(() => {
     if (!upcoming?.length) return;
@@ -201,9 +233,9 @@ function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSe
                     <span className="text-sm text-muted-foreground italic truncate">{ch.title}</span>
                   </div>
                   {ch.scheduledAt && (
-                    <div className="flex items-center gap-1 text-[10px] text-amber-500 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full ml-2">
+                    <div className="flex items-center gap-1 text-[10px] text-amber-500 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full ml-2 tabular-nums">
                       <Clock size={9} />
-                      <span>{countdown(ch.scheduledAt, language)}</span>
+                      <span>{countdown(ch.scheduledAt, language, now)}</span>
                     </div>
                   )}
                 </div>
