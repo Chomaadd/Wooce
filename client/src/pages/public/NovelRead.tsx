@@ -363,17 +363,26 @@ export default function NovelRead() {
   // Auto-save reading progress
   useEffect(() => {
     if (!chapter || !slug) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const handler = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
+
+    // Save immediately on chapter load so Lanjut Baca works even without scrolling
+    const saveProgress = (scrollY = window.scrollY) => {
+      try {
         localStorage.setItem(`novel-progress-${slug}`, JSON.stringify({
           seasonNum, chapterNum,
           chapterTitle: chapter.title,
-          scrollY: window.scrollY,
+          scrollY,
           updatedAt: new Date().toISOString(),
         }));
-      }, 800);
+      } catch {}
+    };
+
+    saveProgress();
+
+    // Also update on scroll to track position
+    let timer: ReturnType<typeof setTimeout>;
+    const handler = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => saveProgress(window.scrollY), 800);
     };
     window.addEventListener("scroll", handler, { passive: true });
     return () => { window.removeEventListener("scroll", handler); clearTimeout(timer); };

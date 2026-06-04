@@ -10,7 +10,7 @@ import { useSearchContext } from "@/lib/search-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, BookMarked, Sparkles, Eye,
-  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap,
+  ChevronLeft, ChevronRight, Star, Search, TrendingUp, Flame, Zap, X,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import type { NovelStory } from "@shared/schema";
@@ -428,29 +428,58 @@ interface ProgressEntry {
   updatedAt: string;
 }
 
-function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
-  const { t, language } = useLanguage();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [progressList, setProgressList] = useState<ProgressEntry[]>([]);
-
-  useEffect(() => {
-    const entries: ProgressEntry[] = [];
+function readProgressEntries(): ProgressEntry[] {
+  const entries: ProgressEntry[] = [];
+  try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key?.startsWith("novel-progress-")) continue;
       const slug = key.replace("novel-progress-", "");
       try {
-        const data = JSON.parse(localStorage.getItem(key)!);
-        entries.push({ slug, ...data });
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        if (
+          typeof data.seasonNum === "number" &&
+          typeof data.chapterNum === "number" &&
+          typeof data.updatedAt === "string"
+        ) {
+          entries.push({ slug, ...data });
+        }
       } catch {}
     }
-    entries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    setProgressList(entries);
+    entries.sort((a, b) => {
+      const ta = new Date(a.updatedAt).getTime();
+      const tb = new Date(b.updatedAt).getTime();
+      return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+    });
+  } catch {}
+  return entries;
+}
+
+function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
+  const { t, language } = useLanguage();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [progressList, setProgressList] = useState<ProgressEntry[]>(() => readProgressEntries());
+
+  // Re-read when component mounts (handles back-navigation)
+  useEffect(() => {
+    setProgressList(readProgressEntries());
   }, []);
 
-  const items = progressList
-    .map(p => ({ progress: p, story: stories.find(s => s.slug === p.slug) }))
-    .filter((item): item is { progress: ProgressEntry; story: StoryWithStats } => !!item.story);
+  const items = useMemo(() =>
+    progressList
+      .map(p => ({ progress: p, story: stories.find(s => s.slug === p.slug) }))
+      .filter((item): item is { progress: ProgressEntry; story: StoryWithStats } => !!item.story),
+    [progressList, stories]
+  );
+
+  const handleDismiss = (slug: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { localStorage.removeItem(`novel-progress-${slug}`); } catch {}
+    setProgressList(prev => prev.filter(p => p.slug !== slug));
+  };
 
   if (items.length === 0) return null;
 
@@ -459,17 +488,22 @@ function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
   };
 
   function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const h = Math.floor(diff / 3_600_000);
-    const d = Math.floor(diff / 86_400_000);
-    if (language === "id") {
-      if (h < 1) return "< 1j";
-      if (h < 24) return `${h}j lalu`;
-      return `${d}h lalu`;
+    try {
+      const diff = Date.now() - new Date(dateStr).getTime();
+      if (isNaN(diff) || diff < 0) return "";
+      const h = Math.floor(diff / 3_600_000);
+      const d = Math.floor(diff / 86_400_000);
+      if (language === "id") {
+        if (h < 1) return "< 1j";
+        if (h < 24) return `${h}j lalu`;
+        return `${d}h lalu`;
+      }
+      if (h < 1) return "< 1h";
+      if (h < 24) return `${h}h ago`;
+      return `${d}d ago`;
+    } catch {
+      return "";
     }
-    if (h < 1) return "< 1h";
-    if (h < 24) return `${h}h ago`;
-    return `${d}d ago`;
   }
 
   return (
@@ -488,48 +522,68 @@ function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
       >
         {items.map(({ progress, story }) => {
           const cfg = STATUS_CONFIG[story.status] ?? STATUS_CONFIG.ongoing;
+          const ago = timeAgo(progress.updatedAt);
           return (
-            <Link
-              key={progress.slug}
-              href={`/${progress.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}`}
-              data-testid={`link-lanjutbaca-${progress.slug}`}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px] group cursor-pointer"
+            <div key={progress.slug} className="relative flex-shrink-0 w-[calc((100vw-64px)/3)] sm:w-[calc((100vw-88px)/4)] md:w-[calc((100vw-96px)/5)] lg:w-[calc((100vw-144px)/6)] max-w-[195px]">
+              {/* Dismiss button */}
+              <button
+                onClick={(e) => handleDismiss(progress.slug, e)}
+                className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-background border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                data-testid={`button-dismiss-lanjutbaca-${progress.slug}`}
+                title="Hapus dari riwayat"
+                style={{ opacity: 1 }}
               >
-                <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
-                  {story.coverUrl ? (
-                    <img
-                      src={story.coverUrl}
-                      alt={story.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                      <BookOpen size={18} className="text-primary/40" />
+                <X size={10} />
+              </button>
+
+              <Link
+                href={`/${progress.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}`}
+                data-testid={`link-lanjutbaca-${progress.slug}`}
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group cursor-pointer"
+                >
+                  <div className="aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-muted relative shadow-sm">
+                    {story.coverUrl ? (
+                      <img
+                        src={story.coverUrl}
+                        alt={story.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <BookOpen size={18} className="text-primary/40" />
+                      </div>
+                    )}
+                    <div className={`absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                      <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                      {story.status}
                     </div>
-                  )}
-                  <div className={`absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
-                    <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                    {story.status}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-2 pt-6 pb-2">
+                      <p className="text-[9px] font-bold text-white/95 leading-tight">
+                        {t("novel.lanjutBaca.season")} {progress.seasonNum} · {t("novel.lanjutBaca.chapter")} {progress.chapterNum}
+                      </p>
+                      {progress.chapterTitle && (
+                        <p className="text-[8px] text-white/70 leading-tight line-clamp-1 mt-0.5">
+                          {progress.chapterTitle}
+                        </p>
+                      )}
+                    </div>
+                    {ago && (
+                      <div className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                        <span className="text-[8px] text-white/80">{ago}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pt-4 pb-1.5">
-                    <p className="text-[9px] font-semibold text-white/90">
-                      {t("novel.lanjutBaca.season")} {progress.seasonNum} · {t("novel.lanjutBaca.chapter")} {progress.chapterNum}
-                    </p>
-                  </div>
-                  <div className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
-                    <span className="text-[8px] text-white/80">{timeAgo(progress.updatedAt)}</span>
-                  </div>
-                </div>
-                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
-                  {story.title}
-                </h3>
-              </motion.div>
-            </Link>
+                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+                    {story.title}
+                  </h3>
+                </motion.div>
+              </Link>
+            </div>
           );
         })}
       </div>
