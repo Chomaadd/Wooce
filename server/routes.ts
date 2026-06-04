@@ -264,6 +264,22 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/upload", requireAuthOrWriter, async (req: any, res: any) => {
+    const url = ((req.query.url as string) || "").trim();
+    if (!url.startsWith("/uploads/"))
+      return res.status(400).json({ message: "Invalid URL" });
+    const filename = url.slice("/uploads/".length);
+    try {
+      const bucket = getGridFSBucket();
+      const files = await bucket.find({ filename }).toArray();
+      if (files.length > 0) await bucket.delete(files[0]._id);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Delete upload error:", err);
+      res.status(500).json({ message: "Delete failed" });
+    }
+  });
+
   app.get("/uploads/:filename", async (req, res) => {
     const filename = req.params.filename;
     try {

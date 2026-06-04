@@ -59,6 +59,11 @@ async function getCroppedBlob(imageSrc: string, croppedAreaPixels: { x: number; 
   });
 }
 
+function deleteOrphanUpload(url: string) {
+  if (!url || !url.startsWith("/uploads/")) return;
+  fetch(`/api/upload?url=${encodeURIComponent(url)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
+}
+
 function CoverUploadCrop({
   value, onChange,
 }: {
@@ -361,11 +366,48 @@ function BannerForm({
     active: initial?.active ?? true,
   });
 
+  const originalImageRef = useRef(initial?.imageUrl ?? "");
+  const pendingImageRef  = useRef<string | null>(null);
+  const isSavedRef       = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (!isSavedRef.current && pendingImageRef.current) {
+        deleteOrphanUpload(pendingImageRef.current);
+      }
+    };
+  }, []);
+
+  const handleImageChange = (newUrl: string) => {
+    if (pendingImageRef.current && newUrl !== pendingImageRef.current) {
+      deleteOrphanUpload(pendingImageRef.current);
+    }
+    pendingImageRef.current =
+      newUrl.startsWith("/uploads/") && newUrl !== originalImageRef.current ? newUrl : null;
+    setForm(f => ({ ...f, imageUrl: newUrl }));
+  };
+
+  const handleCancel = () => {
+    if (pendingImageRef.current) deleteOrphanUpload(pendingImageRef.current);
+    pendingImageRef.current = null;
+    onCancel();
+  };
+
+  const handleSave = () => {
+    isSavedRef.current     = true;
+    pendingImageRef.current = null;
+    const orig = originalImageRef.current;
+    if (orig && orig.startsWith("/uploads/") && orig !== form.imageUrl) {
+      deleteOrphanUpload(orig);
+    }
+    onSave(form);
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <label className="text-sm font-medium mb-1 block">Gambar Banner *</label>
-        <BannerUploadCrop value={form.imageUrl} onChange={v => setForm(f => ({ ...f, imageUrl: v }))} />
+        <BannerUploadCrop value={form.imageUrl} onChange={handleImageChange} />
       </div>
       <div>
         <label className="text-sm font-medium mb-1 block">Judul <span className="text-muted-foreground font-normal">(opsional)</span></label>
@@ -386,8 +428,8 @@ function BannerForm({
         Aktifkan banner (tampil di halaman utama)
       </label>
       <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>Batal</Button>
-        <Button onClick={() => onSave(form)} disabled={!form.imageUrl}>Simpan Banner</Button>
+        <Button variant="outline" onClick={handleCancel}>Batal</Button>
+        <Button onClick={handleSave} disabled={!form.imageUrl}>Simpan Banner</Button>
       </DialogFooter>
     </div>
   );
@@ -418,6 +460,46 @@ function StoryForm({
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
   const parsedTags = form.tags.split(",").map(t => t.trim()).filter(Boolean);
 
+  const originalCoverRef = useRef(initial?.coverUrl ?? "");
+  const pendingCoverRef  = useRef<string | null>(null);
+  const isSavedRef       = useRef(false);
+
+  // Cleanup: if form unmounts without saving, delete the orphan upload
+  useEffect(() => {
+    return () => {
+      if (!isSavedRef.current && pendingCoverRef.current) {
+        deleteOrphanUpload(pendingCoverRef.current);
+      }
+    };
+  }, []);
+
+  const handleCoverChange = (newUrl: string) => {
+    // If user uploaded a cover before in this session (not yet saved), delete it now
+    if (pendingCoverRef.current && newUrl !== pendingCoverRef.current) {
+      deleteOrphanUpload(pendingCoverRef.current);
+    }
+    pendingCoverRef.current =
+      newUrl.startsWith("/uploads/") && newUrl !== originalCoverRef.current ? newUrl : null;
+    set("coverUrl", newUrl);
+  };
+
+  const handleCancel = () => {
+    if (pendingCoverRef.current) deleteOrphanUpload(pendingCoverRef.current);
+    pendingCoverRef.current = null;
+    onCancel();
+  };
+
+  const handleSave = () => {
+    isSavedRef.current    = true;
+    pendingCoverRef.current = null;
+    // If original cover was replaced with a new upload, delete the original
+    const orig = originalCoverRef.current;
+    if (orig && orig.startsWith("/uploads/") && orig !== form.coverUrl) {
+      deleteOrphanUpload(orig);
+    }
+    onSave({ ...form, tags: parsedTags, donationUrl: form.donationUrl || null, authorId: form.authorId || null });
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -439,7 +521,7 @@ function StoryForm({
       </div>
       <div>
         <label className="text-sm font-medium mb-1 block">{t("admin.novel.form.cover")}</label>
-        <CoverUploadCrop value={form.coverUrl} onChange={v => set("coverUrl", v)} />
+        <CoverUploadCrop value={form.coverUrl} onChange={handleCoverChange} />
       </div>
       <div>
         <label className="text-sm font-medium mb-1 block">{t("admin.novel.form.tags")}</label>
@@ -507,8 +589,8 @@ function StoryForm({
         </label>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={onCancel} data-testid="button-cancel-story">{t("admin.novel.form.cancel")}</Button>
-        <Button onClick={() => onSave({ ...form, tags: parsedTags, donationUrl: form.donationUrl || null, authorId: form.authorId || null })} disabled={!form.title || !form.slug} data-testid="button-save-story">{t("admin.novel.form.save")}</Button>
+        <Button variant="outline" onClick={handleCancel} data-testid="button-cancel-story">{t("admin.novel.form.cancel")}</Button>
+        <Button onClick={handleSave} disabled={!form.title || !form.slug} data-testid="button-save-story">{t("admin.novel.form.save")}</Button>
       </DialogFooter>
     </div>
   );

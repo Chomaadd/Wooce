@@ -135,6 +135,11 @@ async function getCroppedBlob(
   });
 }
 
+function deleteOrphanUpload(url: string) {
+  if (!url || !url.startsWith("/uploads/")) return;
+  fetch(`/api/upload?url=${encodeURIComponent(url)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
+}
+
 function CoverUpload({
   value,
   onChange,
@@ -418,6 +423,10 @@ export default function WriterStories() {
     published: false,
     donationUrl: "",
   });
+
+  const storyOriginalCoverRef = useRef("");
+  const storyPendingCoverRef  = useRef<string | null>(null);
+  const storyIsSavedRef       = useRef(false);
 
   const [seasonDialog, setSeasonDialog] = useState(false);
   const [editingSeason, setEditingSeason] = useState<NovelSeason | null>(null);
@@ -812,7 +821,11 @@ export default function WriterStories() {
   // ── Helpers ────────────────────────────────────────────────────────────────
   const openStoryForm = (story?: StoryWithStats) => {
     if (!story && needsUsername) return;
+    // Reset orphan-tracking for this new form session
+    storyPendingCoverRef.current = null;
+    storyIsSavedRef.current = false;
     if (story) {
+      storyOriginalCoverRef.current = story.coverUrl ?? "";
       setEditingStory(story);
       setStoryForm({
         title: story.title,
@@ -826,6 +839,7 @@ export default function WriterStories() {
         donationUrl: (story as any).donationUrl ?? "",
       });
     } else {
+      storyOriginalCoverRef.current = "";
       setEditingStory(null);
       setStoryForm({
         title: "",
@@ -842,7 +856,29 @@ export default function WriterStories() {
     setStoryDialog(true);
   };
 
+  const handleStoryCoverChange = (url: string) => {
+    if (storyPendingCoverRef.current && url !== storyPendingCoverRef.current) {
+      deleteOrphanUpload(storyPendingCoverRef.current);
+    }
+    storyPendingCoverRef.current =
+      url.startsWith("/uploads/") && url !== storyOriginalCoverRef.current ? url : null;
+    setStoryForm((f) => ({ ...f, coverUrl: url }));
+  };
+
+  const handleStoryCancelDialog = () => {
+    if (storyPendingCoverRef.current) deleteOrphanUpload(storyPendingCoverRef.current);
+    storyPendingCoverRef.current = null;
+    setStoryDialog(false);
+  };
+
   const submitStory = () => {
+    storyIsSavedRef.current = true;
+    storyPendingCoverRef.current = null;
+    // If original cover was replaced with a new one, delete the original
+    const orig = storyOriginalCoverRef.current;
+    if (orig && orig.startsWith("/uploads/") && orig !== storyForm.coverUrl) {
+      deleteOrphanUpload(orig);
+    }
     const data = {
       ...storyForm,
       tags: storyForm.tags
@@ -2054,7 +2090,7 @@ export default function WriterStories() {
       </div>
 
       {/* ── Story Dialog ── */}
-      <Dialog open={storyDialog} onOpenChange={setStoryDialog}>
+      <Dialog open={storyDialog} onOpenChange={(open) => { if (!open) handleStoryCancelDialog(); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -2112,9 +2148,7 @@ export default function WriterStories() {
               </label>
               <CoverUpload
                 value={storyForm.coverUrl}
-                onChange={(url) =>
-                  setStoryForm((f) => ({ ...f, coverUrl: url }))
-                }
+                onChange={handleStoryCoverChange}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -2210,7 +2244,7 @@ export default function WriterStories() {
             </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStoryDialog(false)}>
+            <Button variant="outline" onClick={handleStoryCancelDialog}>
               Batal
             </Button>
             <Button
