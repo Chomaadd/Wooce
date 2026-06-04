@@ -90,27 +90,18 @@ interface UpcomingChapter {
   scheduledAt: string | null;
 }
 
-// Adaptive ticker — ticks every second when any countdown < 60s, else every 60s
-// Stops entirely when no upcoming chapters exist (saves resource)
+// Live ticker for countdown display.
+// Always ticks every second when upcoming chapters exist — stops when list is empty.
+// Adaptive interval would require stale Date.now() in useMemo deps; constant 1s is simpler and correct.
 function useCountdownNow(upcomingChapters?: UpcomingChapter[]): number {
   const [now, setNow] = useState(() => Date.now());
-
-  const intervalMs = useMemo(() => {
-    if (!upcomingChapters?.length) return null; // no upcoming — no timer needed
-    const smallest = upcomingChapters
-      .filter(ch => ch.scheduledAt)
-      .map(ch => new Date(ch.scheduledAt!).getTime() - Date.now())
-      .filter(d => d > 0)
-      .sort((a, b) => a - b)[0];
-    if (smallest === undefined) return null; // all past — refetch will clean up
-    return smallest < 60000 ? 1000 : 60000; // sub-minute: tick/s, else tick/min
-  }, [upcomingChapters, now]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hasUpcoming = (upcomingChapters?.length ?? 0) > 0;
 
   useEffect(() => {
-    if (intervalMs === null) return;
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    if (!hasUpcoming) return; // no upcoming chapters — no timer needed
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [intervalMs]);
+  }, [hasUpcoming]);
 
   return now;
 }
@@ -498,8 +489,12 @@ function ShareCardModal({ story, onClose }: { story: NovelStory; onClose: () => 
 
     if (story.coverUrl) {
       const img = new Image();
+      img.crossOrigin = "anonymous"; // prevent canvas tainting from cross-origin covers
       img.onload = () => renderCard(img);
-      img.onerror = () => renderCard();
+      img.onerror = () => {
+        // CORS blocked or load failed — render card without cover image
+        renderCard();
+      };
       img.src = story.coverUrl;
     } else {
       renderCard();
