@@ -115,6 +115,6 @@ Ide fitur yang sudah disetujui, menunggu eksekusi:
 | 2 | **Share Quote Card** | Reader select teks di chapter → muncul tombol → generate kartu gambar cantik (kutipan + judul novel + nama penulis) → download/share ke Instagram Story. Canvas API, tanpa tambahan database. | ✅ Selesai |
 | 3 | **SEO & Thumbnail** | Perbaiki og:image di semua halaman. Novel detail pakai cover novel sebagai thumbnail saat di-share. | ✅ Selesai |
 | 4 | **"Lanjut Baca" di Homepage** | Simpan chapter terakhir yang dibuka ke localStorage, tampilkan shortcut "Lanjut Baca" di atas homepage. | Antrian |
-| 5 | **Keyboard Shortcut** | ← → untuk prev/next chapter, F untuk focus mode saat baca. | Antrian |
-| 6 | **Salin Link Chapter** | Tombol "Salin Link" di halaman baca, langsung copy URL chapter ke clipboard. | Antrian |
+| 5 | **Keyboard Shortcut** | ← → untuk prev/next chapter, F untuk focus mode saat baca. | ✅ Selesai |
+| 6 | **Salin Link Chapter** | Tombol "Salin Link" di halaman baca, langsung copy URL chapter ke clipboard. | ✅ Selesai |
 | 7 | **Jadwal Rilis Countdown** | Countdown "Terbit dalam X hari Y jam" untuk chapter terjadwal di halaman detail novel. | Antrian |

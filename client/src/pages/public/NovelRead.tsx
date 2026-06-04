@@ -4,7 +4,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List, Quote, Download,
+  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2,
 } from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -230,7 +230,7 @@ function TOCPanel({ chapters, currentChapterNum, slug, seasonNum, onClose }: {
 }
 
 // ── Reader Header ─────────────────────────────────────────────────────────────
-function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, settingsOpen, tocOpen }: {
+function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, settingsOpen, tocOpen, focusMode }: {
   story?: NovelStory;
   chapter?: NovelChapter;
   chapterNum: number;
@@ -239,9 +239,10 @@ function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, set
   onSettings: () => void;
   settingsOpen: boolean;
   tocOpen: boolean;
+  focusMode: boolean;
 }) {
   return (
-    <header className="fixed top-0.5 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/50">
+    <header className={`fixed top-0.5 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/50 transition-all duration-300 ${focusMode ? "-translate-y-full opacity-0 pointer-events-none" : ""}`}>
       <div className="max-w-3xl mx-auto px-3 sm:px-5 h-11 flex items-center gap-2 sm:gap-3">
         {/* Back */}
         <Link href={`/${slug}`}>
@@ -298,6 +299,9 @@ export default function NovelRead() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusHint, setFocusHint] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const restoredRef = useRef(false);
   const [quoteText, setQuoteText] = useState("");
@@ -482,7 +486,7 @@ export default function NovelRead() {
     ctx.fillText("wooce.replit.app", 65, H - 50);
   }, [quoteCardOpen, quoteText, story?.title]);
 
-  // Keyboard navigation (← prev, → next)
+  // Keyboard navigation (← prev, → next, F focus mode)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -490,11 +494,28 @@ export default function NovelRead() {
         navigate(`/${slug}/season-${seasonNum}/bab-${prevChapter.chapterNumber}`);
       } else if (e.key === "ArrowRight" && nextChapter) {
         navigate(`/${slug}/season-${seasonNum}/bab-${nextChapter.chapterNumber}`);
+      } else if (e.key === "f" || e.key === "F" || e.key === "Escape") {
+        if (e.key === "Escape" && !focusMode) return;
+        setFocusMode(prev => {
+          const next = e.key === "Escape" ? false : !prev;
+          if (next) { setFocusHint(true); setTimeout(() => setFocusHint(false), 2000); }
+          return next;
+        });
+        setSettingsOpen(false);
+        setTocOpen(false);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [prevChapter, nextChapter, slug, seasonNum, navigate]);
+  }, [prevChapter, nextChapter, slug, seasonNum, navigate, focusMode]);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {}
+  };
 
   const handleShare = async (title: string, storyTitle?: string) => {
     const url = window.location.href;
@@ -612,6 +633,7 @@ export default function NovelRead() {
         onSettings={() => { setSettingsOpen(v => !v); setTocOpen(false); }}
         settingsOpen={settingsOpen}
         tocOpen={tocOpen}
+        focusMode={focusMode}
       />
 
       {/* Main content */}
@@ -843,8 +865,22 @@ export default function NovelRead() {
         </div>
       </main>
 
+      {/* Focus mode hint */}
+      <AnimatePresence>
+        {focusHint && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white text-xs px-4 py-2 rounded-full backdrop-blur-sm pointer-events-none"
+          >
+            Mode Fokus aktif — tekan <kbd className="font-mono bg-white/20 px-1.5 py-0.5 rounded mx-0.5">F</kbd> atau <kbd className="font-mono bg-white/20 px-1.5 py-0.5 rounded mx-0.5">Esc</kbd> untuk keluar
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Floating action buttons */}
-      <div className="fixed bottom-5 right-4 z-50 flex flex-col items-center gap-2">
+      <div className={`fixed bottom-5 right-4 z-50 flex flex-col items-center gap-2 transition-all duration-300 ${focusMode ? "opacity-0 pointer-events-none translate-y-4" : ""}`}>
         <AnimatePresence>
           {quoteText && !quoteCardOpen && (
             <motion.button
@@ -863,12 +899,28 @@ export default function NovelRead() {
           )}
         </AnimatePresence>
         <button
+          onClick={handleCopyLink}
+          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+          data-testid="button-copy-link"
+          title="Salin link chapter"
+        >
+          {linkCopied ? <Check size={15} className="text-green-500" /> : <Link2 size={15} />}
+        </button>
+        <button
           onClick={() => handleShare(chapter.title, story?.title)}
           className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
           data-testid="button-share-chapter"
           title={t("novel.share")}
         >
           {shareCopied ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
+        </button>
+        <button
+          onClick={() => { setFocusMode(true); setFocusHint(true); setTimeout(() => setFocusHint(false), 2000); setSettingsOpen(false); setTocOpen(false); }}
+          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+          data-testid="button-focus-mode"
+          title="Mode Fokus (F)"
+        >
+          <Maximize2 size={15} />
         </button>
       </div>
 
