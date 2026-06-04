@@ -104,6 +104,7 @@ Secret di bawah bersifat opsional. App tetap berjalan tanpa keduanya, tapi fitur
 - Footer: TikTok, Facebook, Instagram, Email (tanpa YouTube, GitHub, Telegram)
 - URL bersih tanpa prefix `/novel/` di frontend
 - Tab browser: "WOOCE Novel"
+- **Jangan tanyakan atau sarankan fitur yang sudah ada di website** — hanya sarankan fitur yang benar-benar belum ada
 
 ## Daftar Pembaruan (Backlog)
 
