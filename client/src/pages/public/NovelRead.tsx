@@ -540,7 +540,7 @@ export default function NovelRead() {
   };
 
   const modeStyle   = MODE_STYLES[settings.mode];
-  const fontClass   = settings.fontFamily === "serif" ? "font-serif" : "font-sans";
+  const fontClass   = settings.fontFamily === "serif" ? "font-reading" : "font-sans";
   const proseInvert = settings.mode === "light" ? "dark:prose-invert" : settings.mode === "night" ? "prose-invert" : "";
 
   const proseColorVars: React.CSSProperties =
