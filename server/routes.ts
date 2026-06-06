@@ -1737,52 +1737,99 @@ export async function registerRoutes(
   });
 
   // ── Social Bot OG Middleware ──────────────────────────────────────────────
-  const SITE_URL = "https://wooce.novel";
   const SITE_NAME = "WOOCE Novel";
   const SITE_DESC = "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.";
+  const DEFAULT_OG_IMAGE_PATH = "/image/landscape-wooce.png";
 
-  const SOCIAL_BOTS = ["WhatsApp", "TelegramBot", "facebookexternalhit", "Twitterbot", "LinkedInBot", "Slackbot", "Discordbot", "google", "bingbot"];
+  const SOCIAL_BOTS = [
+    "Discordbot", "WhatsApp", "TelegramBot", "facebookexternalhit",
+    "Twitterbot", "LinkedInBot", "Slackbot", "Googlebot", "bingbot",
+    "Applebot", "iframely", "Embedly",
+  ];
 
-  app.use(async (req, res, next) => {
+  // Derive the real base URL from the incoming request (works in dev & prod)
+  function getBotBaseUrl(req: any): string {
+    if (process.env.SITE_URL) return process.env.SITE_URL.replace(/\/$/, "");
+    const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+    const host  = (req.headers["x-forwarded-host"] as string) || req.get("host") || "";
+    return `${proto}://${host}`;
+  }
+
+  // Make any URL absolute; relative paths get the base URL prepended
+  function toAbsoluteUrl(base: string, url: string | null | undefined): string {
+    if (!url) return `${base}${DEFAULT_OG_IMAGE_PATH}`;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+  }
+
+  // Strip HTML tags and truncate for meta content
+  function plainText(html: string | null | undefined, maxLen = 200): string {
+    if (!html) return "";
+    return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, maxLen);
+  }
+
+  // Escape characters that would break HTML attribute values
+  function esc(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  const NON_STORY_SLUGS = new Set([
+    "login", "admin", "writer", "register", "verify",
+    "forgot-password", "reset-password", "profile", "notifications",
+    "sitemap.xml", "robots.txt", "manifest.json", "sw.js",
+  ]);
+
+  app.use(async (req: any, res: any, next: any) => {
+    // Only intercept GET requests for HTML pages
+    if (req.method !== "GET") return next();
     if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
-    const ua = req.headers["user-agent"] || "";
-    const isBot = SOCIAL_BOTS.some(bot => ua.toLowerCase().includes(bot.toLowerCase()));
-    if (!isBot) return next();
+    // Skip requests that have a file extension (images, scripts, fonts, etc.)
+    if (/\.[a-z0-9]{1,10}$/i.test(req.path)) return next();
 
+    const ua = req.headers["user-agent"] || "";
+    const isSocialBot = SOCIAL_BOTS.some(bot => ua.toLowerCase().includes(bot.toLowerCase()));
+    if (!isSocialBot) return next();
+
+    const baseUrl = getBotBaseUrl(req);
     let title = SITE_NAME;
     let description = SITE_DESC;
-    let ogImage = `${SITE_URL}/image/landscape-wooce.png`;
+    let ogImage = toAbsoluteUrl(baseUrl, DEFAULT_OG_IMAGE_PATH);
+    let ogType = "website";
 
     try {
-      const slugParts = req.path.replace(/^\//, "").split("/");
-      if (slugParts.length >= 1 && slugParts[0]) {
-        const story = await storage.getNovelStory(slugParts[0]);
+      const slugParts = req.path.replace(/^\//, "").split("/").filter(Boolean);
+      const firstSlug = slugParts[0];
+      if (firstSlug && !NON_STORY_SLUGS.has(firstSlug)) {
+        const story = await storage.getNovelStory(firstSlug);
         if (story) {
           title = `${story.title} | ${SITE_NAME}`;
-          description = story.description || SITE_DESC;
-          if (story.coverUrl) ogImage = story.coverUrl;
+          const rawDesc = plainText(story.description);
+          description = rawDesc || SITE_DESC;
+          ogImage = toAbsoluteUrl(baseUrl, story.coverUrl || null);
+          ogType = "article";
         }
       }
-    } catch {}
+    } catch (_) {}
 
-    const canonicalUrl = `${SITE_URL}${req.path}`;
+    const canonicalUrl = `${baseUrl}${req.path}`;
     const html = `<!DOCTYPE html><html lang="id"><head>
   <meta charset="utf-8">
-  <title>${title}</title>
-  <meta name="description" content="${description}">
-  <meta property="og:site_name" content="${SITE_NAME}">
-  <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${ogImage}">
+  <title>${esc(title)}</title>
+  <meta name="description" content="${esc(description)}">
+  <meta property="og:site_name" content="${esc(SITE_NAME)}">
+  <meta property="og:title" content="${esc(title)}">
+  <meta property="og:description" content="${esc(description)}">
+  <meta property="og:image" content="${esc(ogImage)}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:url" content="${canonicalUrl}">
-  <meta property="og:type" content="website">
+  <meta property="og:image:alt" content="${esc(title)}">
+  <meta property="og:url" content="${esc(canonicalUrl)}">
+  <meta property="og:type" content="${ogType}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${title}">
-  <meta name="twitter:description" content="${description}">
-  <meta name="twitter:image" content="${ogImage}">
-  <link rel="canonical" href="${canonicalUrl}">
+  <meta name="twitter:title" content="${esc(title)}">
+  <meta name="twitter:description" content="${esc(description)}">
+  <meta name="twitter:image" content="${esc(ogImage)}">
+  <link rel="canonical" href="${esc(canonicalUrl)}">
 </head><body></body></html>`;
 
     return res.status(200).set("Content-Type", "text/html").end(html);
