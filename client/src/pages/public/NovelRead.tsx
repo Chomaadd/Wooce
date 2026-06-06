@@ -417,6 +417,7 @@ export default function NovelRead() {
   const [translateOpen, setTranslateOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
+  const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translateLang, setTranslateLang] = useState("en");
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
@@ -640,6 +641,7 @@ export default function NovelRead() {
   // Reset translated content when chapter changes
   useEffect(() => {
     setTranslatedContent(null);
+    setTranslatedTitle(null);
     setTranslateOpen(false);
   }, [slug, seasonNum, chapterNum]);
 
@@ -648,33 +650,61 @@ export default function NovelRead() {
     setIsTranslating(true);
     try {
       const parser = new DOMParser();
-      const doc = parser.parseFromString(renderRichContent(chapter.content), "text/html");
-      const elements = Array.from(doc.body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th"));
+      const html = renderRichContent(chapter.content);
+      const doc = parser.parseFromString(html, "text/html");
+
+      // Only leaf block elements — no double-processing of nested blocks
+      const BLOCK_TAGS = new Set(["P","H1","H2","H3","H4","H5","H6","LI","BLOCKQUOTE","TD","TH","DT","DD"]);
+      const allBlocks = Array.from(doc.body.querySelectorAll("p,h1,h2,h3,h4,h5,h6,li,blockquote,td,th,dt,dd"));
+      const leafBlocks = allBlocks.filter(el =>
+        !Array.from(el.children).some(child => BLOCK_TAGS.has(child.tagName))
+      );
+
       const segments: string[] = [];
       const nodes: Element[] = [];
-      for (const el of elements) {
-        const text = el.textContent?.trim() ?? "";
+      for (const el of leafBlocks) {
+        // Clone and replace <br> with \n so line-breaks survive translation
+        const clone = el.cloneNode(true) as Element;
+        clone.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
+        const text = clone.textContent?.trim() ?? "";
         if (text) { segments.push(text); nodes.push(el); }
       }
-      if (segments.length === 0) { setIsTranslating(false); return; }
 
-      const BATCH = 30;
-      const allTranslated: string[] = [];
-      for (let i = 0; i < segments.length; i += BATCH) {
-        const batch = segments.slice(i, i + BATCH);
-        const res = await fetch("/api/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ segments: batch, from: "auto", to: translateLang }),
-        });
-        if (!res.ok) throw new Error("Translation failed");
-        const data = await res.json() as { segments: string[] };
-        allTranslated.push(...data.segments);
+      // Title is first segment so it's translated too
+      const allSegments = [chapter.title.trim(), ...segments];
+      if (allSegments.length === 0) return;
+
+      // Split into batches and fire ALL batches in parallel
+      const BATCH = 20;
+      const batches: string[][] = [];
+      for (let i = 0; i < allSegments.length; i += BATCH) {
+        batches.push(allSegments.slice(i, i + BATCH));
       }
 
+      const batchResults = await Promise.all(
+        batches.map(batch =>
+          fetch("/api/translate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ segments: batch, from: "auto", to: translateLang }),
+          })
+            .then(r => { if (!r.ok) throw new Error("Translation failed"); return r.json() as Promise<{ segments: string[] }>; })
+            .then(d => d.segments)
+        )
+      );
+
+      const allTranslated = batchResults.flat();
+
+      // [0] = title, [1..] = content nodes
+      if (allTranslated[0]) setTranslatedTitle(allTranslated[0]);
+
       nodes.forEach((el, i) => {
-        if (allTranslated[i]) el.textContent = allTranslated[i];
+        const translated = allTranslated[i + 1];
+        if (!translated) return;
+        // Restore \n → <br> so line-breaks in paragraphs are preserved
+        el.innerHTML = translated.replace(/\n/g, "<br>");
       });
+
       setTranslatedContent(doc.body.innerHTML);
     } catch (err) {
       console.error("Translate error:", err);
@@ -685,6 +715,7 @@ export default function NovelRead() {
 
   const handleResetTranslate = () => {
     setTranslatedContent(null);
+    setTranslatedTitle(null);
   };
 
   const handleShare = async (title: string, storyTitle?: string) => {
@@ -854,7 +885,7 @@ export default function NovelRead() {
                   style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
                   data-testid="text-chapter-title"
                 >
-                  {t("novel.read.chapterOf")} {chapter.chapterNumber}: {chapter.title}
+                  {t("novel.read.chapterOf")} {chapter.chapterNumber}: {translatedTitle ?? chapter.title}
                 </h1>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1">
@@ -1107,7 +1138,7 @@ export default function NovelRead() {
         {translateOpen && (
           <TranslatePanel
             targetLang={translateLang}
-            onLangChange={lang => { setTranslateLang(lang); setTranslatedContent(null); }}
+            onLangChange={lang => { setTranslateLang(lang); setTranslatedContent(null); setTranslatedTitle(null); }}
             onTranslate={handleTranslate}
             onReset={handleResetTranslate}
             isTranslating={isTranslating}
