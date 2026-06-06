@@ -4,7 +4,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2,
+  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw,
 } from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -162,6 +162,111 @@ function SettingsPanel({ settings, update, onClose }: {
   );
 }
 
+// ── Translate Panel ───────────────────────────────────────────────────────────
+const TRANSLATE_LANGS = [
+  { code: "en", label: "English" },
+  { code: "id", label: "Bahasa Indonesia" },
+  { code: "ja", label: "日本語" },
+  { code: "ko", label: "한국어" },
+  { code: "zh", label: "中文 (简体)" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "ar", label: "العربية" },
+];
+
+function TranslatePanel({ targetLang, onLangChange, onTranslate, onReset, isTranslating, isTranslated, onClose }: {
+  targetLang: string;
+  onLangChange: (lang: string) => void;
+  onTranslate: () => void;
+  onReset: () => void;
+  isTranslating: boolean;
+  isTranslated: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.96 }}
+      transition={{ duration: 0.15 }}
+      className="fixed bottom-20 right-4 z-50 w-72 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden"
+      data-testid="panel-translate"
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+        <span className="font-semibold text-sm text-foreground flex items-center gap-2">
+          <Languages size={14} className="text-primary" />
+          {t("novel.read.translate")}
+        </span>
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-translate">
+          <X size={15} />
+        </button>
+      </div>
+      <div className="p-4 space-y-4">
+        <div>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("novel.read.translateTo")}</span>
+          <div className="grid grid-cols-2 gap-1.5">
+            {TRANSLATE_LANGS.map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => onLangChange(lang.code)}
+                className={`py-2 px-3 rounded-xl border text-xs font-medium transition-all text-left ${
+                  targetLang === lang.code
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                }`}
+                data-testid={`button-lang-${lang.code}`}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isTranslated ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-green-500 bg-green-500/10 rounded-xl px-3 py-2">
+              <Check size={12} />
+              <span>{t("novel.read.translateDone")}</span>
+            </div>
+            <button
+              onClick={onReset}
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              data-testid="button-translate-reset"
+            >
+              <RotateCcw size={14} />
+              {t("novel.read.translateReset")}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onTranslate}
+            disabled={isTranslating}
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            data-testid="button-translate-start"
+          >
+            {isTranslating ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                {t("novel.read.translating")}
+              </>
+            ) : (
+              <>
+                <Languages size={14} />
+                {t("novel.read.translateBtn")}
+              </>
+            )}
+          </button>
+        )}
+
+        <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+          {t("novel.read.translateNote")}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── TOC Panel ─────────────────────────────────────────────────────────────────
 function TOCPanel({ chapters, currentChapterNum, slug, seasonNum, onClose }: {
   chapters: NovelChapter[];
@@ -307,6 +412,12 @@ export default function NovelRead() {
   const [quoteText, setQuoteText] = useState("");
   const [quoteCardOpen, setQuoteCardOpen] = useState(false);
   const quoteCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Translate state
+  const [translateOpen, setTranslateOpen] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedContent, setTranslatedContent] = useState<string | null>(null);
+  const [translateLang, setTranslateLang] = useState("en");
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -526,6 +637,56 @@ export default function NovelRead() {
     } catch {}
   };
 
+  // Reset translated content when chapter changes
+  useEffect(() => {
+    setTranslatedContent(null);
+    setTranslateOpen(false);
+  }, [slug, seasonNum, chapterNum]);
+
+  const handleTranslate = async () => {
+    if (!chapter?.content) return;
+    setIsTranslating(true);
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(renderRichContent(chapter.content), "text/html");
+      const elements = Array.from(doc.body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th"));
+      const segments: string[] = [];
+      const nodes: Element[] = [];
+      for (const el of elements) {
+        const text = el.textContent?.trim() ?? "";
+        if (text) { segments.push(text); nodes.push(el); }
+      }
+      if (segments.length === 0) { setIsTranslating(false); return; }
+
+      const BATCH = 30;
+      const allTranslated: string[] = [];
+      for (let i = 0; i < segments.length; i += BATCH) {
+        const batch = segments.slice(i, i + BATCH);
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segments: batch, from: "auto", to: translateLang }),
+        });
+        if (!res.ok) throw new Error("Translation failed");
+        const data = await res.json() as { segments: string[] };
+        allTranslated.push(...data.segments);
+      }
+
+      nodes.forEach((el, i) => {
+        if (allTranslated[i]) el.textContent = allTranslated[i];
+      });
+      setTranslatedContent(doc.body.innerHTML);
+    } catch (err) {
+      console.error("Translate error:", err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleResetTranslate = () => {
+    setTranslatedContent(null);
+  };
+
   const handleShare = async (title: string, storyTitle?: string) => {
     const url = window.location.href;
     if (navigator.share) {
@@ -728,7 +889,7 @@ export default function NovelRead() {
             ...proseColorVars,
           }}
           data-testid="text-chapter-content"
-          dangerouslySetInnerHTML={{ __html: renderRichContent(chapter.content) }}
+          dangerouslySetInnerHTML={{ __html: translatedContent ?? renderRichContent(chapter.content) }}
         />
 
         {/* End of chapter divider */}
@@ -908,6 +1069,14 @@ export default function NovelRead() {
           )}
         </AnimatePresence>
         <button
+          onClick={() => { setTranslateOpen(v => !v); setSettingsOpen(false); setTocOpen(false); }}
+          className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${translateOpen || translatedContent ? "bg-primary text-primary-foreground border border-primary" : "bg-background border border-border text-muted-foreground hover:text-foreground"}`}
+          data-testid="button-translate"
+          title="Terjemahkan"
+        >
+          {isTranslating ? <Loader2 size={15} className="animate-spin" /> : <Languages size={15} />}
+        </button>
+        <button
           onClick={handleCopyLink}
           className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
           data-testid="button-copy-link"
@@ -932,6 +1101,21 @@ export default function NovelRead() {
           <Maximize2 size={15} />
         </button>
       </div>
+
+      {/* Translate Panel */}
+      <AnimatePresence>
+        {translateOpen && (
+          <TranslatePanel
+            targetLang={translateLang}
+            onLangChange={lang => { setTranslateLang(lang); setTranslatedContent(null); }}
+            onTranslate={handleTranslate}
+            onReset={handleResetTranslate}
+            isTranslating={isTranslating}
+            isTranslated={!!translatedContent}
+            onClose={() => setTranslateOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Settings Panel */}
       <AnimatePresence>
