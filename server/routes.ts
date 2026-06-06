@@ -1739,7 +1739,7 @@ export async function registerRoutes(
   // ── Social Bot OG Middleware ──────────────────────────────────────────────
   const SITE_NAME = "WOOCE Novel";
   const SITE_DESC = "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.";
-  const DEFAULT_OG_IMAGE_PATH = "/image/landscape-wooce.png";
+  const DEFAULT_OG_IMAGE_PATH = "/image/icon-navbar.png";
 
   const SOCIAL_BOTS = [
     "Discordbot", "WhatsApp", "TelegramBot", "facebookexternalhit",
