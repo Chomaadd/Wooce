@@ -645,6 +645,15 @@ export default function NovelRead() {
     setTranslateOpen(false);
   }, [slug, seasonNum, chapterNum]);
 
+  // Safely set element text with \n → <br>, without HTML injection risk
+  const setNodeText = (el: Element, text: string) => {
+    el.innerHTML = "";
+    text.split("\n").forEach((part, i) => {
+      if (i > 0) el.appendChild(document.createElement("br"));
+      if (part) el.appendChild(document.createTextNode(part));
+    });
+  };
+
   const handleTranslate = async () => {
     if (!chapter?.content) return;
     setIsTranslating(true);
@@ -653,56 +662,74 @@ export default function NovelRead() {
       const html = renderRichContent(chapter.content);
       const doc = parser.parseFromString(html, "text/html");
 
-      // Only leaf block elements — no double-processing of nested blocks
-      const BLOCK_TAGS = new Set(["P","H1","H2","H3","H4","H5","H6","LI","BLOCKQUOTE","TD","TH","DT","DD"]);
-      const allBlocks = Array.from(doc.body.querySelectorAll("p,h1,h2,h3,h4,h5,h6,li,blockquote,td,th,dt,dd"));
-      const leafBlocks = allBlocks.filter(el =>
-        !Array.from(el.children).some(child => BLOCK_TAGS.has(child.tagName))
-      );
+      // Collect ALL text nodes grouped by their closest block ancestor
+      // Using a Map so every text node — even non-consecutive ones — reaches the right group
+      const BLOCK_TAGS = new Set(["P","H1","H2","H3","H4","H5","H6","LI","BLOCKQUOTE","TD","TH","DT","DD","DIV"]);
 
-      const segments: string[] = [];
-      const nodes: Element[] = [];
-      for (const el of leafBlocks) {
-        // Clone and replace <br> with \n so line-breaks survive translation
-        const clone = el.cloneNode(true) as Element;
-        clone.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
-        const text = clone.textContent?.trim() ?? "";
-        if (text) { segments.push(text); nodes.push(el); }
+      type NodeGroup = { blockEl: Element; textNodes: Text[]; text: string };
+      const groupMap = new Map<Element, NodeGroup>();
+      const groupOrder: NodeGroup[] = [];   // preserves document order
+
+      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const textNode = node as Text;
+        if (!textNode.data.trim()) continue;
+
+        // Walk up to the closest block-level ancestor
+        let ancestor: Element | null = textNode.parentElement;
+        while (ancestor && ancestor !== doc.body && !BLOCK_TAGS.has(ancestor.tagName)) {
+          ancestor = ancestor.parentElement;
+        }
+        const blockEl: Element = (ancestor && ancestor !== doc.body)
+          ? ancestor
+          : (textNode.parentElement ?? doc.body);
+
+        let g = groupMap.get(blockEl);
+        if (!g) {
+          g = { blockEl, textNodes: [], text: "" };
+          groupMap.set(blockEl, g);
+          groupOrder.push(g);
+        }
+        g.textNodes.push(textNode);
       }
 
-      // Title is first segment so it's translated too
-      const allSegments = [chapter.title.trim(), ...segments];
-      if (allSegments.length === 0) return;
-
-      // Split into batches and fire ALL batches in parallel
-      const BATCH = 20;
-      const batches: string[][] = [];
-      for (let i = 0; i < allSegments.length; i += BATCH) {
-        batches.push(allSegments.slice(i, i + BATCH));
+      // Build final text per group (concat all text nodes)
+      const finalGroups: NodeGroup[] = [];
+      for (const g of groupOrder) {
+        const text = g.textNodes.map(t => t.data).join("").replace(/\n/g, " ").trim();
+        if (text) finalGroups.push({ ...g, text });
       }
 
-      const batchResults = await Promise.all(
-        batches.map(batch =>
-          fetch("/api/translate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ segments: batch, from: "auto", to: translateLang }),
-          })
-            .then(r => { if (!r.ok) throw new Error("Translation failed"); return r.json() as Promise<{ segments: string[] }>; })
-            .then(d => d.segments)
-        )
-      );
+      // First segment = chapter title, rest = content blocks
+      const allSegments = [chapter.title.trim(), ...finalGroups.map(g => g.text)];
 
-      const allTranslated = batchResults.flat();
+      // Single request — server handles concurrency internally
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ segments: allSegments, from: "auto", to: translateLang }),
+      });
+      if (!res.ok) throw new Error("Translation failed");
+      const data = await res.json() as { segments: string[] };
+      const allTranslated = data.segments;
 
-      // [0] = title, [1..] = content nodes
+      // Apply title
       if (allTranslated[0]) setTranslatedTitle(allTranslated[0]);
 
-      nodes.forEach((el, i) => {
+      // Apply content: replace each block's text nodes with translated text
+      finalGroups.forEach((g, i) => {
         const translated = allTranslated[i + 1];
         if (!translated) return;
-        // Restore \n → <br> so line-breaks in paragraphs are preserved
-        el.innerHTML = translated.replace(/\n/g, "<br>");
+
+        if (g.textNodes.length === 1) {
+          // Single text node — just update it directly
+          g.textNodes[0].data = translated;
+        } else {
+          // Multiple text nodes in block — put all translated text in first, clear rest
+          g.textNodes[0].data = translated;
+          for (let j = 1; j < g.textNodes.length; j++) g.textNodes[j].data = "";
+        }
       });
 
       setTranslatedContent(doc.body.innerHTML);

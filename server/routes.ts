@@ -1566,28 +1566,85 @@ export async function registerRoutes(
     "https://lingva.tiekoetter.com",
   ];
 
-  async function lingvaTranslate(text: string, from: string, to: string): Promise<string> {
-    const srcLang = !from || from === "auto" ? "auto" : from;
+  function splitSentences(text: string, maxLen = 450): string[] {
+    if (text.length <= maxLen) return [text];
+    const parts: string[] = [];
+    let cur = "";
+    for (const char of text) {
+      cur += char;
+      if (/[.!?。！？\n]/.test(char) && cur.length >= 80) {
+        parts.push(cur.trim());
+        cur = "";
+      }
+    }
+    if (cur.trim()) parts.push(cur.trim());
+    return parts.filter(p => p.length > 0);
+  }
+
+  // MyMemory uses different language codes for some languages
+  const MM_LANG: Record<string, string> = { zh: "zh-CN", "zh-CN": "zh-CN" };
+  const mmLang = (l: string) => MM_LANG[l] ?? l;
+
+  async function translateSegment(text: string, from: string, to: string): Promise<string> {
+    if (!text.trim()) return text;
+
+    // Split long texts into sentences to avoid URL/API length limits
+    if (text.length > 450) {
+      const sentences = splitSentences(text);
+      const parts = await Promise.all(sentences.map(s => translateSegment(s, from, to)));
+      return parts.join(" ");
+    }
+
+    const srcLang = !from || from === "auto" ? "id" : from;
+    const mmSrc = mmLang(srcLang);
+    const mmTo = mmLang(to);
+
+    // ── Primary: MyMemory (fast, reliable for Indonesian) ──────────────────
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${mmSrc}|${mmTo}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (r.ok) {
+        const d = await r.json() as any;
+        if (d.responseStatus === 200) {
+          const t: string = d.responseData?.translatedText ?? "";
+          if (t && t !== "NO QUERY SPECIFIED" && t.toLowerCase() !== "quota exceeded") return t;
+        }
+      }
+    } catch {}
+
+    // ── Fallback: Lingva instances ─────────────────────────────────────────
+    const lingvaSrc = !from || from === "auto" ? "auto" : from;
     for (const instance of LINGVA_INSTANCES) {
       try {
-        const url = `${instance}/api/v1/${srcLang}/${to}/${encodeURIComponent(text)}`;
-        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        const url = `${instance}/api/v1/${lingvaSrc}/${to}/${encodeURIComponent(text)}`;
+        const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
         if (!r.ok) continue;
         const d = await r.json() as any;
-        if (d.translation && d.translation !== text) return d.translation;
+        if (d.translation) return d.translation;
       } catch {}
     }
-    return text;
+
+    return text; // Return original only when all APIs fail
   }
 
   app.post("/api/translate", async (req, res) => {
     try {
       const { segments, from = "auto", to } = req.body as { segments: string[]; from?: string; to: string };
       if (!Array.isArray(segments) || !to) return res.status(400).json({ error: "Invalid request" });
-      const translated = await Promise.all(
-        segments.map(seg => seg.trim() ? lingvaTranslate(seg.trim(), from, to) : Promise.resolve(seg))
-      );
-      res.json({ segments: translated });
+
+      // Concurrency pool — max 10 simultaneous API calls to avoid rate limiting
+      const results: string[] = new Array(segments.length);
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < segments.length) {
+          const i = cursor++;
+          const seg = segments[i];
+          results[i] = seg.trim() ? await translateSegment(seg.trim(), from, to) : seg;
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(10, segments.length) }, () => worker()));
+
+      res.json({ segments: results });
     } catch (err) {
       console.error("Translation error:", err);
       res.status(500).json({ error: "Translation failed" });
