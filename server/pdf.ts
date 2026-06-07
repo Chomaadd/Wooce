@@ -1,4 +1,9 @@
 import PDFDocument from "pdfkit";
+import path from "path";
+
+const LOGO_PATH = path.resolve("public/image/landscape-wooce.png");
+const LOGO_W = 120;
+const LOGO_H = Math.round(LOGO_W * (372 / 1181)); // ≈ 38px, preserve aspect ratio
 
 function stripHtml(html: string): string {
   return html
@@ -45,17 +50,23 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const PRIMARY = "#7c3aed";
+    const PRIMARY = "#3c40c7";
     const DARK = "#1f2937";
     const GRAY = "#6b7280";
     const LIGHT_GRAY = "#f3f4f6";
     const pageW = doc.page.width;
 
     // Header
-    doc.rect(0, 0, pageW, 90).fill(PRIMARY);
-    doc.fill("#ffffff").fontSize(20).font("Helvetica-Bold").text("WOOCE Novel", 50, 22);
-    doc.fontSize(10).font("Helvetica").text("Backup Cerita / Novel", 50, 48);
-    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, 50, 64);
+    const HEADER_H = 90;
+    doc.rect(0, 0, pageW, HEADER_H).fill(PRIMARY);
+    // Logo (left-aligned, vertically centered)
+    const logoX = 50;
+    const logoY = Math.round((HEADER_H - LOGO_H) / 2);
+    try { doc.image(LOGO_PATH, logoX, logoY, { width: LOGO_W }); } catch {}
+    // Subtitle text to the right of the logo
+    const textX = logoX + LOGO_W + 16;
+    doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Backup Cerita / Novel", textX, logoY + 6);
+    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
     doc.opacity(1);
 
     // Story title box
@@ -173,16 +184,20 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const PRIMARY = "#7c3aed";
+    const PRIMARY = "#3c40c7";
     const DARK = "#1f2937";
     const GRAY = "#6b7280";
     const LIGHT_GRAY = "#f3f4f6";
 
     // Header
-    doc.rect(0, 0, doc.page.width, 90).fill(PRIMARY);
-    doc.fill("#ffffff").fontSize(22).font("Helvetica-Bold").text("WOOCE Novel", 50, 25);
-    doc.fontSize(10).font("Helvetica").text("Backup Data Penulis", 50, 52);
-    doc.fill("#ffffff").opacity(0.7).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, 50, 68);
+    const HEADER_H = 90;
+    doc.rect(0, 0, doc.page.width, HEADER_H).fill(PRIMARY);
+    const logoX = 50;
+    const logoY = Math.round((HEADER_H - LOGO_H) / 2);
+    try { doc.image(LOGO_PATH, logoX, logoY, { width: LOGO_W }); } catch {}
+    const textX = logoX + LOGO_W + 16;
+    doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Backup Data Penulis", textX, logoY + 6);
+    doc.fill("#ffffff").opacity(0.7).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
     doc.opacity(1);
 
     doc.moveDown(4);
