@@ -421,6 +421,7 @@ export default function NovelRead() {
   const [reportDetails, setReportDetails] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState("");
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translateLang, setTranslateLang] = useState("en");
@@ -1164,7 +1165,7 @@ export default function NovelRead() {
           <Maximize2 size={15} />
         </button>
         <button
-          onClick={() => { setReportOpen(true); setReportSuccess(false); setReportReason(""); setReportDetails(""); }}
+          onClick={() => { setReportOpen(true); setReportSuccess(false); setReportReason(""); setReportDetails(""); setReportError(""); }}
           className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-red-500"
           data-testid="button-report-content"
           title="Laporkan Konten"
@@ -1213,6 +1214,11 @@ export default function NovelRead() {
                 </div>
               ) : (
                 <div className="px-5 py-5 space-y-4">
+                  {reportError && (
+                    <div className="px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-500 font-medium">
+                      {reportError}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-2">Alasan Laporan <span className="text-red-500">*</span></label>
                     <div className="grid grid-cols-2 gap-2">
@@ -1262,7 +1268,14 @@ export default function NovelRead() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ storySlug: story.slug, reason: reportReason, details: reportDetails }),
                         });
-                        if (res.ok || res.status === 409) setReportSuccess(true);
+                        if (res.ok) {
+                          setReportSuccess(true);
+                        } else {
+                          const data = await res.json();
+                          if (res.status === 409) setReportError("Kamu sudah pernah melaporkan cerita ini sebelumnya.");
+                          else if (res.status === 429) setReportError(data.message || "Batas laporan hari ini tercapai (maks. 2 per hari).");
+                          else setReportSuccess(true);
+                        }
                       } catch {}
                       setReportSubmitting(false);
                     }}

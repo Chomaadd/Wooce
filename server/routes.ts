@@ -1015,8 +1015,15 @@ export async function registerRoutes(
       if (!story) return res.status(404).json({ message: "Story not found" });
       const userId = req.session.userId ?? null;
       if (userId) {
-        const existing = await ReportModel.findOne({ storyId: story._id.toString(), reporterId: userId, status: "pending" });
-        if (existing) return res.status(409).json({ message: "Already reported" });
+        // Block re-reporting the same story regardless of status
+        const anyExisting = await ReportModel.findOne({ storyId: story._id.toString(), reporterId: userId });
+        if (anyExisting) return res.status(409).json({ message: "Already reported", code: "ALREADY_REPORTED" });
+
+        // Rate limit: max 2 reports per day
+        const dayStart = new Date();
+        dayStart.setHours(0, 0, 0, 0);
+        const todayCount = await ReportModel.countDocuments({ reporterId: userId, createdAt: { $gte: dayStart } });
+        if (todayCount >= 2) return res.status(429).json({ message: "Batas laporan hari ini tercapai (maks. 2 per hari)", code: "RATE_LIMITED" });
       }
       let reporterName = "Anonim";
       if (userId) {
@@ -1122,6 +1129,17 @@ export async function registerRoutes(
     try {
       const report = await ReportModel.findByIdAndUpdate(req.params.id, { $set: { status: "rejected" } }, { new: true });
       if (!report) return res.status(404).json({ message: "Report not found" });
+
+      // Send in-app notification to the reporter if they're a logged-in user
+      if (report.reporterId) {
+        storage.createNotification({
+          userId: report.reporterId,
+          type: "report_rejected" as any,
+          title: "Laporan Ditolak",
+          message: `Laporan kamu untuk cerita "${report.storyTitle}" telah ditinjau dan tidak memenuhi kriteria pelanggaran kami. Terima kasih telah membantu menjaga kualitas platform.`,
+        }).catch(console.error);
+      }
+
       res.json({ ...report.toObject(), id: report._id.toString() });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });

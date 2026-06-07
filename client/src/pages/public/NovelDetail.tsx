@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen, ChevronDown, ChevronRight, ArrowLeft,
   Clock, Eye, Play, Lock, BookMarked, List, Share2, Check,
-  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User, Users, Bell, BellOff,
+  Bookmark, BookmarkCheck, Star, X, ImageDown, Heart, User, Users, Bell, BellOff, Flag,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
@@ -568,6 +568,12 @@ export default function NovelDetail() {
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [characterPanelOpen, setCharacterPanelOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState("");
   const { bookmarked, toggle: toggleBookmark } = useBookmark(slug);
 
   const handleShare = async (title: string, description?: string | null) => {
@@ -840,6 +846,14 @@ export default function NovelDetail() {
                 <Users size={14} />
                 Daftar Karakter
               </button>
+              <button
+                onClick={() => { setReportOpen(true); setReportSuccess(false); setReportReason(""); setReportDetails(""); setReportError(""); }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-red-500 hover:border-red-500/30"
+                data-testid="button-report-novel"
+              >
+                <Flag size={14} />
+                Laporkan
+              </button>
               {(story as any).donationUrl && (
                 <a
                   href={(story as any).donationUrl}
@@ -998,6 +1012,122 @@ export default function NovelDetail() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Report Modal */}
+      <AnimatePresence>
+        {reportOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setReportOpen(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.18 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-md"
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <Flag size={15} className="text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground">Laporkan Novel</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Bantu kami menjaga kualitas platform</p>
+                  </div>
+                </div>
+                <button onClick={() => setReportOpen(false)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground">
+                  <X size={15} />
+                </button>
+              </div>
+
+              {reportSuccess ? (
+                <div className="px-5 py-10 text-center">
+                  <div className="w-14 h-14 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                    <Check size={24} className="text-green-500" />
+                  </div>
+                  <p className="font-semibold text-foreground mb-1">Laporan Terkirim</p>
+                  <p className="text-sm text-muted-foreground">Tim admin akan meninjau laporan ini. Terima kasih.</p>
+                  <button onClick={() => setReportOpen(false)} className="mt-6 px-6 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
+                    Tutup
+                  </button>
+                </div>
+              ) : (
+                <div className="px-5 py-5 space-y-4">
+                  {reportError && (
+                    <div className="px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-500 font-medium">
+                      {reportError}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-2">Alasan Laporan <span className="text-red-500">*</span></label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: "plagiarism",    label: "Plagiarisme" },
+                        { value: "adult_content", label: "Konten Dewasa Tanpa Label" },
+                        { value: "hate_speech",   label: "Ujaran Kebencian" },
+                        { value: "violence",      label: "Kekerasan Ekstrem" },
+                        { value: "spam",          label: "Spam / Tidak Relevan" },
+                        { value: "other",         label: "Lainnya" },
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setReportReason(opt.value)}
+                          className={`text-left px-3 py-2.5 rounded-xl border text-xs font-medium transition-all ${
+                            reportReason === opt.value
+                              ? "border-red-500/50 bg-red-500/8 text-red-600 dark:text-red-400"
+                              : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-2">Detail Tambahan <span className="text-muted-foreground font-normal">(opsional)</span></label>
+                    <textarea
+                      value={reportDetails}
+                      onChange={e => setReportDetails(e.target.value)}
+                      rows={3}
+                      maxLength={500}
+                      placeholder="Jelaskan lebih lanjut jika perlu..."
+                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    />
+                  </div>
+                  <button
+                    disabled={!reportReason || reportSubmitting}
+                    onClick={async () => {
+                      if (!reportReason || !story?.slug || reportSubmitting) return;
+                      setReportSubmitting(true);
+                      setReportError("");
+                      try {
+                        const res = await fetch("/api/reports", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ storySlug: story.slug, reason: reportReason, details: reportDetails }),
+                        });
+                        if (res.ok) {
+                          setReportSuccess(true);
+                        } else {
+                          const data = await res.json();
+                          if (res.status === 409) setReportError("Kamu sudah pernah melaporkan novel ini sebelumnya.");
+                          else if (res.status === 429) setReportError(data.message || "Batas laporan hari ini tercapai (maks. 2 per hari).");
+                          else setReportSuccess(true);
+                        }
+                      } catch {}
+                      setReportSubmitting(false);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="button-submit-report-novel"
+                  >
+                    {reportSubmitting ? "Mengirim..." : "Kirim Laporan"}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
