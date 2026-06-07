@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Z6dhfkGyEW7lwSTsK8UBZ"
+uri = "file://sample-backup.pdf"
+type = "pdf"
+title = "Contoh PDF Backup Cerita — WOOCE Novel"
