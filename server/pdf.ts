@@ -10,7 +10,9 @@ const DARK       = "#1f2937";
 const GRAY       = "#6b7280";
 const LIGHT_GRAY = "#f3f4f6";
 const YEAR       = new Date().getFullYear();
-const BOTTOM     = 782; // A4 height (841.89) - 60px margin
+
+// Content must not go below this Y on any page (leaves room for bottom footer)
+const PAGE_BOTTOM = 782; // A4 841.89 - 60px
 
 function stripHtml(html: string): string {
   return html
@@ -30,12 +32,37 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-/** Draw footer inline at current y — right after content, no gap */
+/**
+ * Draw footer on the CURRENT page at a fixed bottom position.
+ * Used before switching to a new page (intermediate pages).
+ */
+function drawBottomFooter(doc: InstanceType<typeof PDFDocument>, pageW: number) {
+  const footerY = doc.page.height - 40;
+  doc.moveTo(50, footerY - 8).lineTo(pageW - 50, footerY - 8)
+    .strokeColor("#d1d5db").lineWidth(0.5).stroke();
+  doc.fill(GRAY).fontSize(7.5).font("Helvetica")
+    .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, footerY, { align: "center", width: pageW - 100 });
+}
+
+/**
+ * Draw footer inline right after content (last page).
+ * No gap — footer sits directly below the last content line.
+ */
 function drawInlineFooter(doc: InstanceType<typeof PDFDocument>, y: number, pageW: number) {
   doc.moveTo(50, y).lineTo(pageW - 50, y)
     .strokeColor("#d1d5db").lineWidth(0.5).stroke();
   doc.fill(GRAY).fontSize(7.5).font("Helvetica")
     .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, y + 10, { align: "center", width: pageW - 100 });
+}
+
+/**
+ * Add a new page: draw footer on current page first, then open a new page.
+ * Returns the new y start position.
+ */
+function nextPage(doc: InstanceType<typeof PDFDocument>, pageW: number): number {
+  drawBottomFooter(doc, pageW);
+  doc.addPage();
+  return 50;
 }
 
 // ── Story Backup PDF ──────────────────────────────────────────────────────────
@@ -116,7 +143,7 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
 
     // ── Seasons & Chapters ───────────────────────────────────────────────────
     for (const season of data.seasons) {
-      if (y > BOTTOM - 50) { doc.addPage(); y = 50; }
+      if (y > PAGE_BOTTOM - 50) { y = nextPage(doc, pageW); }
 
       doc.rect(50, y, pageW - 100, 28).fill("#dde0f7");
       doc.fill(PRIMARY).fontSize(11).font("Helvetica-Bold")
@@ -124,7 +151,7 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
       y += 36;
 
       for (const ch of season.chapters) {
-        if (y > BOTTOM - 40) { doc.addPage(); y = 50; }
+        if (y > PAGE_BOTTOM - 40) { y = nextPage(doc, pageW); }
 
         doc.fill(DARK).fontSize(10).font("Helvetica-Bold")
           .text(`Bab ${ch.chapterNumber}. ${ch.title}`, 60, y);
@@ -139,7 +166,7 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
           while (offset < cleanContent.length) {
             const chunk = cleanContent.slice(offset, offset + CHUNK_SIZE);
             const h = doc.heightOfString(chunk, { width: pageW - 120 });
-            if (y + h > BOTTOM) { doc.addPage(); y = 50; }
+            if (y + h > PAGE_BOTTOM) { y = nextPage(doc, pageW); }
             doc.fill(DARK).fontSize(9).font("Helvetica")
               .text(chunk, 60, y, { width: pageW - 120 });
             y += doc.heightOfString(chunk, { width: pageW - 120 }) + 4;
@@ -151,7 +178,7 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
       y += 10;
     }
 
-    // ── Footer langsung setelah konten ───────────────────────────────────────
+    // ── Footer inline setelah konten (halaman terakhir) ──────────────────────
     y += 10;
     drawInlineFooter(doc, y, pageW);
 
@@ -230,7 +257,7 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
       const story = data.stories[si];
       const totalChapters = story.seasons.reduce((acc, s) => acc + s.chapters.length, 0);
 
-      if (y > BOTTOM - 80) { doc.addPage(); y = 50; }
+      if (y > PAGE_BOTTOM - 80) { y = nextPage(doc, pageW); }
 
       doc.rect(50, y, pageW - 100, 32).fill(PRIMARY);
       doc.fill("#ffffff").fontSize(12).font("Helvetica-Bold")
@@ -251,14 +278,14 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
       y += 6;
 
       for (const season of story.seasons) {
-        if (y > BOTTOM - 40) { doc.addPage(); y = 50; }
+        if (y > PAGE_BOTTOM - 40) { y = nextPage(doc, pageW); }
 
         doc.fill(DARK).fontSize(10).font("Helvetica-Bold")
           .text(`Season ${season.seasonNumber}: ${season.title}`, 60, y);
         y += 16;
 
         for (const ch of season.chapters) {
-          if (y > BOTTOM - 30) { doc.addPage(); y = 50; }
+          if (y > PAGE_BOTTOM - 30) { y = nextPage(doc, pageW); }
 
           doc.fill(GRAY).fontSize(8).font("Helvetica")
             .text(`  Bab ${ch.chapterNumber}. ${ch.title}`, 70, y, { width: pageW - 130 });
@@ -269,7 +296,7 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
             const preview = cleanContent.slice(0, 300) + (cleanContent.length > 300 ? "..." : "");
             if (preview.trim()) {
               const h = doc.heightOfString(preview, { width: pageW - 150 });
-              if (y + h > BOTTOM) { doc.addPage(); y = 50; }
+              if (y + h > PAGE_BOTTOM) { y = nextPage(doc, pageW); }
               doc.fill(DARK).fontSize(8).font("Helvetica")
                 .text(preview, 80, y, { width: pageW - 150 });
               y += h + 6;
@@ -281,7 +308,7 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
       y += 14;
     }
 
-    // ── Footer langsung setelah konten ───────────────────────────────────────
+    // ── Footer inline setelah konten (halaman terakhir) ──────────────────────
     y += 10;
     drawInlineFooter(doc, y, pageW);
 
