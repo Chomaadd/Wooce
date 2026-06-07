@@ -259,9 +259,9 @@ const translations: Record<Language, Record<string, string>> = {
     "writer.req.2": "Have at least one original work (short story, novel, etc.)",
     "writer.req.3": "Able to update regularly — minimum 1 chapter per week",
     "writer.req.4": "Original story only (no translations or plagiarism)",
-    "writer.req.5": "Contact admin via email or DM with your story title and synopsis",
+    "writer.req.5": "Register directly on this website — no need to contact admin",
     "writer.contact": "Contact Admin",
-    "writer.note": "We'll review your submission and get back to you within 3–5 business days.",
+    "writer.note": "Your application will be reviewed by our team and responded to within 3–5 business days.",
 
     "footer.terms": "Terms of Service",
     "footer.privacy": "Privacy Policy",
@@ -1346,9 +1346,9 @@ const translations: Record<Language, Record<string, string>> = {
     "writer.req.2": "Memiliki minimal satu karya tulis original (cerpen, novel, dll.)",
     "writer.req.3": "Mampu update rutin, minimal 1 bab per minggu",
     "writer.req.4": "Cerita original saja (bukan terjemahan atau plagiat)",
-    "writer.req.5": "Hubungi admin via email atau DM dengan judul cerita dan sinopsis singkat",
+    "writer.req.5": "Daftar langsung di website ini — tidak perlu menghubungi admin",
     "writer.contact": "Hubungi Admin",
-    "writer.note": "Kami akan meninjau pengajuanmu dan merespons dalam 3–5 hari kerja.",
+    "writer.note": "Pengajuanmu akan ditinjau oleh tim kami dan direspons dalam 3–5 hari kerja.",
 
     "footer.terms": "Ketentuan Layanan",
     "footer.privacy": "Kebijakan Privasi",

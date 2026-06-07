@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
@@ -7,7 +7,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { PenLine, CheckCircle2, Clock, ArrowLeft, LogIn, BookOpen, Heart, Zap, Ban, AlertTriangle } from "lucide-react";
+import { PenLine, CheckCircle2, Clock, ArrowLeft, LogIn, BookOpen, Heart, Zap, Ban, AlertTriangle, ShieldCheck } from "lucide-react";
+
+function useMathCaptcha() {
+  const [a, b] = useMemo(() => [
+    Math.floor(Math.random() * 12) + 1,
+    Math.floor(Math.random() * 12) + 1,
+  ], []);
+  const [answer, setAnswer] = useState("");
+  const correct = answer.trim() !== "" && parseInt(answer, 10) === a + b;
+  return { a, b, answer, setAnswer, correct };
+}
 
 interface CooldownInfo {
   type: "rejected" | "suspended";
@@ -20,6 +30,7 @@ export default function BecomeWriter() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [cooldown, setCooldown] = useState<CooldownInfo | null>(null);
+  const captcha = useMathCaptcha();
 
   const requestWriterMutation = useMutation({
     mutationFn: async () => {
@@ -257,9 +268,41 @@ export default function BecomeWriter() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {t("becomeWriter.form.desc")}
               </p>
+
+              {/* Math CAPTCHA */}
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  <ShieldCheck size={13} className="text-primary" />
+                  <span>Verifikasi</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-foreground font-medium select-none">
+                    {captcha.a} + {captcha.b} = ?
+                  </p>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={captcha.answer}
+                    onChange={e => captcha.setAnswer(e.target.value)}
+                    placeholder="..."
+                    className={`w-20 px-3 py-1.5 rounded-lg border text-sm text-center bg-background outline-none transition-colors ${
+                      captcha.answer === ""
+                        ? "border-border"
+                        : captcha.correct
+                        ? "border-green-500 bg-green-500/5 text-green-700 dark:text-green-400"
+                        : "border-destructive bg-destructive/5"
+                    }`}
+                    data-testid="input-captcha"
+                  />
+                  {captcha.correct && (
+                    <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                  )}
+                </div>
+              </div>
+
               <button
                 onClick={() => requestWriterMutation.mutate()}
-                disabled={requestWriterMutation.isPending}
+                disabled={requestWriterMutation.isPending || !captcha.correct}
                 className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
                 data-testid="button-request-writer"
               >
