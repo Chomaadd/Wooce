@@ -270,12 +270,12 @@ export default function BecomeWriter() {
               </p>
 
               {/* Math CAPTCHA */}
-              <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-4 space-y-3 text-center">
+                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   <ShieldCheck size={13} className="text-primary" />
                   <span>Verifikasi</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center gap-3">
                   <p className="text-sm text-foreground font-medium select-none">
                     {captcha.a} + {captcha.b} = ?
                   </p>
