@@ -9,9 +9,8 @@ const PRIMARY    = "#3c40c7";
 const DARK       = "#1f2937";
 const GRAY       = "#6b7280";
 const LIGHT_GRAY = "#f3f4f6";
-
-const FOOTER_H   = 52; // reserved height at bottom for footer
 const YEAR       = new Date().getFullYear();
+const BOTTOM     = 782; // A4 height (841.89) - 60px margin
 
 function stripHtml(html: string): string {
   return html
@@ -31,16 +30,12 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-/** Draw footer on whichever page is currently active */
-function drawPageFooter(doc: InstanceType<typeof PDFDocument>, pageW: number) {
-  const ph = doc.page.height;
-  const lineY = ph - FOOTER_H + 2;
-  doc.save();
-  doc.moveTo(50, lineY).lineTo(pageW - 50, lineY)
+/** Draw footer inline at current y — right after content, no gap */
+function drawInlineFooter(doc: InstanceType<typeof PDFDocument>, y: number, pageW: number) {
+  doc.moveTo(50, y).lineTo(pageW - 50, y)
     .strokeColor("#d1d5db").lineWidth(0.5).stroke();
   doc.fill(GRAY).fontSize(7.5).font("Helvetica")
-    .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, lineY + 12, { align: "center", width: pageW - 100 });
-  doc.restore();
+    .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, y + 10, { align: "center", width: pageW - 100 });
 }
 
 // ── Story Backup PDF ──────────────────────────────────────────────────────────
@@ -66,14 +61,13 @@ export interface StoryBackupData {
 
 export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: "A4", bufferPages: true });
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
     const chunks: Buffer[] = [];
     doc.on("data", chunk => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const pageW = doc.page.width;
-    const BOTTOM = doc.page.height - FOOTER_H - 10; // content must not go below this
 
     // ── Header ──────────────────────────────────────────────────────────────
     const HEADER_H = 90;
@@ -157,13 +151,10 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
       y += 10;
     }
 
-    // ── Draw footer on every buffered page ───────────────────────────────────
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i);
-      drawPageFooter(doc, pageW);
-    }
-    doc.flushPages();
+    // ── Footer langsung setelah konten ───────────────────────────────────────
+    y += 10;
+    drawInlineFooter(doc, y, pageW);
+
     doc.end();
   });
 }
@@ -199,14 +190,13 @@ export interface WriterBackupData {
 
 export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: "A4", bufferPages: true });
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
     const chunks: Buffer[] = [];
     doc.on("data", chunk => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const pageW = doc.page.width;
-    const BOTTOM = doc.page.height - FOOTER_H - 10;
 
     // ── Header ──────────────────────────────────────────────────────────────
     const HEADER_H = 90;
@@ -291,13 +281,10 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
       y += 14;
     }
 
-    // ── Draw footer on every buffered page ───────────────────────────────────
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i);
-      drawPageFooter(doc, pageW);
-    }
-    doc.flushPages();
+    // ── Footer langsung setelah konten ───────────────────────────────────────
+    y += 10;
+    drawInlineFooter(doc, y, pageW);
+
     doc.end();
   });
 }
