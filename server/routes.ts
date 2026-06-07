@@ -1100,7 +1100,7 @@ export async function registerRoutes(
             synopsis: story.synopsis ?? "",
             writerName,
             writerEmail: writerEmail ?? "",
-            exportedAt: new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }),
+            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
             seasons: seasonsData,
           });
         } catch (e) { console.error("PDF generation failed:", e); }
