@@ -25,9 +25,11 @@ import {
   sendSelfDeleteConfirmedEmail,
   sendWriterSelfDeleteConfirmedEmail,
   sendStoryDeletedByWriterEmail,
+  sendStoryRemovedByReportEmail,
 } from "./email";
 import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel } from "./db";
 import { CharacterModel } from "./characterModel";
+import { ReportModel } from "./reportModel";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
@@ -1001,6 +1003,126 @@ export async function registerRoutes(
     try {
       await storage.deleteNovelStory(req.params.id);
       res.status(204).send();
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Content Reports ────────────────────────────────────────────────────────
+  app.post("/api/reports", async (req, res) => {
+    try {
+      const { storySlug, reason, details } = req.body;
+      if (!storySlug || !reason) return res.status(400).json({ message: "storySlug and reason required" });
+      const story = await NovelStoryModel.findOne({ slug: storySlug }).lean() as any;
+      if (!story) return res.status(404).json({ message: "Story not found" });
+      const userId = req.session.userId ?? null;
+      if (userId) {
+        const existing = await ReportModel.findOne({ storyId: story._id.toString(), reporterId: userId, status: "pending" });
+        if (existing) return res.status(409).json({ message: "Already reported" });
+      }
+      let reporterName = "Anonim";
+      if (userId) {
+        const user = await storage.getUserById(userId);
+        if (user) reporterName = user.name;
+      }
+      const report = await ReportModel.create({
+        storyId: story._id.toString(),
+        storyTitle: story.title,
+        storySlug: story.slug,
+        storyAuthorId: story.authorId?.toString() ?? "",
+        reporterId: userId,
+        reporterName,
+        reason,
+        details: details ?? "",
+      });
+      res.status(201).json({ ...report.toObject(), id: report._id.toString() });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/admin/reports", requireAuth, async (_req, res) => {
+    try {
+      const reports = await ReportModel.find().sort({ createdAt: -1 }).lean();
+      res.json(reports.map((r: any) => ({ ...r, id: r._id.toString() })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/reports/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const report = await ReportModel.findById(req.params.id);
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      if (report.status !== "pending") return res.status(400).json({ message: "Report already reviewed" });
+
+      const story = await NovelStoryModel.findById(report.storyId).lean() as any;
+
+      let writerEmail: string | null = null;
+      let writerName = "Penulis";
+      let writerId: string | null = null;
+      if (story?.authorId) {
+        const author = await AuthorModel.findById(story.authorId).lean() as any;
+        if (author?.userId) {
+          writerId = author.userId.toString();
+          const user = await storage.getUserById(author.userId.toString());
+          if (user) { writerEmail = user.email; writerName = user.name; }
+        }
+      }
+
+      const reasonLabels: Record<string, string> = {
+        plagiarism:   "Plagiarisme",
+        adult_content:"Konten Dewasa Tanpa Label",
+        hate_speech:  "Ujaran Kebencian / Diskriminasi",
+        violence:     "Kekerasan Ekstrem",
+        spam:         "Spam / Konten Tidak Relevan",
+        other:        "Lainnya",
+      };
+      const reasonLabel = reasonLabels[report.reason] ?? report.reason;
+
+      let pdfBuffer: Buffer | null = null;
+      if (story) {
+        try {
+          const seasons = await NovelSeasonModel.find({ storyId: report.storyId }).sort({ seasonNumber: 1 }).lean() as any[];
+          const seasonsData = await Promise.all(seasons.map(async (s: any) => {
+            const chapters = await NovelChapterModel.find({ seasonId: s._id.toString() }).sort({ chapterNumber: 1 }).lean() as any[];
+            return {
+              seasonNumber: s.seasonNumber,
+              title: s.title,
+              chapters: chapters.map((c: any) => ({ chapterNumber: c.chapterNumber, title: c.title, content: c.content ?? "" })),
+            };
+          }));
+          pdfBuffer = await generateStoryBackupPdf({
+            storyTitle: story.title,
+            category: story.category ?? "",
+            status: story.status ?? "",
+            synopsis: story.synopsis ?? "",
+            writerName,
+            writerEmail: writerEmail ?? "",
+            exportedAt: new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }),
+            seasons: seasonsData,
+          });
+        } catch (e) { console.error("PDF generation failed:", e); }
+      }
+
+      if (story) await storage.deleteNovelStory(report.storyId);
+
+      if (writerEmail && pdfBuffer) {
+        sendStoryRemovedByReportEmail(writerEmail, writerName, report.storyTitle, reasonLabel, pdfBuffer).catch(console.error);
+      }
+      if (writerId) {
+        storage.createNotification({
+          userId: writerId,
+          type: "story_removed" as any,
+          title: "Ceritamu Dihapus",
+          message: `Ceritamu "${report.storyTitle}" dihapus dari platform karena: ${reasonLabel}. File backup dikirim ke emailmu.`,
+        }).catch(console.error);
+      }
+
+      await ReportModel.updateMany({ storyId: report.storyId, status: "pending" }, { $set: { status: "approved" } });
+      res.json({ message: "Approved, story deleted" });
+    } catch (e) { console.error(e); res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/reports/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const report = await ReportModel.findByIdAndUpdate(req.params.id, { $set: { status: "rejected" } }, { new: true });
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      res.json({ ...report.toObject(), id: report._id.toString() });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 

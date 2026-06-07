@@ -382,6 +382,43 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
   }));
 }
 
+export async function sendStoryRemovedByReportEmail(
+  to: string,
+  name: string,
+  storyTitle: string,
+  reason: string,
+  pdfBuffer: Buffer
+) {
+  const safeFilename = storyTitle.replace(/[^a-z0-9\s]/gi, "_").replace(/\s+/g, "_") + "_backup.pdf";
+  return guard((t, from, BASE_URL) => t.sendMail({
+    from: `"WOOCE Novel" <${from}>`,
+    to,
+    subject: `Ceritamu "${storyTitle}" Telah Dihapus — WOOCE Novel`,
+    headers: { "X-Mailer": "WOOCE Novel Mailer" },
+    attachments: [
+      logoAttachment,
+      { filename: safeFilename, content: pdfBuffer, contentType: "application/pdf" },
+    ],
+    html: emailWrapper(
+      "linear-gradient(135deg,#7c1d1d 0%,#991b1b 60%,#7c2d12 100%)",
+      "Cerita Dihapus dari Platform",
+      "Konten melanggar ketentuan WOOCE Novel",
+      `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>${name}</strong>,</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami ingin memberitahukan bahwa ceritamu <strong>"${storyTitle}"</strong> telah <strong>dihapus permanen</strong> dari platform WOOCE Novel setelah ditinjau oleh tim admin.</p>
+      <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:14px;padding:18px 22px;margin:0 0 24px;">
+        <p style="margin:0 0 6px;color:#9a3412;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Alasan Penghapusan</p>
+        <p style="margin:0;color:#7c2d12;font-size:15px;font-weight:600;">${reason}</p>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:14px;padding:16px 20px;margin:0 0 24px;">
+        <p style="margin:0 0 6px;color:#166534;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">File Backup Terlampir</p>
+        <p style="margin:0;color:#15803d;font-size:14px;line-height:1.6;">Seluruh konten ceritamu (semua season dan chapter) telah kami simpankan dalam file PDF yang terlampir di email ini. Silakan simpan file tersebut sebagai arsip pribadimu.</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Jika kamu merasa penghapusan ini adalah kesalahan, hubungi tim kami melalui halaman <a href="${BASE_URL}/kontak" style="color:#7c3aed;">Kontak</a> di platform.</p>`,
+      BASE_URL
+    ),
+  }));
+}
+
 export async function sendTestEmail(to: string) {
   return guardStrict((t, from, BASE_URL) => t.sendMail({
     from: `"WOOCE Novel" <${from}>`,

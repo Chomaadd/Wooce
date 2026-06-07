@@ -119,3 +119,4 @@ Ide fitur yang sudah disetujui, menunggu eksekusi:
 | 5 | **Keyboard Shortcut** | ← → untuk prev/next chapter, F untuk focus mode saat baca. | ✅ Selesai |
 | 6 | **Salin Link Chapter** | Tombol "Salin Link" di halaman baca, langsung copy URL chapter ke clipboard. | ✅ Selesai |
 | 7 | **Jadwal Rilis Countdown** | Countdown "Terbit dalam X hari Y jam" untuk chapter terjadwal di halaman detail novel. | ✅ Selesai |
+| 8 | **Report Konten** | Tombol Flag di halaman baca → modal pilih alasan → kirim laporan ke admin. Admin panel tab "Laporan" → setujui (hapus cerita + email PDF backup ke penulis + notifikasi in-app) atau tolak. | ✅ Selesai |

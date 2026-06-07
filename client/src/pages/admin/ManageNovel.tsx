@@ -19,14 +19,14 @@ import {
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
-  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck,
+  Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1324,7 +1324,7 @@ export default function ManageNovel() {
         <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
           <button
             onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (view as View) !== "reports" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Cerita
           </button>
@@ -1352,9 +1352,15 @@ export default function ManageNovel() {
           >
             <ShieldCheck size={13} /> Approval
           </button>
+          <button
+            onClick={() => setView("reports")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "reports" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Flag size={13} /> Laporan
+          </button>
         </div>
 
-      {view !== "approvals" && <>
+      {view !== "approvals" && view !== "reports" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -1967,6 +1973,7 @@ export default function ManageNovel() {
       </>}
 
       {view === "approvals" && <ApprovalsView />}
+      {(view as View) === "reports" && <ReportsView />}
 
       </div>
 
@@ -2401,6 +2408,149 @@ function ApprovalsView() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── ReportsView ────────────────────────────────────────────────────────────────
+function ReportsView() {
+  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<"pending" | "all" | "approved" | "rejected">("pending");
+  const [confirmApprove, setConfirmApprove] = useState<string | null>(null);
+
+  const { data: reports = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/admin/reports"],
+    queryFn: () => fetch("/api/admin/reports").then(r => r.json()),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/reports/${id}/approve`),
+    onSuccess: () => {
+      refetch();
+      setConfirmApprove(null);
+      toast({ title: "✓ Laporan disetujui — cerita dihapus & email terkirim ke penulis" });
+    },
+    onError: () => toast({ title: "Gagal menyetujui laporan", variant: "destructive" }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/reports/${id}/reject`),
+    onSuccess: () => { refetch(); toast({ title: "Laporan ditolak" }); },
+    onError: () => toast({ title: "Gagal menolak laporan", variant: "destructive" }),
+  });
+
+  const reasonLabels: Record<string, string> = {
+    plagiarism:    "Plagiarisme",
+    adult_content: "Konten Dewasa Tanpa Label",
+    hate_speech:   "Ujaran Kebencian / Diskriminasi",
+    violence:      "Kekerasan Ekstrem",
+    spam:          "Spam / Konten Tidak Relevan",
+    other:         "Lainnya",
+  };
+
+  const pendingCount = reports.filter((r: any) => r.status === "pending").length;
+  const filtered = reports.filter((r: any) => statusFilter === "all" || r.status === statusFilter);
+
+  return (
+    <div className="space-y-6">
+      <Dialog open={!!confirmApprove} onOpenChange={() => setConfirmApprove(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-500">
+              <AlertTriangle size={18} /> Setujui Laporan & Hapus Cerita?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Tindakan ini akan:</p>
+            <ul className="text-sm text-muted-foreground space-y-2">
+              <li className="flex items-start gap-2"><AlertCircle size={13} className="text-red-500 mt-0.5 flex-shrink-0" />Menghapus cerita secara permanen dari platform</li>
+              <li className="flex items-start gap-2"><AlertCircle size={13} className="text-orange-500 mt-0.5 flex-shrink-0" />Mengirim email + PDF backup seluruh chapter ke penulis</li>
+              <li className="flex items-start gap-2"><AlertCircle size={13} className="text-blue-500 mt-0.5 flex-shrink-0" />Memberi notifikasi in-app ke akun penulis</li>
+            </ul>
+            <p className="text-xs text-muted-foreground border-t border-border pt-3">Tindakan ini <strong>tidak bisa dibatalkan</strong>.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <button onClick={() => setConfirmApprove(null)} className="px-4 py-2 rounded-lg bg-muted text-muted-foreground text-sm font-medium hover:bg-muted/80 transition-colors">
+              Batal
+            </button>
+            <button
+              onClick={() => confirmApprove && approveMutation.mutate(confirmApprove)}
+              disabled={approveMutation.isPending}
+              className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50"
+            >
+              {approveMutation.isPending ? "Memproses..." : "Ya, Hapus Cerita"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Flag size={22} /> Laporan Konten</h1>
+        <p className="text-sm text-muted-foreground mt-1">Tinjau laporan dari pembaca untuk konten yang melanggar ketentuan platform</p>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {(["pending", "all", "approved", "rejected"] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setStatusFilter(f)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+          >
+            {f === "pending" ? "Menunggu" : f === "all" ? "Semua" : f === "approved" ? "Disetujui" : "Ditolak"}
+            {f === "pending" && pendingCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{pendingCount}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 border border-dashed border-border rounded-xl">
+          <Flag size={32} className="mx-auto mb-3 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">{statusFilter === "pending" ? "Tidak ada laporan yang menunggu" : "Tidak ada laporan"}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((report: any) => (
+            <div key={report.id} className={`border rounded-xl p-4 ${report.status === "pending" ? "border-orange-500/30 bg-orange-500/5" : report.status === "approved" ? "border-green-500/20 bg-green-500/5" : "border-border bg-muted/20"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <a href={`/${report.storySlug}`} target="_blank" rel="noreferrer" className="font-semibold text-sm text-foreground hover:text-primary flex items-center gap-1 transition-colors">
+                      {report.storyTitle}<ExternalLink size={11} />
+                    </a>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${report.status === "pending" ? "bg-orange-500/15 text-orange-600" : report.status === "approved" ? "bg-green-500/15 text-green-600" : "bg-muted text-muted-foreground"}`}>
+                      {report.status === "pending" ? "Menunggu" : report.status === "approved" ? "Disetujui" : "Ditolak"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+                    <span>Pelapor: <span className="text-foreground font-medium">{report.reporterName}</span></span>
+                    <span>·</span>
+                    <span className="font-semibold text-orange-600 dark:text-orange-400">{reasonLabels[report.reason] ?? report.reason}</span>
+                    <span>·</span>
+                    <span>{new Date(report.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                  </div>
+                  {report.details && (
+                    <p className="text-xs text-muted-foreground bg-muted/60 rounded-lg px-3 py-2 leading-relaxed italic">"{report.details}"</p>
+                  )}
+                </div>
+                {report.status === "pending" && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => rejectMutation.mutate(report.id)} disabled={rejectMutation.isPending} className="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-xs font-semibold transition-colors disabled:opacity-50" data-testid={`button-reject-report-${report.id}`}>
+                      Tolak
+                    </button>
+                    <button onClick={() => setConfirmApprove(report.id)} className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 text-xs font-semibold transition-colors" data-testid={`button-approve-report-${report.id}`}>
+                      Setujui & Hapus
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
