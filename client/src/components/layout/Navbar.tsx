@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,12 +14,197 @@ import { LoginModal } from "@/components/layout/LoginModal";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
+function TermsReadModal({ onClose, onAccept }: { onClose: () => void; onAccept: () => void }) {
+  const { language } = useLanguage();
+  const isID = language === "id";
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrolledToBottom, setScrolledToBottom] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 32) setScrolledToBottom(true);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }}
+        transition={{ duration: 0.2 }}
+        onClick={e => e.stopPropagation()}
+        className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
+        style={{ maxHeight: "88vh" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+          <div>
+            <h3 className="font-bold text-sm text-foreground">
+              {isID ? "Syarat & Kebijakan Privasi" : "Terms of Service & Privacy Policy"}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isID ? "Baca hingga selesai untuk melanjutkan" : "Read to the end to continue"}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors">
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-5 py-5 space-y-5 text-sm leading-relaxed min-h-0">
+          {isID ? (
+            <>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">Ketentuan Layanan</p>
+                <div className="space-y-4 text-muted-foreground">
+                  {[
+                    ["1. Penerimaan Ketentuan", "Dengan mengakses atau menggunakan platform WOOCE Novel, kamu menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan ini secara penuh. Jika tidak setuju, mohon hentikan penggunaan layanan segera."],
+                    ["2. Deskripsi Layanan", "WOOCE Novel adalah platform digital untuk membaca dan mempublikasikan novel, komik, dan cerita pendek. Layanan mencakup dashboard penulis untuk mengelola karya dalam struktur Season dan Bab, sistem notifikasi, dan fitur komunitas pendukung."],
+                    ["3. Akun Pengguna", "Login dilakukan melalui Google OAuth. Kamu bertanggung jawab atas seluruh aktivitas yang terjadi di bawah akunmu. Kamu tidak diperbolehkan berbagi akses dengan pihak lain, menggunakan akun orang lain, atau membuat akun palsu."],
+                    ["4. Program Penulis", "Untuk menjadi penulis, kamu perlu mengajukan permohonan yang akan ditinjau admin dalam 3–5 hari kerja. Penulis yang disetujui dapat mempublikasikan karya di platform dan wajib memperbarui karya secara rutin. Akun penulis dapat ditangguhkan atau dihapus jika melanggar ketentuan."],
+                    ["5. Konten yang Dilarang", "Dilarang keras mengunggah konten: mengandung kekerasan ekstrem, eksploitasi atau pelecehan seksual terhadap anak (CSAM), ujaran kebencian, konten rasis atau diskriminatif, plagiarisme atau terjemahan tanpa izin, spam, atau konten ilegal dalam bentuk apapun."],
+                    ["6. Hak Kekayaan Intelektual", "Penulis mempertahankan hak atas karya yang mereka unggah, namun memberikan WOOCE Novel lisensi non-eksklusif untuk menampilkan karya di platform. Seluruh elemen desain, antarmuka, dan kode platform adalah milik WOOCE Novel."],
+                    ["7. Pelanggaran & Sanksi", "Pelanggaran terhadap ketentuan dapat mengakibatkan peringatan, penangguhan sementara (30 hari), atau penghapusan akun secara permanen tanpa pemberitahuan. Keputusan admin bersifat final untuk kasus pelanggaran konten."],
+                    ["8. Perubahan Layanan", "WOOCE Novel berhak mengubah, membatasi, atau menghentikan fitur kapan saja tanpa pemberitahuan terlebih dahulu. Ketentuan layanan dapat diperbarui sewaktu-waktu. Penggunaan berkelanjutan setelah perubahan dianggap sebagai persetujuan atas ketentuan baru."],
+                  ].map(([title, body]) => (
+                    <div key={title}>
+                      <p className="font-semibold text-foreground text-xs mb-1.5">{title}</p>
+                      <p>{body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-border pt-5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">Kebijakan Privasi</p>
+                <div className="space-y-4 text-muted-foreground">
+                  {[
+                    ["1. Data yang Dikumpulkan", "Kami mengumpulkan: data akun Google (nama, email, foto profil, Google ID), data profil penulis (bio, tautan sosial, tautan donasi), konten karya yang diunggah (judul, sinopsis, chapter, cover), data sesi login, dan data penggunaan anonim (view count, rating)."],
+                    ["2. Penggunaan Data", "Data digunakan untuk: mengautentikasi login, menampilkan profil dan karya, mengirimkan notifikasi terkait status akun, meningkatkan kualitas layanan, dan memproses permohonan penulis. Kami tidak menjual data pribadimu kepada pihak ketiga manapun."],
+                    ["3. Penyimpanan & Keamanan", "Data disimpan di server MongoDB yang aman. Sesi login dienkripsi menggunakan session secret. Preferensi bahasa dan tema disimpan di localStorage perangkatmu. Foto profil dan cover novel disimpan menggunakan sistem GridFS."],
+                    ["4. Hak Pengguna", "Kamu berhak mengakses data pribadimu dan meminta penghapusan akun kapan saja. Untuk permintaan penghapusan data, hubungi kami melalui formulir kontak. Setelah permintaan diproses, data akunmu akan dihapus dari sistem kami."],
+                    ["5. Cookie & Pelacakan", "Platform menggunakan session cookie untuk menjaga status login. Tidak ada iklan berbasis pelacakan atau analytics pihak ketiga. Preferensi lokal (bahasa, tema) tersimpan di localStorage browser — tidak dikirimkan ke server."],
+                  ].map(([title, body]) => (
+                    <div key={title}>
+                      <p className="font-semibold text-foreground text-xs mb-1.5">{title}</p>
+                      <p>{body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">Terms of Service</p>
+                <div className="space-y-4 text-muted-foreground">
+                  {[
+                    ["1. Acceptance", "By accessing or using WOOCE Novel, you confirm you have read, understood, and fully agree to all terms herein. If you disagree, please stop using the service immediately."],
+                    ["2. Service Description", "WOOCE Novel is a digital platform for reading and publishing novels, comics, and short stories. Services include a writer dashboard to manage works in Season and Chapter structure, notification system, and community features."],
+                    ["3. User Accounts", "Login is via Google OAuth. You are responsible for all activity under your account. Do not share access with others, use someone else's account, or create fake accounts."],
+                    ["4. Writer Program", "To become a writer, submit an application reviewed by admin within 3–5 business days. Approved writers may publish on the platform and must update works regularly. Accounts may be suspended or deleted for violations."],
+                    ["5. Prohibited Content", "Strictly prohibited: extreme violence, child sexual abuse material (CSAM), hate speech, racist or discriminatory content, plagiarism or unauthorized translations, spam, or any illegal content."],
+                    ["6. Intellectual Property", "Writers retain rights to uploaded works but grant WOOCE Novel a non-exclusive license to display them. All platform design, interface, and code are WOOCE Novel's property."],
+                    ["7. Violations & Sanctions", "Violations may result in warnings, temporary suspension (30 days), or permanent account deletion without notice. Admin decisions are final for content violations."],
+                    ["8. Service Changes", "WOOCE Novel may modify, limit, or discontinue features at any time without notice. Continued use after changes constitutes acceptance of updated terms."],
+                  ].map(([title, body]) => (
+                    <div key={title}>
+                      <p className="font-semibold text-foreground text-xs mb-1.5">{title}</p>
+                      <p>{body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-border pt-5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-3">Privacy Policy</p>
+                <div className="space-y-4 text-muted-foreground">
+                  {[
+                    ["1. Data We Collect", "We collect: Google account data (name, email, photo, Google ID), writer profile data (bio, social links, donation links), uploaded content (title, synopsis, chapters, cover), login session data, and anonymous usage data (view count, ratings)."],
+                    ["2. How We Use Data", "Data is used to authenticate login, display profiles and works, send account notifications, improve the platform, and process writer applications. We do not sell your personal data to any third parties."],
+                    ["3. Storage & Security", "Data is stored on secure MongoDB servers. Login sessions are encrypted using a session secret. Language and theme preferences are in your device's localStorage. Profile and cover images use GridFS storage."],
+                    ["4. Your Rights", "You may access your personal data and request account deletion at any time. Contact us via the contact form for data removal requests. After processing, your account data will be removed from our system."],
+                    ["5. Cookies & Tracking", "The platform uses session cookies to maintain login status. No ad tracking or third-party analytics. Local preferences (language, theme) are in localStorage — not sent to our servers."],
+                  ].map(([title, body]) => (
+                    <div key={title}>
+                      <p className="font-semibold text-foreground text-xs mb-1.5">{title}</p>
+                      <p>{body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border flex-shrink-0">
+          <AnimatePresence mode="wait">
+            {!scrolledToBottom ? (
+              <motion.div
+                key="hint"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-0.5"
+              >
+                <ChevronDown size={14} className="animate-bounce" />
+                {isID ? "Scroll ke bawah untuk melanjutkan" : "Scroll to the bottom to continue"}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="accept"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3"
+              >
+                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${accepted ? "border-primary/40 bg-primary/5" : "border-border bg-muted/30 hover:border-border/80"}`}>
+                  <div className="relative shrink-0 mt-0.5">
+                    <input type="checkbox" className="sr-only" checked={accepted} onChange={e => setAccepted(e.target.checked)} />
+                    <div className={`w-[18px] h-[18px] rounded-[5px] border-2 flex items-center justify-center transition-all ${accepted ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                      {accepted && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[11.5px] text-muted-foreground leading-relaxed">
+                    {isID
+                      ? "Saya telah membaca dan menyetujui Ketentuan Layanan serta Kebijakan Privasi WOOCE Novel."
+                      : "I have read and agree to WOOCE Novel's Terms of Service and Privacy Policy."}
+                  </span>
+                </label>
+                <button
+                  onClick={() => { if (accepted) { onAccept(); onClose(); } }}
+                  disabled={!accepted}
+                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isID ? "Setuju & Lanjutkan" : "Agree & Continue"}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function WriterModal({ onClose, onLoginClick }: { onClose: () => void; onLoginClick: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const isLoggedIn = !!user && !user.isAdmin;
   const isPending = user?.role === "writer" && user?.status === "pending";
   const isActive = user?.role === "writer" && user?.status === "active";
+  const isID = language === "id";
+
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   return (
     <div
@@ -91,15 +276,54 @@ function WriterModal({ onClose, onLoginClick }: { onClose: () => void; onLoginCl
               </button>
             </Link>
           ) : isLoggedIn ? (
-            <Link href="/daftar-penulis">
+            <div className="space-y-3">
+              {/* Terms acceptance row */}
               <button
-                onClick={onClose}
-                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-                data-testid="button-register-writer"
+                onClick={() => !termsAccepted && setTermsOpen(true)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                  termsAccepted
+                    ? "border-green-500/30 bg-green-500/5 cursor-default"
+                    : "border-border bg-muted/30 hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
+                }`}
+                data-testid="button-open-terms"
               >
-                {t("navbar.writer.register")}
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${termsAccepted ? "bg-green-500/15" : "bg-muted"}`}>
+                  {termsAccepted
+                    ? <CheckCircle2 size={14} className="text-green-500" />
+                    : <FileText size={14} className="text-muted-foreground" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">
+                    {isID ? "Syarat & Kebijakan Privasi" : "Terms & Privacy Policy"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {termsAccepted
+                      ? (isID ? "Sudah dibaca & disetujui ✓" : "Read & accepted ✓")
+                      : (isID ? "Ketuk untuk membaca — wajib sebelum mendaftar" : "Tap to read — required before registering")}
+                  </p>
+                </div>
               </button>
-            </Link>
+
+              {termsAccepted ? (
+                <Link href="/daftar-penulis">
+                  <button
+                    onClick={onClose}
+                    className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                    data-testid="button-register-writer"
+                  >
+                    {t("navbar.writer.register")}
+                  </button>
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold opacity-40 cursor-not-allowed"
+                  data-testid="button-register-writer-disabled"
+                >
+                  {t("navbar.writer.register")}
+                </button>
+              )}
+            </div>
           ) : (
             <button
               onClick={() => { onClose(); onLoginClick(); }}
@@ -112,6 +336,16 @@ function WriterModal({ onClose, onLoginClick }: { onClose: () => void; onLoginCl
           )}
         </div>
       </motion.div>
+
+      {/* Terms reading modal — appears on top of WriterModal */}
+      <AnimatePresence>
+        {termsOpen && (
+          <TermsReadModal
+            onClose={() => setTermsOpen(false)}
+            onAccept={() => setTermsAccepted(true)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

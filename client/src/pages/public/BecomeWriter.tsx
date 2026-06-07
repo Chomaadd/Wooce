@@ -273,7 +273,7 @@ export default function BecomeWriter() {
               <div className="rounded-xl border border-border bg-muted/30 px-4 py-4 space-y-3 text-center">
                 <div className="flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   <ShieldCheck size={13} className="text-primary" />
-                  <span>Verifikasi</span>
+                  <span>{t("captcha.verify")}</span>
                 </div>
                 <div className="flex items-center justify-center gap-3">
                   <p className="text-sm text-foreground font-medium select-none">
