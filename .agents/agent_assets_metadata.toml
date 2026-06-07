@@ -5,4 +5,4 @@ generated = []
 id = "Z6dhfkGyEW7lwSTsK8UBZ"
 uri = "file://sample-backup.pdf"
 type = "pdf"
-title = "Preview PDF Backup — Footer setiap halaman + jam ekspor"
+title = "Preview PDF — Footer 2 baris di setiap halaman + jam ekspor lengkap"

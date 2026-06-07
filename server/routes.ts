@@ -666,7 +666,7 @@ export async function registerRoutes(
           const pdfBuffer = await generateWriterBackupPdf({
             name: user.name,
             email: user.email,
-            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
             stories: storyDataList,
           });
 
@@ -1489,7 +1489,7 @@ export async function registerRoutes(
           synopsis: story.description ?? "",
           writerName: user.name || "Penulis",
           writerEmail: user.email || "",
-          exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+          exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
           seasons: seasonsWithChapters,
         });
 
@@ -1640,7 +1640,7 @@ export async function registerRoutes(
         synopsis: story.description ?? "",
         writerName: user.name || "Penulis",
         writerEmail: user.email || "",
-        exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+        exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         seasons: seasonsWithChapters,
       });
       res.setHeader("Content-Type", "application/pdf");
@@ -1891,7 +1891,7 @@ export async function registerRoutes(
           const pdfBuffer = await generateWriterBackupPdf({
             name: user.name,
             email: user.email,
-            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }),
+            exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
             stories: storyDataList,
           });
 
