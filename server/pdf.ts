@@ -39,9 +39,7 @@ function drawPageFooter(doc: InstanceType<typeof PDFDocument>, pageW: number) {
   doc.moveTo(50, lineY).lineTo(pageW - 50, lineY)
     .strokeColor("#d1d5db").lineWidth(0.5).stroke();
   doc.fill(GRAY).fontSize(7.5).font("Helvetica")
-    .text(`© ${YEAR} WOOCE · Hak cipta dilindungi undang-undang`, 50, lineY + 8, { align: "center", width: pageW - 100 });
-  doc.fill(GRAY).fontSize(7).font("Helvetica")
-    .text("WOOCE Novel — Platform Baca Novel, Komik, dan Cerita Pendek", 50, lineY + 22, { align: "center", width: pageW - 100 });
+    .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, lineY + 12, { align: "center", width: pageW - 100 });
   doc.restore();
 }
 
