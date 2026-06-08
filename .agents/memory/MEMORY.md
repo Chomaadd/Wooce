@@ -1,0 +1,1 @@
+- [PDF generation — empty page fix](pdf-empty-pages.md) — footers drawn past PDFKit's usable boundary (791px) auto-create empty pages; fix with FOOTER_Y=762 and PAGE_BOTTOM=745.
