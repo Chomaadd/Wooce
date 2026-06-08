@@ -130,8 +130,8 @@ function renderParagraphs(
     .map(p => p.replace(/\n/g, " ").replace(/\s+/g, " ").trim())
     .filter(Boolean);
 
-  const LINE_GAP  = 4;   // jarak antar baris dalam satu paragraf
-  const PARA_GAP  = 12;  // jarak antar paragraf
+  const LINE_GAP  = 5;   // jarak antar baris dalam satu paragraf
+  const PARA_GAP  = 7;   // jarak antar paragraf (kecil agar kalimat pendek tidak terlalu renggang)
   const FONT_SIZE = 10;  // ukuran font konten
 
   for (const para of paragraphs) {
