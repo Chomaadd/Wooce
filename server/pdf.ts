@@ -12,8 +12,10 @@ const GRAY       = "#6b7280";
 const LIGHT_GRAY = "#f3f4f6";
 const YEAR       = new Date().getFullYear();
 
-// Content must not exceed this Y — leaves room for bottom footer
-const PAGE_BOTTOM = 775;
+// A4 height=841.89, margin=50 → usable area: 50..791
+// Footer line at 762, text at 774 — safely within 791 boundary
+const FOOTER_Y   = 762;   // footer separator line Y
+const PAGE_BOTTOM = 745;  // content must stop here (before footer zone)
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -52,34 +54,35 @@ function drawBottomFooter(
   pageW: number,
   pageNum: number
 ) {
-  const lineY = doc.page.height - 42;
+  doc.save();
+  doc.moveTo(50, FOOTER_Y).lineTo(pageW - 50, FOOTER_Y)
+    .strokeColor("#d1d5db").lineWidth(0.5).stroke();
+  doc.fill(GRAY).fontSize(7.5).font("Helvetica")
+    .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, FOOTER_Y + 10, { width: pageW - 160, lineBreak: false });
+  doc.fill(GRAY).fontSize(7.5).font("Helvetica")
+    .text(`Hal. ${pageNum}`, pageW - 110, FOOTER_Y + 10, { width: 60, align: "right", lineBreak: false });
+  doc.restore();
+}
+
+/**
+ * Footer di halaman terakhir — tepat setelah konten jika ada ruang,
+ * atau di posisi FOOTER_Y jika konten hampir penuh.
+ */
+function drawLastPageFooter(
+  doc: InstanceType<typeof PDFDocument>,
+  y: number,
+  pageW: number,
+  pageNum: number
+) {
+  // Clamp: jangan pernah melebihi FOOTER_Y agar PDFKit tidak auto-buat halaman baru
+  const lineY = Math.min(y, FOOTER_Y);
   doc.save();
   doc.moveTo(50, lineY).lineTo(pageW - 50, lineY)
     .strokeColor("#d1d5db").lineWidth(0.5).stroke();
   doc.fill(GRAY).fontSize(7.5).font("Helvetica")
     .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, lineY + 10, { width: pageW - 160, lineBreak: false });
   doc.fill(GRAY).fontSize(7.5).font("Helvetica")
-    .text(`Hal. ${pageNum}`, pageW - 110, lineY + 10, { width: 60, align: "right", lineBreak: false });
-  doc.restore();
-}
-
-/**
- * Footer inline tepat setelah konten terakhir (halaman terakhir).
- */
-function drawInlineFooter(
-  doc: InstanceType<typeof PDFDocument>,
-  y: number,
-  pageW: number,
-  pageNum: number,
-  totalPages: number
-) {
-  doc.save();
-  doc.moveTo(50, y).lineTo(pageW - 50, y)
-    .strokeColor("#d1d5db").lineWidth(0.5).stroke();
-  doc.fill(GRAY).fontSize(7.5).font("Helvetica")
-    .text(`© ${YEAR} WOOCE Novel · Hak cipta dilindungi undang-undang`, 50, y + 10, { width: pageW - 160, lineBreak: false });
-  doc.fill(GRAY).fontSize(7.5).font("Helvetica")
-    .text(`Hal. ${pageNum} dari ${totalPages}`, pageW - 110, y + 10, { width: 60, align: "right", lineBreak: false });
+    .text(`Hal. ${pageNum} dari ${pageNum}`, pageW - 110, lineY + 10, { width: 60, align: "right", lineBreak: false });
   doc.restore();
 }
 
@@ -238,14 +241,7 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
     }
 
     // ── Footer di halaman terakhir ───────────────────────────────────────────
-    y += 10;
-    if (y > PAGE_BOTTOM) {
-      // Halaman sudah penuh — pakai posisi fixed di bawah, jangan buat halaman baru
-      drawBottomFooter(doc, pageW, pageNum);
-    } else {
-      // Halaman masih ada ruang — footer inline tepat setelah konten
-      drawInlineFooter(doc, y, pageW, pageNum, pageNum);
-    }
+    drawLastPageFooter(doc, y + 10, pageW, pageNum);
 
     doc.end();
   });
@@ -381,12 +377,7 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
     }
 
     // ── Footer di halaman terakhir ───────────────────────────────────────────
-    y += 10;
-    if (y > PAGE_BOTTOM) {
-      drawBottomFooter(doc, pageW, pageNum);
-    } else {
-      drawInlineFooter(doc, y, pageW, pageNum, pageNum);
-    }
+    drawLastPageFooter(doc, y + 10, pageW, pageNum);
 
     doc.end();
   });
