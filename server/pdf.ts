@@ -237,9 +237,15 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
       y += 8;
     }
 
-    // ── Footer inline di halaman terakhir ────────────────────────────────────
+    // ── Footer di halaman terakhir ───────────────────────────────────────────
     y += 10;
-    drawInlineFooter(doc, y, pageW, pageNum, pageNum);
+    if (y > PAGE_BOTTOM) {
+      // Halaman sudah penuh — pakai posisi fixed di bawah, jangan buat halaman baru
+      drawBottomFooter(doc, pageW, pageNum);
+    } else {
+      // Halaman masih ada ruang — footer inline tepat setelah konten
+      drawInlineFooter(doc, y, pageW, pageNum, pageNum);
+    }
 
     doc.end();
   });
@@ -374,9 +380,13 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
       y += 16;
     }
 
-    // ── Footer inline di halaman terakhir ────────────────────────────────────
+    // ── Footer di halaman terakhir ───────────────────────────────────────────
     y += 10;
-    drawInlineFooter(doc, y, pageW, pageNum, pageNum);
+    if (y > PAGE_BOTTOM) {
+      drawBottomFooter(doc, pageW, pageNum);
+    } else {
+      drawInlineFooter(doc, y, pageW, pageNum, pageNum);
+    }
 
     doc.end();
   });
