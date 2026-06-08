@@ -21,18 +21,39 @@ const PAGE_BOTTOM = 745;  // content must stop here (before footer zone)
 
 function stripHtml(html: string): string {
   return html
+    // Block-level elements → paragraph breaks
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<p[^>]*>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<h[1-6][^>]*>/gi, "")
     .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
     .replace(/<hr[^>]*>/gi, "\n---\n")
+    // Strip remaining tags
     .replace(/<[^>]+>/g, "")
+    // Named HTML entities
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
+    .replace(/&hellip;/g, "…")
+    .replace(/&ldquo;/g, "\u201C")
+    .replace(/&rdquo;/g, "\u201D")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&apos;/g, "'")
+    // Numeric entities
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    // Normalize whitespace: collapse spaces/tabs within lines but keep newlines
+    .replace(/[ \t]+/g, " ")
+    .replace(/^ /gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -88,6 +109,9 @@ function drawLastPageFooter(
 
 /**
  * Render paragraf-paragraf dari konten chapter dengan spasi antar paragraf.
+ * - Double newline (\n\n) = pemisah antar paragraf
+ * - Single newline dalam paragraf = digabung jadi spasi
+ * - "---" = separator visual · · ·
  * Memanggil onNewPage() jika paragraf tidak muat di halaman saat ini.
  */
 function renderParagraphs(
@@ -99,19 +123,35 @@ function renderParagraphs(
   onNewPage: () => number
 ): number {
   let y = startY;
-  const paragraphs = text.split(/\n+/).map(p => p.trim()).filter(Boolean);
+
+  // Split by paragraph breaks (double newline), gabungkan single newline jadi spasi
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map(p => p.replace(/\n/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const LINE_GAP  = 4;   // jarak antar baris dalam satu paragraf
+  const PARA_GAP  = 12;  // jarak antar paragraf
+  const FONT_SIZE = 10;  // ukuran font konten
 
   for (const para of paragraphs) {
-    const lineGap = 3;
-    const h = doc.heightOfString(para, { width: contentWidth, lineGap });
-
-    if (y + h > PAGE_BOTTOM) {
-      y = onNewPage();
+    // Separator visual --- → "· · ·" ditengah
+    if (para === "---" || para === "—" || para === "***" || para === "* * *") {
+      if (y + 22 > PAGE_BOTTOM) { y = onNewPage(); }
+      doc.fill(GRAY).fontSize(8)
+        .text("· · ·", contentX, y + 4, { width: contentWidth, align: "center", lineBreak: false });
+      y += 22;
+      continue;
     }
 
-    doc.fill(DARK).fontSize(9.5).font("Helvetica")
-      .text(para, contentX, y, { width: contentWidth, lineGap, align: "justify" });
-    y += h + 9;
+    const h = doc.heightOfString(para, { width: contentWidth, lineGap: LINE_GAP, fontSize: FONT_SIZE });
+
+    if (y + h > PAGE_BOTTOM) { y = onNewPage(); }
+
+    doc.fill(DARK).fontSize(FONT_SIZE).font("Helvetica")
+      .text(para, contentX, y, { width: contentWidth, lineGap: LINE_GAP, align: "justify" });
+
+    y += h + PARA_GAP;
   }
 
   return y;
