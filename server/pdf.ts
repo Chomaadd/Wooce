@@ -288,6 +288,109 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
   });
 }
 
+// ── Chapter Selection PDF ─────────────────────────────────────────────────────
+
+export interface ChapterPdfItem {
+  chapterNumber: number;
+  title: string;
+  seasonNumber: number;
+  seasonTitle: string;
+  content?: string;
+}
+
+export interface ChaptersPdfData {
+  storyTitle: string;
+  writerName: string;
+  exportedAt: string;
+  chapters: ChapterPdfItem[];
+}
+
+export function generateChaptersPdf(data: ChaptersPdfData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const chunks: Buffer[] = [];
+    doc.on("data", chunk => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const pageW = doc.page.width;
+    let pageNum = 1;
+
+    function nextPage(): number {
+      drawBottomFooter(doc, pageW, pageNum);
+      doc.addPage();
+      pageNum++;
+      return 50;
+    }
+
+    // ── Header ──────────────────────────────────────────────────────────────
+    const HEADER_H = 90;
+    doc.rect(0, 0, pageW, HEADER_H).fill(PRIMARY);
+    const logoX = 50;
+    const logoY = Math.round((HEADER_H - LOGO_H) / 2);
+    drawLogo(doc, logoX, logoY);
+    const textX = logoX + LOGO_W + 16;
+    doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Download Chapter", textX, logoY + 6);
+    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
+    doc.opacity(1);
+
+    // ── Story title box ──────────────────────────────────────────────────────
+    doc.rect(50, 108, pageW - 100, 52).fill(PRIMARY);
+    doc.fill("#ffffff").fontSize(14).font("Helvetica-Bold")
+      .text(data.storyTitle, 62, 116, { width: pageW - 124 });
+    doc.fontSize(9).font("Helvetica").opacity(0.75)
+      .text(`Penulis: ${data.writerName}  ·  ${data.chapters.length} chapter`, 62, 136);
+    doc.opacity(1);
+
+    let y = 178;
+
+    // ── Chapters ─────────────────────────────────────────────────────────────
+    let lastSeasonNumber = -1;
+
+    for (const ch of data.chapters) {
+      // Season header jika berganti season
+      if (ch.seasonNumber !== lastSeasonNumber) {
+        if (y > PAGE_BOTTOM - 60) { y = nextPage(); }
+        doc.rect(50, y, pageW - 100, 28).fill("#dde0f7");
+        doc.fill(PRIMARY).fontSize(10).font("Helvetica-Bold")
+          .text(`Season ${ch.seasonNumber}: ${ch.seasonTitle}`, 60, y + 9, { width: pageW - 120 });
+        y += 38;
+        lastSeasonNumber = ch.seasonNumber;
+      }
+
+      if (y > PAGE_BOTTOM - 50) { y = nextPage(); }
+
+      // Chapter title bar
+      doc.rect(50, y, pageW - 100, 26).fill("#f0f0f8");
+      doc.fill(DARK).fontSize(10).font("Helvetica-Bold")
+        .text(`Bab ${ch.chapterNumber}  —  ${ch.title}`, 60, y + 8, { width: pageW - 120 });
+      y += 34;
+
+      if (ch.content && ch.content.trim()) {
+        const cleanContent = stripHtml(ch.content);
+        if (cleanContent) {
+          y = renderParagraphs(doc, cleanContent, y, 60, pageW - 120, nextPage);
+        }
+      } else {
+        doc.fill(GRAY).fontSize(9).font("Helvetica").text("(Konten kosong)", 60, y);
+        y += 18;
+      }
+
+      y += 4;
+      if (y + 20 <= PAGE_BOTTOM) {
+        doc.fill(GRAY).fontSize(9)
+          .text("· · ·", 50, y, { align: "center", width: pageW - 100, lineBreak: false });
+        y += 20;
+      }
+    }
+
+    // ── Footer di halaman terakhir ───────────────────────────────────────────
+    drawLastPageFooter(doc, y + 10, pageW, pageNum);
+
+    doc.end();
+  });
+}
+
 // ── Writer Backup PDF ─────────────────────────────────────────────────────────
 
 interface ChapterData {

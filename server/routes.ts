@@ -1652,6 +1652,103 @@ export async function registerRoutes(
     }
   });
 
+  // ── Download chapter(s) as PDF (writer) ────────────────────────────────────
+  app.post("/api/writer/stories/:id/chapters-pdf", requireWriter, async (req: any, res) => {
+    try {
+      const user = req.writerUser;
+      const story = await storage.getNovelStoryById(req.params.id);
+      if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+      const authorId = await ensureAuthorId(user);
+      if (!authorId || story.authorId !== authorId) return res.status(403).json({ message: "Bukan cerita kamu" });
+
+      const { chapterIds } = z.object({ chapterIds: z.array(z.string()).optional() }).parse(req.body);
+
+      const seasons = await storage.getNovelSeasons(story.id);
+      const items: { chapterNumber: number; title: string; seasonNumber: number; seasonTitle: string; content?: string }[] = [];
+
+      for (const season of seasons) {
+        const chapters = await storage.getNovelChapters(season.id);
+        for (const ch of chapters) {
+          if (!chapterIds || chapterIds.length === 0 || chapterIds.includes(ch.id)) {
+            items.push({
+              chapterNumber: ch.chapterNumber,
+              title: ch.title,
+              seasonNumber: season.seasonNumber,
+              seasonTitle: season.title,
+              content: ch.content ?? "",
+            });
+          }
+        }
+      }
+
+      if (items.length === 0) return res.status(400).json({ message: "Tidak ada chapter yang dipilih" });
+
+      const { generateChaptersPdf } = await import("./pdf");
+      const pdfBuffer = await generateChaptersPdf({
+        storyTitle: story.title,
+        writerName: user.name || "Penulis",
+        exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        chapters: items,
+      });
+
+      const label = chapterIds && chapterIds.length > 0 ? `${chapterIds.length}-chapter` : "semua";
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${story.slug}-${label}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      log(`[Chapter PDF] Error: ${err?.message}`, "express");
+      res.status(500).json({ message: "Gagal generate PDF" });
+    }
+  });
+
+  // ── Download chapter(s) as PDF (admin) ──────────────────────────────────────
+  app.post("/api/admin/stories/:id/chapters-pdf", requireAuth, async (req: any, res) => {
+    try {
+      const story = await storage.getNovelStoryById(req.params.id);
+      if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+
+      const { chapterIds } = z.object({ chapterIds: z.array(z.string()).optional() }).parse(req.body);
+
+      const seasons = await storage.getNovelSeasons(story.id);
+      const items: { chapterNumber: number; title: string; seasonNumber: number; seasonTitle: string; content?: string }[] = [];
+
+      for (const season of seasons) {
+        const chapters = await storage.getNovelChapters(season.id);
+        for (const ch of chapters) {
+          if (!chapterIds || chapterIds.length === 0 || chapterIds.includes(ch.id)) {
+            items.push({
+              chapterNumber: ch.chapterNumber,
+              title: ch.title,
+              seasonNumber: season.seasonNumber,
+              seasonTitle: season.title,
+              content: ch.content ?? "",
+            });
+          }
+        }
+      }
+
+      if (items.length === 0) return res.status(400).json({ message: "Tidak ada chapter yang dipilih" });
+
+      const { generateChaptersPdf } = await import("./pdf");
+      const pdfBuffer = await generateChaptersPdf({
+        storyTitle: story.title,
+        writerName: "Admin",
+        exportedAt: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        chapters: items,
+      });
+
+      const label = chapterIds && chapterIds.length > 0 ? `${chapterIds.length}-chapter` : "semua";
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${story.slug}-${label}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      log(`[Chapter PDF Admin] Error: ${err?.message}`, "express");
+      res.status(500).json({ message: "Gagal generate PDF" });
+    }
+  });
+
   app.post("/api/writer/request-verification", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;

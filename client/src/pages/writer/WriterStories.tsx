@@ -400,6 +400,8 @@ export default function WriterStories() {
     null,
   );
   const [isNewChapter, setIsNewChapter] = useState(false);
+  const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
+  const [pdfDownloading, setPdfDownloading] = useState(false);
   const [writeForm, setWriteForm] = useState({
     chapterNumber: 1,
     title: "",
@@ -978,6 +980,38 @@ export default function WriterStories() {
   const navigateTo = (v: WriterView) => {
     setView(v);
     setMobileSidebarOpen(false);
+  };
+
+  const downloadChaptersPdf = async (chapterIds?: string[]) => {
+    if (!selectedStory) return;
+    setPdfDownloading(true);
+    try {
+      const res = await fetch(`/api/writer/stories/${selectedStory.id}/chapters-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapterIds: chapterIds ?? [] }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Gagal download PDF", description: (err as any).message ?? "Coba lagi.", variant: "destructive" });
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const label = chapterIds && chapterIds.length > 0 ? `${chapterIds.length}-chapter` : "semua";
+      a.download = `${selectedStory.slug ?? "novel"}-${label}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSelectedChapterIds(new Set());
+      toast({ title: "PDF berhasil didownload!" });
+    } catch {
+      toast({ title: "Gagal download PDF", description: "Coba lagi.", variant: "destructive" });
+    } finally {
+      setPdfDownloading(false);
+    }
   };
 
   const wordCount = writeForm.content
@@ -1698,11 +1732,11 @@ export default function WriterStories() {
           {/* ── Chapters View ── */}
           {view === "chapters" && selectedSeason && (
             <div>
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setView("seasons")}
+                  onClick={() => { setView("seasons"); setSelectedChapterIds(new Set()); }}
                   data-testid="button-back-to-seasons"
                 >
                   <ArrowLeft size={14} className="mr-1" /> Kembali
@@ -1723,6 +1757,47 @@ export default function WriterStories() {
                   <Plus size={14} className="mr-0" /> Bab Baru
                 </Button>
               </div>
+
+              {/* Download toolbar */}
+              {chapters && chapters.length > 0 && (
+                <div className="flex items-center gap-2 mb-4 p-3 bg-muted/40 border border-border rounded-xl">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded accent-primary cursor-pointer"
+                    checked={selectedChapterIds.size === chapters.length && chapters.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedChapterIds(new Set(chapters.map(c => c.id)));
+                      else setSelectedChapterIds(new Set());
+                    }}
+                    title="Pilih semua"
+                    data-testid="checkbox-select-all-chapters"
+                  />
+                  <span className="text-xs text-muted-foreground flex-1">
+                    {selectedChapterIds.size > 0 ? `${selectedChapterIds.size} bab dipilih` : "Pilih bab untuk download"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pdfDownloading || selectedChapterIds.size === 0}
+                    onClick={() => downloadChaptersPdf(Array.from(selectedChapterIds))}
+                    data-testid="button-download-selected-pdf"
+                  >
+                    {pdfDownloading ? <Loader2 size={13} className="mr-1 animate-spin" /> : <FileDown size={13} className="mr-1" />}
+                    Download Dipilih
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pdfDownloading}
+                    onClick={() => downloadChaptersPdf([])}
+                    data-testid="button-download-all-pdf"
+                  >
+                    {pdfDownloading ? <Loader2 size={13} className="mr-1 animate-spin" /> : <FileDown size={13} className="mr-1" />}
+                    Download Semua
+                  </Button>
+                </div>
+              )}
+
               {!chapters || chapters.length === 0 ? (
                 <div className="border border-dashed border-border rounded-2xl py-16 text-center">
                   <FileText
@@ -1746,10 +1821,22 @@ export default function WriterStories() {
                   {chapters.map((ch) => (
                     <div
                       key={ch.id}
-                      className="bg-card border border-border rounded-xl p-3 flex items-center gap-3"
+                      className={`bg-card border rounded-xl p-3 flex items-center gap-3 transition-colors ${selectedChapterIds.has(ch.id) ? "border-primary/50 bg-primary/5" : "border-border"}`}
                       data-testid={`row-chapter-${ch.id}`}
                     >
-                      <span className="text-xs font-mono text-muted-foreground w-8 text-center flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded accent-primary cursor-pointer flex-shrink-0"
+                        checked={selectedChapterIds.has(ch.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedChapterIds);
+                          if (e.target.checked) next.add(ch.id);
+                          else next.delete(ch.id);
+                          setSelectedChapterIds(next);
+                        }}
+                        data-testid={`checkbox-chapter-${ch.id}`}
+                      />
+                      <span className="text-xs font-mono text-muted-foreground w-7 text-center flex-shrink-0">
                         {ch.chapterNumber}
                       </span>
                       <div className="flex-1 min-w-0">

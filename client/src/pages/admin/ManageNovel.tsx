@@ -1070,6 +1070,8 @@ export default function ManageNovel() {
   const [selectedStory, setSelectedStory] = useState<NovelStory | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<NovelSeason | null>(null);
   const [editingChapter, setEditingChapter] = useState<NovelChapter | undefined>(undefined);
+  const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   const [storyDialog, setStoryDialog] = useState<{ open: boolean; story?: NovelStory }>({ open: false });
   const [seasonDialog, setSeasonDialog] = useState<{ open: boolean; season?: NovelSeason }>({ open: false });
@@ -1168,6 +1170,38 @@ export default function ManageNovel() {
     mutationFn: ({ id, published }: { id: string; published: boolean }) => apiRequest("PUT", `/api/novel/chapters/${id}`, { published }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/novel/seasons", selectedSeason?.id, "chapters"] }),
   });
+
+  const downloadChaptersPdf = async (chapterIds?: string[]) => {
+    if (!selectedStory) return;
+    setPdfDownloading(true);
+    try {
+      const res = await fetch(`/api/admin/stories/${selectedStory.id}/chapters-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapterIds: chapterIds ?? [] }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Gagal download PDF", description: (err as any).message ?? "Coba lagi.", variant: "destructive" });
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const label = chapterIds && chapterIds.length > 0 ? `${chapterIds.length}-chapter` : "semua";
+      a.download = `${selectedStory.slug ?? "novel"}-${label}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSelectedChapterIds(new Set());
+      toast({ title: "PDF berhasil didownload!" });
+    } catch {
+      toast({ title: "Gagal download PDF", description: "Coba lagi.", variant: "destructive" });
+    } finally {
+      setPdfDownloading(false);
+    }
+  };
 
   const toggleFeatured = useMutation({
     mutationFn: ({ id, featured }: { id: string; featured: boolean }) =>
@@ -1623,7 +1657,7 @@ export default function ManageNovel() {
         {/* ── CHAPTERS VIEW ── */}
         {view === "chapters" && selectedSeason && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-bold text-foreground">Season {selectedSeason.seasonNumber} — {selectedSeason.title}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{t("admin.novel.manageChaptersSubtitle")}</p>
@@ -1647,54 +1681,106 @@ export default function ManageNovel() {
                 <p className="text-muted-foreground">{t("admin.novel.empty.chapters")}</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {chapters.map(ch => {
-                  const chScheduled = (ch as any).scheduledAt;
-                  const isChScheduled = !ch.published && !!chScheduled && new Date(chScheduled) > new Date();
-                  return (
-                  <div key={ch.id} className="flex items-center gap-3 p-3.5 border border-border rounded-xl hover:bg-muted/30 transition-colors" data-testid={`card-chapter-${ch.id}`}>
-                    <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-muted-foreground">{ch.chapterNumber}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground text-sm truncate">{ch.title}</p>
-                        {isChScheduled && (
-                          <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex items-center gap-1">
-                            <Clock size={10} />
-                            {new Date(chScheduled).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                          </span>
-                        )}
+              <>
+                {/* Download toolbar */}
+                <div className="flex items-center gap-2 mb-4 p-3 bg-muted/40 border border-border rounded-xl">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded accent-primary cursor-pointer"
+                    checked={selectedChapterIds.size === (chapters as any[]).length && (chapters as any[]).length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedChapterIds(new Set((chapters as any[]).map((c: any) => c.id)));
+                      else setSelectedChapterIds(new Set());
+                    }}
+                    title="Pilih semua"
+                    data-testid="checkbox-select-all-chapters"
+                  />
+                  <span className="text-xs text-muted-foreground flex-1">
+                    {selectedChapterIds.size > 0 ? `${selectedChapterIds.size} bab dipilih` : "Pilih bab untuk download PDF"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pdfDownloading || selectedChapterIds.size === 0}
+                    onClick={() => downloadChaptersPdf(Array.from(selectedChapterIds))}
+                    data-testid="button-download-selected-pdf"
+                  >
+                    {pdfDownloading ? <span className="mr-1 animate-spin">↻</span> : <FileText size={13} className="mr-1" />}
+                    Download Dipilih
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pdfDownloading}
+                    onClick={() => downloadChaptersPdf([])}
+                    data-testid="button-download-all-pdf"
+                  >
+                    {pdfDownloading ? <span className="mr-1 animate-spin">↻</span> : <FileText size={13} className="mr-1" />}
+                    Download Semua
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {(chapters as any[]).map((ch: any) => {
+                    const chScheduled = ch.scheduledAt;
+                    const isChScheduled = !ch.published && !!chScheduled && new Date(chScheduled) > new Date();
+                    return (
+                    <div key={ch.id} className={`flex items-center gap-3 p-3.5 border rounded-xl hover:bg-muted/30 transition-colors ${selectedChapterIds.has(ch.id) ? "border-primary/50 bg-primary/5" : "border-border"}`} data-testid={`card-chapter-${ch.id}`}>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded accent-primary cursor-pointer flex-shrink-0"
+                        checked={selectedChapterIds.has(ch.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedChapterIds);
+                          if (e.target.checked) next.add(ch.id);
+                          else next.delete(ch.id);
+                          setSelectedChapterIds(next);
+                        }}
+                        data-testid={`checkbox-chapter-${ch.id}`}
+                      />
+                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-muted-foreground">{ch.chapterNumber}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{(ch.content ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length} {t("admin.novel.form.words")}</span>
-                        {(ch as any).viewCount > 0 && (
-                          <span className="flex items-center gap-0.5">
-                            <Eye size={9} /> {((ch as any).viewCount).toLocaleString()} views
-                          </span>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground text-sm truncate">{ch.title}</p>
+                          {isChScheduled && (
+                            <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex items-center gap-1">
+                              <Clock size={10} />
+                              {new Date(chScheduled).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{(ch.content ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length} {t("admin.novel.form.words")}</span>
+                          {ch.viewCount > 0 && (
+                            <span className="flex items-center gap-0.5">
+                              <Eye size={9} /> {ch.viewCount.toLocaleString()} views
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => toggleChapterPublish.mutate({ id: ch.id, published: !ch.published })}
+                          className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${ch.published ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                          data-testid={`button-toggle-publish-${ch.id}`}
+                          title={isChScheduled ? new Date(chScheduled).toLocaleString("id-ID") : undefined}
+                        >
+                          {ch.published ? <Eye size={12} /> : isChScheduled ? <Clock size={12} /> : <EyeOff size={12} />}
+                        </button>
+                        <Button size="icon" variant="ghost" onClick={() => { setEditingChapter(ch); setView("write"); }} data-testid={`button-edit-chapter-${ch.id}`}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteDialog({ open: true, type: "chapter", id: ch.id, name: ch.title })} data-testid={`button-delete-chapter-${ch.id}`}>
+                          <Trash2 size={14} />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => toggleChapterPublish.mutate({ id: ch.id, published: !ch.published })}
-                        className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${ch.published ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                        data-testid={`button-toggle-publish-${ch.id}`}
-                        title={isChScheduled ? new Date(chScheduled).toLocaleString("id-ID") : undefined}
-                      >
-                        {ch.published ? <Eye size={12} /> : isChScheduled ? <Clock size={12} /> : <EyeOff size={12} />}
-                      </button>
-                      <Button size="icon" variant="ghost" onClick={() => { setEditingChapter(ch); setView("write"); }} data-testid={`button-edit-chapter-${ch.id}`}>
-                        <Pencil size={14} />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteDialog({ open: true, type: "chapter", id: ch.id, name: ch.title })} data-testid={`button-delete-chapter-${ch.id}`}>
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}
