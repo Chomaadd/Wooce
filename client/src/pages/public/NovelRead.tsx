@@ -4,7 +4,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag,
+  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,15 +14,29 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── Reading Settings ──────────────────────────────────────────────────────────
 type ReadingMode = "light" | "sepia" | "night";
-type FontFamily = "sans" | "serif";
+type FontFamily = "sans" | "serif" | "garamond" | "georgia";
 
 interface ReadingSettings {
   fontSize: number;
   fontFamily: FontFamily;
   mode: ReadingMode;
+  pageFlip: boolean;
 }
 
-const DEFAULT_SETTINGS: ReadingSettings = { fontSize: 17, fontFamily: "sans", mode: "light" };
+const DEFAULT_SETTINGS: ReadingSettings = { fontSize: 17, fontFamily: "sans", mode: "light", pageFlip: false };
+
+const FONT_CLASS_MAP: Record<FontFamily, string> = {
+  sans: "font-sans",
+  serif: "font-reading",
+  garamond: "font-serif",
+  georgia: "font-sans",
+};
+const FONT_FAMILY_VALUE: Record<FontFamily, string> = {
+  sans: "var(--font-sans)",
+  serif: "var(--font-reading)",
+  garamond: "var(--font-serif)",
+  georgia: "Georgia, 'Times New Roman', serif",
+};
 
 const MODE_STYLES: Record<ReadingMode, { bg: string; text: string; border: string; panelBg: string }> = {
   light:  { bg: "transparent",  text: "inherit",  border: "transparent", panelBg: "#ffffff" },
@@ -61,7 +75,6 @@ function SettingsPanel({ settings, update, onClose }: {
 }) {
   const { t } = useLanguage();
   const modes: ReadingMode[] = ["light", "sepia", "night"];
-  const fonts: FontFamily[] = ["sans", "serif"];
   const modeMeta: Record<ReadingMode, { label: string; icon: string; preview: string }> = {
     light: { label: t("novel.read.modeLight"), icon: "☀", preview: "bg-white border-slate-200 text-slate-800" },
     sepia: { label: t("novel.read.modeSepia"), icon: "📖", preview: "bg-[#faf3e8] border-[#e8d9c0] text-[#5c3d1e]" },
@@ -119,18 +132,24 @@ function SettingsPanel({ settings, update, onClose }: {
         <div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-3">{t("novel.read.fontFamily")}</span>
           <div className="grid grid-cols-2 gap-2">
-            {fonts.map(f => (
+            {([
+              { key: "sans",     label: "Jakarta Sans", cls: "font-sans",    style: {} },
+              { key: "serif",    label: "Lora",         cls: "font-reading", style: {} },
+              { key: "garamond", label: "Garamond",     cls: "font-serif",   style: {} },
+              { key: "georgia",  label: "Georgia",      cls: "",             style: { fontFamily: "Georgia, serif" } },
+            ] as { key: FontFamily; label: string; cls: string; style: React.CSSProperties }[]).map(({ key, label, cls, style }) => (
               <button
-                key={f}
-                onClick={() => update({ fontFamily: f })}
-                className={`py-2.5 rounded-xl border text-sm transition-all ${f === "serif" ? "font-serif" : "font-sans"} ${
-                  settings.fontFamily === f
+                key={key}
+                onClick={() => update({ fontFamily: key })}
+                style={style}
+                className={`py-2.5 rounded-xl border text-sm transition-all ${cls} ${
+                  settings.fontFamily === key
                     ? "border-primary bg-primary/10 text-primary font-semibold"
                     : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
                 }`}
-                data-testid={`button-font-${f}`}
+                data-testid={`button-font-${key}`}
               >
-                {t(f === "sans" ? "novel.read.fontSans" : "novel.read.fontSerif")}
+                {label}
               </button>
             ))}
           </div>
@@ -156,6 +175,20 @@ function SettingsPanel({ settings, update, onClose }: {
               </button>
             ))}
           </div>
+        </div>
+        {/* Page Flip toggle */}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-semibold text-foreground">Flip Halaman</span>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Geser kiri/kanan seperti buku</p>
+          </div>
+          <button
+            onClick={() => update({ pageFlip: !settings.pageFlip })}
+            className={`relative flex-shrink-0 w-10 h-6 rounded-full transition-colors ${settings.pageFlip ? "bg-primary" : "bg-muted border border-border"}`}
+            data-testid="button-toggle-pageflip"
+          >
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${settings.pageFlip ? "left-5" : "left-1"}`} />
+          </button>
         </div>
       </div>
     </motion.div>
@@ -413,6 +446,14 @@ export default function NovelRead() {
   const [quoteCardOpen, setQuoteCardOpen] = useState(false);
   const quoteCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Page flip state
+  const [flipPages, setFlipPages] = useState<string[]>([]);
+  const [flipPage, setFlipPage] = useState(0);
+  const [flipDir, setFlipDir] = useState<"next" | "prev">("next");
+  const lastTapRef = useRef(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
   // Translate state
   const [translateOpen, setTranslateOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -636,6 +677,84 @@ export default function NovelRead() {
     return () => window.removeEventListener("keydown", handler);
   }, [prevChapter, nextChapter, slug, seasonNum, navigate, focusMode]);
 
+  // Double-tap to exit focus mode (mobile)
+  useEffect(() => {
+    if (!focusMode) return;
+    const handler = () => {
+      const now = Date.now();
+      if (now - lastTapRef.current < 350) setFocusMode(false);
+      lastTapRef.current = now;
+    };
+    document.addEventListener("touchstart", handler, { passive: true });
+    return () => document.removeEventListener("touchstart", handler);
+  }, [focusMode]);
+
+  // Build pages for page flip mode
+  const buildFlipPages = useCallback(() => {
+    if (!chapter?.content) return;
+    const html = renderRichContent(chapter.content);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const blocks = Array.from(doc.body.children);
+    if (!blocks.length) { setFlipPages([html]); setFlipPage(0); return; }
+
+    const measurer = document.createElement("div");
+    measurer.style.cssText = [
+      "position:fixed", "top:-9999px", "left:0",
+      `width:${Math.min(640, window.innerWidth) - 40}px`,
+      `font-size:${settings.fontSize}px`,
+      "line-height:2", "visibility:hidden", "pointer-events:none",
+      `font-family:${FONT_FAMILY_VALUE[settings.fontFamily]}`,
+    ].join(";");
+    blocks.forEach(b => measurer.appendChild(b.cloneNode(true)));
+    document.body.appendChild(measurer);
+
+    const AVAIL_H = window.innerHeight - 145;
+    const pages: string[] = [];
+    let pageHtml = "";
+    let pageH = 0;
+    Array.from(measurer.children).forEach((el, i) => {
+      const h = (el as HTMLElement).offsetHeight + 40;
+      if (pageH + h > AVAIL_H && pageHtml) {
+        pages.push(pageHtml);
+        pageHtml = blocks[i].outerHTML;
+        pageH = h;
+      } else {
+        pageHtml += blocks[i].outerHTML;
+        pageH += h;
+      }
+    });
+    if (pageHtml) pages.push(pageHtml);
+    document.body.removeChild(measurer);
+    setFlipPages(pages.length > 0 ? pages : [html]);
+    setFlipPage(0);
+  }, [chapter?.content, settings.fontSize, settings.fontFamily]);
+
+  useEffect(() => {
+    if (settings.pageFlip) buildFlipPages();
+    else { setFlipPages([]); setFlipPage(0); }
+  }, [settings.pageFlip, buildFlipPages]);
+
+  // Page flip swipe handlers
+  const handleFlipTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleFlipTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < 45 || Math.abs(dy) > Math.abs(dx) * 0.75) return;
+    if (dx < 0 && flipPage < flipPages.length - 1) {
+      setFlipDir("next"); setFlipPage(p => p + 1);
+    } else if (dx > 0 && flipPage > 0) {
+      setFlipDir("prev"); setFlipPage(p => p - 1);
+    } else if (dx < 0 && nextChapter) {
+      navigate(`/${slug}/season-${seasonNum}/bab-${nextChapter.chapterNumber}`);
+    } else if (dx > 0 && prevChapter) {
+      navigate(`/${slug}/season-${seasonNum}/bab-${prevChapter.chapterNumber}`);
+    }
+  };
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -765,7 +884,9 @@ export default function NovelRead() {
   };
 
   const modeStyle   = MODE_STYLES[settings.mode];
-  const fontClass   = settings.fontFamily === "serif" ? "font-reading" : "font-sans";
+  const fontClass   = FONT_CLASS_MAP[settings.fontFamily];
+  const fontFamilyOverride: React.CSSProperties = settings.fontFamily === "georgia"
+    ? { fontFamily: "Georgia, 'Times New Roman', serif" } : {};
   const proseInvert = settings.mode === "light" ? "dark:prose-invert" : settings.mode === "night" ? "prose-invert" : "";
 
   const proseColorVars: React.CSSProperties =
@@ -848,14 +969,16 @@ export default function NovelRead() {
         image={story?.coverUrl ?? undefined}
       />
 
-      {/* Reading progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-0.5 z-50 bg-border/20">
-        <div
-          className="h-full bg-primary transition-all duration-100 ease-out"
-          style={{ width: `${scrollPercent}%` }}
-          data-testid="bar-reading-progress"
-        />
-      </div>
+      {/* Reading progress bar — hidden in page flip mode */}
+      {!(settings.pageFlip && flipPages.length > 0) && (
+        <div className="fixed top-0 left-0 right-0 h-0.5 z-50 bg-border/20">
+          <div
+            className="h-full bg-primary transition-all duration-100 ease-out"
+            style={{ width: `${scrollPercent}%` }}
+            data-testid="bar-reading-progress"
+          />
+        </div>
+      )}
 
       {/* Custom reader header */}
       <ReaderHeader
@@ -867,8 +990,109 @@ export default function NovelRead() {
         onSettings={() => { setSettingsOpen(v => !v); setTocOpen(false); }}
         settingsOpen={settingsOpen}
         tocOpen={tocOpen}
-        focusMode={focusMode}
+        focusMode={focusMode || (settings.pageFlip && flipPages.length > 0)}
       />
+
+      {/* ── Page Flip Overlay ─────────────────────────────────────────────── */}
+      {settings.pageFlip && flipPages.length > 0 && chapter && (
+        <div
+          className="fixed inset-0 z-30 flex flex-col select-none"
+          style={{
+            background: modeStyle.bg !== "transparent" ? modeStyle.bg : "var(--background)",
+            color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+          }}
+        >
+          {/* Minimal top bar */}
+          <div
+            className="h-10 flex items-center justify-between px-4 flex-shrink-0 border-b border-border/30"
+            style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
+          >
+            <Link href={`/${slug}`}>
+              <button className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors" data-testid="button-flip-back">
+                <ArrowLeft size={16} />
+              </button>
+            </Link>
+            <span className="text-xs text-muted-foreground text-center flex-1 px-2 truncate">{chapter.title}</span>
+            <span className="text-xs font-mono text-muted-foreground flex-shrink-0">{flipPage + 1} / {flipPages.length}</span>
+          </div>
+
+          {/* Page content with swipe */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={flipPage}
+              initial={{ opacity: 0, x: flipDir === "next" ? 50 : -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: flipDir === "next" ? -50 : 50 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className={`flex-1 overflow-hidden px-5 sm:px-8 py-5 prose prose-gray max-w-none
+                prose-p:leading-[2] prose-headings:font-bold
+                prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground
+                prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic
+                prose-p:my-4 ${proseInvert} ${fontClass}`}
+              style={{
+                fontSize: `${settings.fontSize}px`,
+                color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+                ...proseColorVars, ...fontFamilyOverride, maxWidth: "none",
+              }}
+              dangerouslySetInnerHTML={{ __html: flipPages[flipPage] ?? "" }}
+              onTouchStart={handleFlipTouchStart}
+              onTouchEnd={handleFlipTouchEnd}
+              data-testid="text-flip-page"
+            />
+          </AnimatePresence>
+
+          {/* Bottom nav bar */}
+          <div
+            className="h-14 flex items-center justify-between px-3 flex-shrink-0 border-t border-border/30 gap-2"
+            style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
+          >
+            <button
+              onClick={() => {
+                if (flipPage > 0) { setFlipDir("prev"); setFlipPage(p => p - 1); }
+                else if (prevChapter) navigate(`/${slug}/season-${seasonNum}/bab-${prevChapter.chapterNumber}`);
+              }}
+              disabled={flipPage === 0 && !prevChapter}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors disabled:opacity-30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              data-testid="button-flip-prev"
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            {/* Page dots */}
+            <div className="flex items-center gap-1 flex-1 justify-center overflow-hidden">
+              {(() => {
+                const total = flipPages.length;
+                const maxDots = 9;
+                const visible = Math.min(total, maxDots);
+                const half = Math.floor(maxDots / 2);
+                const start = Math.max(0, Math.min(flipPage - half, total - visible));
+                return Array.from({ length: visible }, (_, i) => {
+                  const idx = start + i;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => { setFlipDir(idx > flipPage ? "next" : "prev"); setFlipPage(idx); }}
+                      className={`rounded-full cursor-pointer transition-all ${idx === flipPage ? "w-4 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
+                    />
+                  );
+                });
+              })()}
+            </div>
+
+            <button
+              onClick={() => {
+                if (flipPage < flipPages.length - 1) { setFlipDir("next"); setFlipPage(p => p + 1); }
+                else if (nextChapter) navigate(`/${slug}/season-${seasonNum}/bab-${nextChapter.chapterNumber}`);
+              }}
+              disabled={flipPage === flipPages.length - 1 && !nextChapter}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors disabled:opacity-30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              data-testid="button-flip-next"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="max-w-2xl mx-auto px-5 sm:px-8 pt-20 pb-24">
@@ -915,7 +1139,7 @@ export default function NovelRead() {
                 </p>
                 <h1
                   className={`text-xl sm:text-2xl font-bold leading-snug mb-3 ${fontClass}`}
-                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
+                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined, ...fontFamilyOverride }}
                   data-testid="text-chapter-title"
                 >
                   {t("novel.read.chapterOf")} {chapter.chapterNumber}: {translatedTitle ?? chapter.title}
@@ -951,6 +1175,7 @@ export default function NovelRead() {
             fontSize: `${settings.fontSize}px`,
             color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
             ...proseColorVars,
+            ...fontFamilyOverride,
           }}
           data-testid="text-chapter-content"
           dangerouslySetInnerHTML={{ __html: translatedContent ?? renderRichContent(chapter.content) }}
@@ -1027,7 +1252,7 @@ export default function NovelRead() {
                   <span>{t("novel.read.prevChapter")}</span>
                 </div>
                 <div className={`text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors ${fontClass}`}
-                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
+                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined, ...fontFamilyOverride }}
                 >
                   {t("novel.read.chapterOf")} {prevChapter.chapterNumber}: {prevChapter.title}
                 </div>
@@ -1061,7 +1286,7 @@ export default function NovelRead() {
                   <ArrowRight size={11} />
                 </div>
                 <div className={`text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors ${fontClass}`}
-                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined }}
+                  style={{ color: modeStyle.text !== "inherit" ? modeStyle.text : undefined, ...fontFamilyOverride }}
                 >
                   {t("novel.read.chapterOf")} {nextChapter.chapterNumber}: {nextChapter.title}
                 </div>
@@ -1108,7 +1333,7 @@ export default function NovelRead() {
             exit={{ opacity: 0, y: 10 }}
             className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white text-xs px-4 py-2 rounded-full backdrop-blur-sm pointer-events-none"
           >
-            Mode Fokus aktif — tekan <kbd className="font-mono bg-white/20 px-1.5 py-0.5 rounded mx-0.5">F</kbd> atau <kbd className="font-mono bg-white/20 px-1.5 py-0.5 rounded mx-0.5">Esc</kbd> untuk keluar
+            Mode Fokus aktif — <span className="font-medium">2x ketuk</span> atau tekan <kbd className="font-mono bg-white/20 px-1.5 py-0.5 rounded mx-0.5">F</kbd> / <kbd className="font-mono bg-white/20 px-1.5 py-0.5 rounded mx-0.5">Esc</kbd> untuk keluar
           </motion.div>
         )}
       </AnimatePresence>
