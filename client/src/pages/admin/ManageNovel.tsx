@@ -1192,8 +1192,10 @@ export default function ManageNovel() {
       a.href = url;
       const label = chapterIds && chapterIds.length > 0 ? `${chapterIds.length}-chapter` : "semua";
       a.download = `${selectedStory.slug ?? "novel"}-${label}.pdf`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       setSelectedChapterIds(new Set());
       toast({ title: "PDF berhasil didownload!" });
     } catch {
