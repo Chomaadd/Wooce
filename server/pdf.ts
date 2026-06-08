@@ -144,7 +144,8 @@ function renderParagraphs(
       continue;
     }
 
-    const h = doc.heightOfString(para, { width: contentWidth, lineGap: LINE_GAP, fontSize: FONT_SIZE });
+    doc.fontSize(FONT_SIZE);
+    const h = doc.heightOfString(para, { width: contentWidth, lineGap: LINE_GAP });
 
     if (y + h > PAGE_BOTTOM) { y = onNewPage(); }
 
