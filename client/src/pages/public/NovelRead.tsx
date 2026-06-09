@@ -678,16 +678,21 @@ export default function NovelRead() {
     return () => window.removeEventListener("keydown", handler);
   }, [prevChapter, nextChapter, slug, seasonNum, navigate, focusMode]);
 
-  // Double-tap to exit focus mode (mobile)
+  // Double-tap (mobile) + double-click (desktop) to exit focus mode
   useEffect(() => {
     if (!focusMode) return;
-    const handler = () => {
+    const handleTouch = () => {
       const now = Date.now();
       if (now - lastTapRef.current < 350) setFocusMode(false);
       lastTapRef.current = now;
     };
-    document.addEventListener("touchstart", handler, { passive: true });
-    return () => document.removeEventListener("touchstart", handler);
+    const handleDblClick = () => setFocusMode(false);
+    document.addEventListener("touchstart", handleTouch, { passive: true });
+    document.addEventListener("dblclick", handleDblClick);
+    return () => {
+      document.removeEventListener("touchstart", handleTouch);
+      document.removeEventListener("dblclick", handleDblClick);
+    };
   }, [focusMode]);
 
   // Build pages for page flip mode
