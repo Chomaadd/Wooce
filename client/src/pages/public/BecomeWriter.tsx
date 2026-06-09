@@ -24,6 +24,15 @@ interface CooldownInfo {
   daysLeft: number;
 }
 
+function formatDetailedCooldown(endTimeMs: number) {
+  const msLeft = Math.max(0, endTimeMs - Date.now());
+  const totalSeconds = Math.floor(msLeft / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return { days, hours, minutes };
+}
+
 export default function BecomeWriter() {
   const { user, isLoading, refetch } = useAuth();
   const { t } = useLanguage();
@@ -87,13 +96,18 @@ export default function BecomeWriter() {
   const rejectedAt = (user as any)?.rejectedAt;
   const suspendedAt = (user as any)?.suspendedAt;
 
-  const rejectedDaysLeft = rejectedAt
-    ? Math.max(0, Math.ceil(7 - (Date.now() - new Date(rejectedAt).getTime()) / 86400000))
-    : 0;
+  // Live tick every minute for countdown display
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const suspendedDaysLeft = suspendedAt
-    ? Math.max(0, Math.ceil(30 - (Date.now() - new Date(suspendedAt).getTime()) / 86400000))
-    : 0;
+  const rejectedEndMs = rejectedAt ? new Date(rejectedAt).getTime() + 7 * 86400000 : 0;
+  const suspendedEndMs = suspendedAt ? new Date(suspendedAt).getTime() + 30 * 86400000 : 0;
+
+  const rejectedDaysLeft = rejectedAt ? Math.max(0, Math.ceil((rejectedEndMs - Date.now()) / 86400000)) : 0;
+  const suspendedDaysLeft = suspendedAt ? Math.max(0, Math.ceil((suspendedEndMs - Date.now()) / 86400000)) : 0;
 
   // Cooldown only shows if timestamp exists and days still remain
   const hasSuspendedCooldown = !!suspendedAt && suspendedDaysLeft > 0;
@@ -103,6 +117,14 @@ export default function BecomeWriter() {
     hasSuspendedCooldown ? { type: "suspended" as const, daysLeft: suspendedDaysLeft } :
     hasRejectedCooldown ? { type: "rejected" as const, daysLeft: rejectedDaysLeft } :
     null
+  );
+
+  // Detailed countdown for display
+  const rejectedCountdown = formatDetailedCooldown(
+    rejectedAt ? rejectedEndMs : Date.now() + (activeCooldown?.daysLeft ?? 0) * 86400000
+  );
+  const suspendedCountdown = formatDetailedCooldown(
+    suspendedAt ? suspendedEndMs : Date.now() + (activeCooldown?.daysLeft ?? 0) * 86400000
   );
 
   return (
@@ -177,10 +199,27 @@ export default function BecomeWriter() {
                   {t("becomeWriter.suspended.desc")}
                 </p>
               </div>
-              <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3 inline-flex items-center gap-2 mx-auto">
-                <Clock size={15} className="text-orange-500 flex-shrink-0" />
-                <p className="text-sm font-semibold text-orange-600">
-                  {activeCooldown.daysLeft} {t("becomeWriter.suspended.days")}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {[
+                    { value: suspendedCountdown.days, label: "Hari" },
+                    { value: suspendedCountdown.hours, label: "Jam" },
+                    { value: suspendedCountdown.minutes, label: "Menit" },
+                  ].map(({ value, label }, i) => (
+                    <div key={label} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-orange-400 font-bold text-lg">:</span>}
+                      <div className="flex flex-col items-center bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-2 min-w-[58px]">
+                        <span className="text-2xl font-bold text-orange-600 tabular-nums leading-none">
+                          {String(value).padStart(2, "0")}
+                        </span>
+                        <span className="text-[10px] font-medium text-orange-500 mt-0.5 uppercase tracking-wide">{label}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock size={11} />
+                  lagi untuk bisa mendaftar ulang
                 </p>
               </div>
               <Link href="/">
@@ -202,10 +241,27 @@ export default function BecomeWriter() {
                   {t("becomeWriter.rejected.desc")}
                 </p>
               </div>
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 inline-flex items-center gap-2 mx-auto">
-                <Clock size={15} className="text-red-500 flex-shrink-0" />
-                <p className="text-sm font-semibold text-red-600">
-                  {activeCooldown.daysLeft} {t("becomeWriter.rejected.days")}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {[
+                    { value: rejectedCountdown.days, label: "Hari" },
+                    { value: rejectedCountdown.hours, label: "Jam" },
+                    { value: rejectedCountdown.minutes, label: "Menit" },
+                  ].map(({ value, label }, i) => (
+                    <div key={label} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-red-400 font-bold text-lg">:</span>}
+                      <div className="flex flex-col items-center bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2 min-w-[58px]">
+                        <span className="text-2xl font-bold text-red-600 tabular-nums leading-none">
+                          {String(value).padStart(2, "0")}
+                        </span>
+                        <span className="text-[10px] font-medium text-red-500 mt-0.5 uppercase tracking-wide">{label}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock size={11} />
+                  lagi untuk bisa mendaftar ulang
                 </p>
               </div>
               <Link href="/">
