@@ -289,12 +289,6 @@ export default function VerifyAuthor() {
                   lagi untuk bisa mengajukan verifikasi ulang
                 </p>
               </div>
-              <Link href="/">
-                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-rejected-verify">
-                  <ArrowLeft size={14} />
-                  Kembali ke Beranda
-                </button>
-              </Link>
             </div>
 
           ) : (

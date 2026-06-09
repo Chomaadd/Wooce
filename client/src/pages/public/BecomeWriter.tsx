@@ -222,12 +222,6 @@ export default function BecomeWriter() {
                   lagi untuk bisa mendaftar ulang
                 </p>
               </div>
-              <Link href="/">
-                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-suspended">
-                  <ArrowLeft size={14} />
-                  {t("becomeWriter.back")}
-                </button>
-              </Link>
             </div>
 
           ) : activeCooldown?.type === "rejected" ? (
@@ -264,12 +258,6 @@ export default function BecomeWriter() {
                   lagi untuk bisa mendaftar ulang
                 </p>
               </div>
-              <Link href="/">
-                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors" data-testid="button-back-home-rejected">
-                  <ArrowLeft size={14} />
-                  {t("becomeWriter.back")}
-                </button>
-              </Link>
             </div>
 
           ) : isPending ? (
