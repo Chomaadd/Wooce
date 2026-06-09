@@ -4,7 +4,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight,
+  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight, EllipsisVertical,
 } from "lucide-react";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -440,6 +440,7 @@ export default function NovelRead() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [focusHint, setFocusHint] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const restoredRef = useRef(false);
   const [quoteText, setQuoteText] = useState("");
@@ -1008,12 +1009,22 @@ export default function NovelRead() {
             style={{ borderColor: modeStyle.border !== "transparent" ? modeStyle.border : undefined }}
           >
             <Link href={`/${slug}`}>
-              <button className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors" data-testid="button-flip-back">
+              <button className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" data-testid="button-flip-back">
                 <ArrowLeft size={16} />
               </button>
             </Link>
-            <span className="text-xs text-muted-foreground text-center flex-1 px-2 truncate">{chapter.title}</span>
-            <span className="text-xs font-mono text-muted-foreground flex-shrink-0">{flipPage + 1} / {flipPages.length}</span>
+            <span className="text-xs text-muted-foreground text-center flex-1 px-2 truncate">
+              {chapter.title}
+              <span className="font-mono opacity-50 ml-1">({flipPage + 1}/{flipPages.length})</span>
+            </span>
+            <button
+              onClick={() => setSettingsOpen(v => !v)}
+              className={`p-1 rounded-lg transition-colors flex-shrink-0 ${settingsOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              data-testid="button-flip-settings"
+              title="Pengaturan Baca"
+            >
+              <Settings2 size={16} />
+            </button>
           </div>
 
           {/* Page content with swipe */}
@@ -1338,64 +1349,103 @@ export default function NovelRead() {
         )}
       </AnimatePresence>
 
-      {/* Floating action buttons */}
-      <div className={`fixed bottom-5 right-4 z-50 flex flex-col items-center gap-2 transition-all duration-300 ${focusMode ? "opacity-0 pointer-events-none translate-y-4" : ""}`}>
+      {/* Floating action buttons — collapsible */}
+      <div className={`fixed bottom-16 right-4 z-50 flex flex-col items-center gap-2 transition-all duration-300 ${focusMode ? "opacity-0 pointer-events-none translate-y-4" : ""}`}>
         <AnimatePresence>
-          {quoteText && !quoteCardOpen && (
-            <motion.button
-              key="quote-btn"
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.7 }}
-              transition={{ duration: 0.15 }}
-              onClick={() => setQuoteCardOpen(true)}
-              className="w-10 h-10 rounded-full bg-violet-600 text-white shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              data-testid="button-open-quote-card"
-              title="Buat kartu kutipan"
-            >
-              <Quote size={15} />
-            </motion.button>
+          {fabOpen && (
+            <>
+              {quoteText && !quoteCardOpen && (
+                <motion.button
+                  key="quote-btn"
+                  initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => { setQuoteCardOpen(true); setFabOpen(false); }}
+                  className="w-10 h-10 rounded-full bg-violet-600 text-white shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+                  data-testid="button-open-quote-card"
+                  title="Buat kartu kutipan"
+                >
+                  <Quote size={15} />
+                </motion.button>
+              )}
+              <motion.button
+                key="translate"
+                initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                transition={{ duration: 0.15, delay: 0.02 }}
+                onClick={() => { setTranslateOpen(v => !v); setSettingsOpen(false); setTocOpen(false); setFabOpen(false); }}
+                className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${translateOpen || translatedContent ? "bg-primary text-primary-foreground border border-primary" : "bg-background border border-border text-muted-foreground hover:text-foreground"}`}
+                data-testid="button-translate"
+                title="Terjemahkan"
+              >
+                {isTranslating ? <Loader2 size={15} className="animate-spin" /> : <Languages size={15} />}
+              </motion.button>
+              <motion.button
+                key="copy-link"
+                initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                transition={{ duration: 0.15, delay: 0.04 }}
+                onClick={() => { handleCopyLink(); setFabOpen(false); }}
+                className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+                data-testid="button-copy-link"
+                title="Salin link chapter"
+              >
+                {linkCopied ? <Check size={15} className="text-green-500" /> : <Link2 size={15} />}
+              </motion.button>
+              <motion.button
+                key="share"
+                initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                transition={{ duration: 0.15, delay: 0.06 }}
+                onClick={() => { handleShare(chapter.title, story?.title); setFabOpen(false); }}
+                className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+                data-testid="button-share-chapter"
+                title={t("novel.share")}
+              >
+                {shareCopied ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
+              </motion.button>
+              <motion.button
+                key="focus"
+                initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                transition={{ duration: 0.15, delay: 0.08 }}
+                onClick={() => { setFocusMode(true); setFocusHint(true); setTimeout(() => setFocusHint(false), 2000); setSettingsOpen(false); setTocOpen(false); setFabOpen(false); }}
+                className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
+                data-testid="button-focus-mode"
+                title="Mode Fokus (F)"
+              >
+                <Maximize2 size={15} />
+              </motion.button>
+              <motion.button
+                key="report"
+                initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                transition={{ duration: 0.15, delay: 0.1 }}
+                onClick={() => { setReportOpen(true); setReportSuccess(false); setReportReason(""); setReportDetails(""); setReportError(""); setFabOpen(false); }}
+                className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-red-500"
+                data-testid="button-report-content"
+                title="Laporkan Konten"
+              >
+                <Flag size={15} />
+              </motion.button>
+            </>
           )}
         </AnimatePresence>
+
+        {/* Toggle button */}
         <button
-          onClick={() => { setTranslateOpen(v => !v); setSettingsOpen(false); setTocOpen(false); }}
-          className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${translateOpen || translatedContent ? "bg-primary text-primary-foreground border border-primary" : "bg-background border border-border text-muted-foreground hover:text-foreground"}`}
-          data-testid="button-translate"
-          title="Terjemahkan"
+          onClick={() => { setFabOpen(v => !v); setSettingsOpen(false); setTocOpen(false); }}
+          className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${fabOpen ? "bg-foreground text-background" : "bg-background border border-border text-muted-foreground hover:text-foreground"}`}
+          data-testid="button-fab-toggle"
+          title={fabOpen ? "Tutup" : "Aksi lainnya"}
         >
-          {isTranslating ? <Loader2 size={15} className="animate-spin" /> : <Languages size={15} />}
-        </button>
-        <button
-          onClick={handleCopyLink}
-          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
-          data-testid="button-copy-link"
-          title="Salin link chapter"
-        >
-          {linkCopied ? <Check size={15} className="text-green-500" /> : <Link2 size={15} />}
-        </button>
-        <button
-          onClick={() => handleShare(chapter.title, story?.title)}
-          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
-          data-testid="button-share-chapter"
-          title={t("novel.share")}
-        >
-          {shareCopied ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
-        </button>
-        <button
-          onClick={() => { setFocusMode(true); setFocusHint(true); setTimeout(() => setFocusHint(false), 2000); setSettingsOpen(false); setTocOpen(false); }}
-          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-foreground"
-          data-testid="button-focus-mode"
-          title="Mode Fokus (F)"
-        >
-          <Maximize2 size={15} />
-        </button>
-        <button
-          onClick={() => { setReportOpen(true); setReportSuccess(false); setReportReason(""); setReportDetails(""); setReportError(""); }}
-          className="w-10 h-10 rounded-full bg-background border border-border text-muted-foreground shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all hover:text-red-500"
-          data-testid="button-report-content"
-          title="Laporkan Konten"
-        >
-          <Flag size={15} />
+          {fabOpen ? <X size={15} /> : <EllipsisVertical size={15} />}
         </button>
       </div>
 
