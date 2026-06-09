@@ -31,6 +31,8 @@ import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, Verifi
 import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
 import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
+import { TopupOrderModel, COIN_PACKAGES } from "./paymentModel";
+import MidtransClient from "midtrans-client";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
@@ -1203,32 +1205,42 @@ export async function registerRoutes(
       const chapter = await storage.getNovelChapterByNumber(slug, seasonNum, Number(chapterNum));
       if (!chapter) return res.status(404).json({ message: "Chapter not found" });
 
-      const premium = await ChapterPremiumModel.findOne({ chapterId: chapter.id }).lean() as any;
+      // Admin can always read premium content
+      if (req.session?.adminId) return res.json(chapter);
+
+      // Check if chapter is premium
+      let chapterObjId: mongoose.Types.ObjectId;
+      try { chapterObjId = new mongoose.Types.ObjectId(chapter.id); }
+      catch { return res.json(chapter); }
+
+      const premium = await ChapterPremiumModel.findOne({ chapterId: chapterObjId }).lean() as any;
       if (!premium) return res.json(chapter);
 
+      // Check if logged-in user has unlocked this chapter
       const userId = req.session?.userId;
       if (userId) {
-        const unlocked = await UnlockedChapterModel.findOne({ userId, chapterId: chapter.id }).lean();
-        if (unlocked) return res.json({ ...chapter, isPremium: true, coinPrice: premium.coinPrice });
+        try {
+          const userObjId = new mongoose.Types.ObjectId(userId);
+          const unlocked = await UnlockedChapterModel.findOne({
+            userId: userObjId,
+            chapterId: chapterObjId,
+          }).lean();
+          if (unlocked) return res.json({ ...chapter, isPremium: true, coinPrice: premium.coinPrice });
+        } catch { /* invalid userId shape */ }
       }
 
+      // Chapter is locked — return metadata only, no content
       return res.json({
-        id: chapter.id,
-        storyId: chapter.storyId,
-        seasonId: chapter.seasonId,
-        chapterNumber: chapter.chapterNumber,
-        title: chapter.title,
+        ...chapter,
         content: "",
-        published: chapter.published,
-        scheduledAt: chapter.scheduledAt,
-        viewCount: chapter.viewCount,
-        createdAt: chapter.createdAt,
-        updatedAt: chapter.updatedAt,
         isPremium: true,
         coinPrice: premium.coinPrice,
         isLocked: true,
       });
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+    } catch (err) {
+      console.error("[chapter-read]", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // ── Coin System ──────────────────────────────────────────────────────────────
@@ -1275,10 +1287,13 @@ export async function registerRoutes(
       const { chapterId } = z.object({ chapterId: z.string() }).parse(req.body);
       const userId = req.session.userId;
 
-      const already = await UnlockedChapterModel.findOne({ userId, chapterId }).lean();
+      const chapterObjId = new mongoose.Types.ObjectId(chapterId);
+      const userObjId   = new mongoose.Types.ObjectId(userId);
+
+      const already = await UnlockedChapterModel.findOne({ userId: userObjId, chapterId: chapterObjId }).lean();
       if (already) return res.json({ success: true, alreadyUnlocked: true });
 
-      const premium = await ChapterPremiumModel.findOne({ chapterId }).lean() as any;
+      const premium = await ChapterPremiumModel.findOne({ chapterId: chapterObjId }).lean() as any;
       if (!premium) return res.status(400).json({ message: "Chapter ini tidak memerlukan koin" });
 
       const balance = await getUserCoinBalance(userId);
@@ -1287,18 +1302,20 @@ export async function registerRoutes(
       }
 
       await CoinTransactionModel.create({
-        userId,
+        userId: userObjId,
         amount: -premium.coinPrice,
         type: "unlock",
         description: `Buka chapter`,
-        chapterId,
+        chapterId: chapterObjId,
       });
-      await UnlockedChapterModel.create({ userId, chapterId, storyId: premium.storyId });
+      await UnlockedChapterModel.create({ userId: userObjId, chapterId: chapterObjId, storyId: premium.storyId });
 
       const newBalance = balance - premium.coinPrice;
       res.json({ success: true, coins: newBalance });
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      if (err.code === 11000) return res.json({ success: true, alreadyUnlocked: true });
+      console.error("[coin-unlock]", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -1372,19 +1389,23 @@ export async function registerRoutes(
       const chapter = await storage.getNovelChapter(chapterId);
       if (!chapter) return res.status(404).json({ message: "Chapter tidak ditemukan" });
 
+      const chapterObjId = new mongoose.Types.ObjectId(chapterId);
+      const storyObjId   = new mongoose.Types.ObjectId(chapter.storyId);
+
       if (coinPrice === null) {
-        await ChapterPremiumModel.deleteOne({ chapterId });
+        await ChapterPremiumModel.deleteOne({ chapterId: chapterObjId });
         return res.json({ isPremium: false, coinPrice: null });
       }
 
       await ChapterPremiumModel.findOneAndUpdate(
-        { chapterId },
-        { chapterId, storyId: chapter.storyId, coinPrice },
+        { chapterId: chapterObjId },
+        { $set: { storyId: storyObjId, coinPrice } },
         { upsert: true, new: true },
       );
       res.json({ isPremium: true, coinPrice });
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      console.error("[premium-patch]", err);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -1404,6 +1425,129 @@ export async function registerRoutes(
       res.json({ isPremium: true, coinPrice: premium.coinPrice });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
+
+  // ── Midtrans Payment Routes ──────────────────────────────────────────────────
+
+  function getMidtransSnap() {
+    const serverKey = process.env.MIDTRANS_SERVER_KEY;
+    if (!serverKey) throw new Error("MIDTRANS_SERVER_KEY belum dikonfigurasi");
+    return new MidtransClient.Snap({
+      isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
+      serverKey,
+      clientKey: process.env.MIDTRANS_CLIENT_KEY || "",
+    });
+  }
+
+  app.get("/api/payment/config", (_req, res) => {
+    const clientKey = process.env.MIDTRANS_CLIENT_KEY || "";
+    const isSandbox = process.env.MIDTRANS_IS_PRODUCTION !== "true";
+    if (!clientKey) return res.json({ clientKey: "", isSandbox, configured: false });
+    res.json({ clientKey, isSandbox, configured: true });
+  });
+
+  app.get("/api/payment/packages", (_req, res) => {
+    res.json(
+      Object.entries(COIN_PACKAGES).map(([id, pkg]) => ({
+        id,
+        coins: pkg.coins,
+        price: pkg.price,
+        label: pkg.label,
+      })),
+    );
+  });
+
+  app.post("/api/payment/topup/create", requireUser, async (req: any, res) => {
+    try {
+      const { packageId } = z.object({ packageId: z.string() }).parse(req.body);
+      const pkg = COIN_PACKAGES[packageId];
+      if (!pkg) return res.status(400).json({ message: "Paket koin tidak ditemukan" });
+
+      const userId = req.session.userId;
+      const user = await UserModel.findById(userId).select("name email username").lean() as any;
+
+      const orderId = `WOOCE-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+      const snap = getMidtransSnap();
+      const siteUrl = process.env.SITE_URL || "";
+      const transaction = await snap.createTransaction({
+        transaction_details: { order_id: orderId, gross_amount: pkg.price },
+        item_details: [{ id: packageId, price: pkg.price, quantity: 1, name: `${pkg.label} - WOOCE Novel` }],
+        customer_details: {
+          first_name: user?.name || user?.username || "Reader",
+          email: user?.email || "",
+        },
+        callbacks: {
+          finish: `${siteUrl}/payment/finish?order_id=${orderId}`,
+        },
+      });
+
+      await TopupOrderModel.create({
+        orderId,
+        userId: new mongoose.Types.ObjectId(userId),
+        coins: pkg.coins,
+        amount: pkg.price,
+        packageId,
+        status: "pending",
+        snapToken: transaction.token,
+      });
+
+      res.json({
+        token: transaction.token,
+        redirect_url: transaction.redirect_url,
+        orderId,
+        coins: pkg.coins,
+        price: pkg.price,
+      });
+    } catch (err: any) {
+      console.error("[payment-create]", err);
+      const msg = err?.ApiResponse?.error_messages?.[0] || err.message || "Gagal membuat transaksi";
+      res.status(500).json({ message: msg });
+    }
+  });
+
+  app.post("/api/payment/topup/notification", express.json(), async (req: any, res) => {
+    try {
+      const snap = getMidtransSnap();
+      const status = await (snap as any).transaction.notification(req.body);
+      const { order_id: orderId, transaction_status: txStatus, fraud_status: fraudStatus } = status;
+
+      const order = await TopupOrderModel.findOne({ orderId }).lean() as any;
+      if (!order || order.status !== "pending") return res.json({ ok: true });
+
+      const isSuccess = (txStatus === "capture" && fraudStatus === "accept") || txStatus === "settlement";
+      const isFailed  = ["cancel", "deny", "expire"].includes(txStatus);
+
+      if (isSuccess) {
+        await CoinTransactionModel.create({
+          userId: order.userId,
+          amount: order.coins,
+          type: "topup",
+          description: `Top-up ${order.coins} koin (${orderId})`,
+        });
+        await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "paid" } });
+      } else if (isFailed) {
+        await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "failed" } });
+      }
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[payment-notification]", err);
+      res.status(500).json({ message: "Error" });
+    }
+  });
+
+  app.get("/api/payment/topup/status/:orderId", requireUser, async (req: any, res) => {
+    try {
+      const order = await TopupOrderModel.findOne({
+        orderId: req.params.orderId,
+        userId: new mongoose.Types.ObjectId(req.session.userId),
+      }).lean() as any;
+      if (!order) return res.status(404).json({ message: "Order tidak ditemukan" });
+      res.json({ status: order.status, coins: order.coins, price: order.amount });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Chapter CRUD ─────────────────────────────────────────────────────────────
 
   app.post("/api/novel/chapters", requireAuth, async (req, res) => {
     try {

@@ -4,7 +4,7 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight, EllipsisVertical, Lock, LockOpen, Coins,
+  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight, EllipsisVertical, Lock, LockOpen, Coins, ShoppingBag,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { renderRichContent } from "@/components/ui/rich-text-editor";
 import { useLanguage } from "@/hooks/use-language";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { TopupModal } from "@/components/payment/TopupModal";
 
 // ── Reading Settings ──────────────────────────────────────────────────────────
 type ReadingMode = "light" | "sepia" | "night";
@@ -472,6 +473,7 @@ export default function NovelRead() {
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translateLang, setTranslateLang] = useState("en");
   const [unlockError, setUnlockError] = useState("");
+  const [showTopup, setShowTopup] = useState(false);
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -1231,8 +1233,8 @@ export default function NovelRead() {
             </div>
 
             {user && !user.isAdmin ? (
-              <div className="max-w-xs mx-auto">
-                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground mb-4">
+              <div className="max-w-xs mx-auto space-y-3">
+                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                   <Coins size={13} className="text-amber-500" />
                   Saldo kamu: <span className="font-bold text-foreground ml-0.5">{coinBalance} koin</span>
                 </div>
@@ -1249,15 +1251,24 @@ export default function NovelRead() {
                   )}
                 </button>
                 {coinBalance < (coinPrice ?? 0) && (
-                  <p className="text-xs text-red-500 mt-3">Koin tidak cukup. Hubungi admin untuk top-up koin.</p>
+                  <>
+                    <p className="text-xs text-muted-foreground">Koinmu tidak cukup untuk membuka chapter ini.</p>
+                    <button
+                      onClick={() => setShowTopup(true)}
+                      className="w-full py-2.5 px-6 rounded-xl border-2 border-amber-500 text-amber-600 dark:text-amber-400 font-semibold text-sm transition-all hover:bg-amber-500/8 flex items-center justify-center gap-2"
+                      data-testid="button-buy-coins-lockscreen"
+                    >
+                      <ShoppingBag size={14} /> Beli Koin
+                    </button>
+                  </>
                 )}
                 {unlockError && (
-                  <p className="text-xs text-red-500 mt-2">{unlockError}</p>
+                  <p className="text-xs text-red-500 mt-1">{unlockError}</p>
                 )}
               </div>
             ) : (
-              <div className="max-w-xs mx-auto">
-                <p className="text-sm text-muted-foreground mb-4">Login terlebih dahulu untuk membuka chapter ini.</p>
+              <div className="max-w-xs mx-auto space-y-3">
+                <p className="text-sm text-muted-foreground">Login terlebih dahulu untuk membuka chapter ini.</p>
                 <a
                   href="/auth/google"
                   className="inline-flex items-center gap-2 py-2.5 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
@@ -1746,6 +1757,18 @@ export default function NovelRead() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showTopup && (
+        <AnimatePresence>
+          <TopupModal
+            onClose={() => setShowTopup(false)}
+            onSuccess={() => {
+              setShowTopup(false);
+              queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
+            }}
+          />
+        </AnimatePresence>
+      )}
     </div>
   );
 }

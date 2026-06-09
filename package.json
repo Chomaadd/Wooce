@@ -78,6 +78,7 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
+    "midtrans-client": "^1.4.3",
     "mongoose": "^8.2.0",
     "multer": "^2.0.2",
     "music-metadata": "^11.12.1",

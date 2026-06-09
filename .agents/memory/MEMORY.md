@@ -1,1 +1,3 @@
 - [PDF generation — empty page fix](pdf-empty-pages.md) — footers drawn past PDFKit's usable boundary (791px) auto-create empty pages; fix with FOOTER_Y=762 and PAGE_BOTTOM=745.
+- [Coin system ObjectId casting](coin-objectid.md) — all ChapterPremiumModel/UnlockedChapterModel queries need explicit `new mongoose.Types.ObjectId()` casting; string comparison fails silently with Mongoose ObjectId fields.
+- [Midtrans integration](midtrans-integration.md) — uses Snap API; midtrans-client has no @types so needs server/midtrans.d.ts; client key served via /api/payment/config endpoint; server key in MIDTRANS_SERVER_KEY env var.

@@ -11,10 +11,11 @@ import type { NovelStory, AppNotification } from "@shared/schema";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { apiRequest } from "@/lib/queryClient";
 import { LoginModal } from "@/components/layout/LoginModal";
+import { TopupModal } from "@/components/payment/TopupModal";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
-function CoinBalanceRow() {
+function CoinBalanceRow({ onBuy }: { onBuy?: () => void }) {
   const { user } = useAuth();
   const { data } = useQuery<{ coins: number }>({
     queryKey: ["/api/coins/balance"],
@@ -26,7 +27,16 @@ function CoinBalanceRow() {
     <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50 mb-0.5">
       <Coins size={12} className="text-amber-500 flex-shrink-0" />
       <span className="text-xs text-muted-foreground flex-1">Koin</span>
-      <span className="text-xs font-bold text-foreground" data-testid="text-coin-balance">{data?.coins ?? 0}</span>
+      <span className="text-xs font-bold text-foreground mr-2" data-testid="text-coin-balance">{data?.coins ?? 0}</span>
+      {onBuy && (
+        <button
+          onClick={onBuy}
+          className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+          data-testid="button-navbar-buy-coins"
+        >
+          + Beli
+        </button>
+      )}
     </div>
   );
 }
@@ -396,6 +406,7 @@ export function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showTopupModal, setShowTopupModal] = useState(false);
 
   const showNotifBell = !!user && !user.isAdmin;
 
@@ -747,7 +758,7 @@ export function Navbar() {
                         )}
                       </div>
 
-                      <CoinBalanceRow />
+                      <CoinBalanceRow onBuy={() => { setUserMenuOpen(false); setShowTopupModal(true); }} />
 
                       <Link href="/profile">
                         <button
@@ -913,6 +924,7 @@ export function Navbar() {
       <AnimatePresence>
         {writerModalOpen && <WriterModal onClose={() => setWriterModalOpen(false)} onLoginClick={() => setLoginModalOpen(true)} />}
         {loginModalOpen && <LoginModal onClose={() => setLoginModalOpen(false)} />}
+        {showTopupModal && <TopupModal onClose={() => setShowTopupModal(false)} />}
       </AnimatePresence>
 
       {/* Mobile notification bottom sheet */}
