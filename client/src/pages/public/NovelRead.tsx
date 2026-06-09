@@ -1,11 +1,13 @@
 import { useRoute, Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
-  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight, EllipsisVertical,
+  Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight, EllipsisVertical, Lock, LockOpen, Coins,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
 import type { NovelChapter, NovelStory, NovelSeason } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { renderRichContent } from "@/components/ui/rich-text-editor";
@@ -427,12 +429,14 @@ function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, set
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function NovelRead() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [, params] = useRoute("/:slug/:seasonSlug/:chapterSlug");
   const slug = params?.slug ?? "";
   const seasonNum = Number(params?.seasonSlug?.replace("season-", "") ?? 1);
   const chapterNum = Number(params?.chapterSlug?.replace("bab-", "") ?? 1);
 
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const { settings, update } = useReadingSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
@@ -467,6 +471,7 @@ export default function NovelRead() {
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translateLang, setTranslateLang] = useState("en");
+  const [unlockError, setUnlockError] = useState("");
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -493,6 +498,26 @@ export default function NovelRead() {
     queryKey: ["/api/novel/seasons", chapter?.seasonId, "chapters"],
     queryFn: () => fetch(`/api/novel/seasons/${chapter!.seasonId}/chapters`).then(r => r.json()),
     enabled: !!chapter?.seasonId,
+  });
+
+  const isLocked = !!(chapter as any)?.isLocked;
+  const coinPrice = (chapter as any)?.coinPrice as number | undefined;
+
+  const { data: coinData } = useQuery<{ coins: number }>({
+    queryKey: ["/api/coins/balance"],
+    queryFn: () => fetch("/api/coins/balance", { credentials: "include" }).then(r => r.json()),
+    enabled: isLocked && !!user && !user.isAdmin,
+  });
+  const coinBalance = coinData?.coins ?? 0;
+
+  const unlockMut = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/coins/unlock", { chapterId: chapter?.id }),
+    onSuccess: () => {
+      setUnlockError("");
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/read", slug, seasonNum, chapterNum] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
+    },
+    onError: (err: any) => setUnlockError(err?.message ?? "Gagal membuka chapter"),
   });
 
   const currentSeason  = seasons?.find(s => s.seasonNumber === seasonNum);
@@ -1187,34 +1212,92 @@ export default function NovelRead() {
           </div>
         </motion.div>
 
-        {/* Chapter content */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.08 }}
-          className={`prose prose-gray max-w-none
-            prose-p:leading-[2] prose-headings:font-bold
-            prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground
-            prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic
-            prose-p:my-5 prose-hr:my-10 ${proseInvert} ${fontClass}`}
-          style={{
-            fontSize: `${settings.fontSize}px`,
-            color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
-            ...proseColorVars,
-            ...fontFamilyOverride,
-          }}
-          data-testid="text-chapter-content"
-          dangerouslySetInnerHTML={{ __html: translatedContent ?? renderRichContent(chapter.content) }}
-        />
+        {/* Chapter content — or lock screen */}
+        {isLocked ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-16 px-4"
+            data-testid="section-chapter-locked"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-5">
+              <Lock size={28} className="text-amber-500" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-2">Chapter Premium</h3>
+            <p className="text-sm text-muted-foreground mb-1">Bab ini dikunci dan hanya bisa dibuka dengan koin.</p>
+            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-sm px-3 py-1.5 rounded-full mb-6 mt-2">
+              <Coins size={14} />
+              {coinPrice} koin
+            </div>
 
-        {/* End of chapter divider */}
-        <div className="flex items-center gap-4 my-16">
+            {user && !user.isAdmin ? (
+              <div className="max-w-xs mx-auto">
+                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground mb-4">
+                  <Coins size={13} className="text-amber-500" />
+                  Saldo kamu: <span className="font-bold text-foreground ml-0.5">{coinBalance} koin</span>
+                </div>
+                <button
+                  onClick={() => unlockMut.mutate()}
+                  disabled={unlockMut.isPending || coinBalance < (coinPrice ?? 0)}
+                  className="w-full py-3 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                  data-testid="button-unlock-chapter"
+                >
+                  {unlockMut.isPending ? (
+                    <><Loader2 size={15} className="animate-spin" /> Membuka...</>
+                  ) : (
+                    <><LockOpen size={15} /> Buka dengan {coinPrice} Koin</>
+                  )}
+                </button>
+                {coinBalance < (coinPrice ?? 0) && (
+                  <p className="text-xs text-red-500 mt-3">Koin tidak cukup. Hubungi admin untuk top-up koin.</p>
+                )}
+                {unlockError && (
+                  <p className="text-xs text-red-500 mt-2">{unlockError}</p>
+                )}
+              </div>
+            ) : (
+              <div className="max-w-xs mx-auto">
+                <p className="text-sm text-muted-foreground mb-4">Login terlebih dahulu untuk membuka chapter ini.</p>
+                <a
+                  href="/auth/google"
+                  className="inline-flex items-center gap-2 py-2.5 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+                  data-testid="button-login-to-unlock"
+                >
+                  Login untuk Buka Chapter
+                </a>
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.08 }}
+            className={`prose prose-gray max-w-none
+              prose-p:leading-[2] prose-headings:font-bold
+              prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground
+              prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic
+              prose-p:my-5 prose-hr:my-10 ${proseInvert} ${fontClass}`}
+            style={{
+              fontSize: `${settings.fontSize}px`,
+              color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+              ...proseColorVars,
+              ...fontFamilyOverride,
+            }}
+            data-testid="text-chapter-content"
+            dangerouslySetInnerHTML={{ __html: translatedContent ?? renderRichContent(chapter.content) }}
+          />
+        )}
+
+        {/* End of chapter divider — hidden when locked */}
+        {!isLocked && <div className="flex items-center gap-4 my-16">
           <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
           <span className="text-xs text-muted-foreground px-3">— {t("novel.read.finished")} —</span>
           <div className="flex-1 h-px" style={{ background: modeStyle.border !== "transparent" ? modeStyle.border : "hsl(var(--border))" }} />
-        </div>
+        </div>}
 
-        {/* Donation section */}
+        {/* Donation section — hidden when locked */}
+        {!isLocked && <>{/* Donation section */}
         {(() => {
           const author = (story as any)?.author;
           const hasSaweria  = !!author?.saweria;
@@ -1348,6 +1431,7 @@ export default function NovelRead() {
             </button>
           </Link>
         </div>
+        </>}
       </main>
 
       {/* Focus mode hint */}

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -13,6 +13,23 @@ import { apiRequest } from "@/lib/queryClient";
 import { LoginModal } from "@/components/layout/LoginModal";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
+
+function CoinBalanceRow() {
+  const { user } = useAuth();
+  const { data } = useQuery<{ coins: number }>({
+    queryKey: ["/api/coins/balance"],
+    queryFn: () => fetch("/api/coins/balance", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user && !user.isAdmin,
+  });
+  if (!user || user.isAdmin) return null;
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50 mb-0.5">
+      <Coins size={12} className="text-amber-500 flex-shrink-0" />
+      <span className="text-xs text-muted-foreground flex-1">Koin</span>
+      <span className="text-xs font-bold text-foreground" data-testid="text-coin-balance">{data?.coins ?? 0}</span>
+    </div>
+  );
+}
 
 function TermsReadModal({ onClose, onAccept }: { onClose: () => void; onAccept: () => void }) {
   const { language } = useLanguage();
@@ -729,6 +746,8 @@ export function Navbar() {
                           </span>
                         )}
                       </div>
+
+                      <CoinBalanceRow />
 
                       <Link href="/profile">
                         <button

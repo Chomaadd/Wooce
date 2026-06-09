@@ -20,13 +20,14 @@ import {
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
+  Coins, Lock, LockOpen, Search, PlusCircle,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -941,6 +942,11 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
         </div>
       )}
 
+      {/* Premium Chapter Setting — only for existing chapters */}
+      {chapter && (
+        <PremiumChapterToggle chapterId={chapter.id} />
+      )}
+
       <div className="flex gap-2 pt-2">
         <Button variant="outline" onClick={onBack} data-testid="button-discard-chapter">{t("admin.novel.form.cancel")}</Button>
         <Button onClick={handleSave} disabled={!form.title || !form.content || save.isPending} data-testid="button-save-chapter">
@@ -949,6 +955,91 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
       </div>
     </div>
     </>
+  );
+}
+
+function PremiumChapterToggle({ chapterId }: { chapterId: string }) {
+  const { toast } = useToast();
+  const { data, isLoading, refetch } = useQuery<{ isPremium: boolean; coinPrice: number | null }>({
+    queryKey: ["/api/admin/chapters", chapterId, "premium"],
+    queryFn: () => fetch(`/api/admin/chapters/${chapterId}/premium`, { credentials: "include" }).then(r => r.json()),
+  });
+  const [priceInput, setPriceInput] = useState("");
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (data) {
+      setEnabled(data.isPremium);
+      setPriceInput(data.coinPrice ? String(data.coinPrice) : "");
+    }
+  }, [data]);
+
+  const saveMut = useMutation({
+    mutationFn: (coinPrice: number | null) =>
+      apiRequest("PATCH", `/api/admin/chapters/${chapterId}/premium`, { coinPrice }),
+    onSuccess: () => { toast({ title: "Pengaturan premium disimpan" }); refetch(); },
+    onError: () => toast({ title: "Gagal simpan", variant: "destructive" }),
+  });
+
+  const handleSavePremium = () => {
+    if (!enabled) { saveMut.mutate(null); return; }
+    const price = parseInt(priceInput);
+    if (isNaN(price) || price < 1) { toast({ title: "Harga harus angka >= 1", variant: "destructive" }); return; }
+    saveMut.mutate(price);
+  };
+
+  if (isLoading) return null;
+
+  return (
+    <div className={`border rounded-xl p-4 space-y-3 transition-colors ${enabled ? "border-amber-400/40 bg-amber-50/50 dark:bg-amber-900/10" : "border-border"}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {enabled ? <Lock size={15} className="text-amber-500" /> : <LockOpen size={15} className="text-muted-foreground" />}
+          <span className="text-sm font-medium">{enabled ? "Chapter Premium" : "Chapter Gratis"}</span>
+          {enabled && data?.coinPrice && (
+            <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-semibold flex items-center gap-0.5">
+              <Coins size={10} /> {data.coinPrice} koin
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setEnabled(v => !v)}
+          className={`w-10 h-5 rounded-full transition-colors relative ${enabled ? "bg-amber-500" : "bg-muted-foreground/30"}`}
+          data-testid="toggle-chapter-premium"
+        >
+          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${enabled ? "left-5.5" : "left-0.5"}`} />
+        </button>
+      </div>
+      {enabled && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <label className="text-xs text-muted-foreground mb-1 block">Harga (koin) *</label>
+            <Input
+              type="number"
+              min={1}
+              value={priceInput}
+              onChange={e => setPriceInput(e.target.value)}
+              placeholder="Contoh: 5"
+              className="h-8 text-sm"
+              data-testid="input-chapter-coin-price"
+            />
+          </div>
+          <div className="pt-5">
+            <Button size="sm" onClick={handleSavePremium} disabled={saveMut.isPending} data-testid="button-save-premium">
+              {saveMut.isPending ? "Simpan..." : "Simpan"}
+            </Button>
+          </div>
+        </div>
+      )}
+      {!enabled && data?.isPremium && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" onClick={handleSavePremium} disabled={saveMut.isPending} data-testid="button-remove-premium">
+            {saveMut.isPending ? "Hapus..." : "Hapus Premium"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1394,9 +1485,16 @@ export default function ManageNovel() {
           >
             <Flag size={13} /> Laporan
           </button>
+          <button
+            onClick={() => setView("coins")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "coins" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            data-testid="tab-coins"
+          >
+            <Coins size={13} /> Koin
+          </button>
         </div>
 
-      {view !== "approvals" && view !== "reports" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2062,10 +2160,137 @@ export default function ManageNovel() {
 
       {view === "approvals" && <ApprovalsView />}
       {(view as View) === "reports" && <ReportsView />}
+      {(view as View) === "coins" && <CoinAdminView />}
 
       </div>
 
       {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
+    </div>
+  );
+}
+
+// ── CoinAdminView ──────────────────────────────────────────────────────────────
+function CoinAdminView() {
+  const { toast } = useToast();
+  const [search, setSearch] = useState("");
+  const [topupUserId, setTopupUserId] = useState<string | null>(null);
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupNote, setTopupNote] = useState("");
+
+  const { data: users, isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/admin/coins/users"],
+    queryFn: () => fetch("/api/admin/coins/users", { credentials: "include" }).then(r => r.json()),
+  });
+
+  const topupMut = useMutation({
+    mutationFn: (body: { userId: string; amount: number; note?: string }) =>
+      apiRequest("POST", "/api/admin/coins/topup", body),
+    onSuccess: () => {
+      toast({ title: "Top-up berhasil!" });
+      setTopupUserId(null);
+      setTopupAmount("");
+      setTopupNote("");
+      refetch();
+    },
+    onError: () => toast({ title: "Gagal top-up", variant: "destructive" }),
+  });
+
+  const handleTopup = () => {
+    if (!topupUserId) return;
+    const amount = parseInt(topupAmount);
+    if (isNaN(amount) || amount < 1) { toast({ title: "Jumlah harus angka >= 1", variant: "destructive" }); return; }
+    topupMut.mutate({ userId: topupUserId, amount, note: topupNote || undefined });
+  };
+
+  const filtered = (users ?? []).filter((u: any) =>
+    !search || u.username?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <Coins size={22} className="text-amber-500" /> Manajemen Koin
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Top-up koin manual ke reader dan lihat riwayat saldo.</p>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative max-w-sm">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Cari user..."
+          className="pl-8 h-9 text-sm"
+          data-testid="input-search-coin-users"
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Coins size={32} className="mx-auto mb-2 opacity-20" />
+          <p className="text-sm">Belum ada user terdaftar.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((u: any) => (
+            <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-muted/30 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0">
+                {(u.username ?? u.email ?? "?")[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-foreground truncate">{u.username ?? u.email}</div>
+                {u.email && u.username && <div className="text-xs text-muted-foreground truncate">{u.email}</div>}
+              </div>
+              <div className="flex items-center gap-1.5 text-sm font-bold text-amber-600 dark:text-amber-400 mr-2">
+                <Coins size={14} className="text-amber-500" />
+                {u.coins ?? 0}
+              </div>
+              {topupUserId === u.id ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={topupAmount}
+                    onChange={e => setTopupAmount(e.target.value)}
+                    placeholder="Jumlah"
+                    className="h-8 w-20 text-sm"
+                    data-testid="input-topup-amount"
+                  />
+                  <Input
+                    value={topupNote}
+                    onChange={e => setTopupNote(e.target.value)}
+                    placeholder="Catatan (opsional)"
+                    className="h-8 w-32 text-sm hidden sm:block"
+                    data-testid="input-topup-note"
+                  />
+                  <Button size="sm" onClick={handleTopup} disabled={topupMut.isPending} data-testid="button-confirm-topup">
+                    {topupMut.isPending ? "..." : "Top-up"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setTopupUserId(null)} data-testid="button-cancel-topup">
+                    <X size={13} />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setTopupUserId(u.id); setTopupAmount(""); setTopupNote(""); }}
+                  className="text-xs gap-1"
+                  data-testid={`button-topup-${u.id}`}
+                >
+                  <PlusCircle size={12} /> Top-up
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

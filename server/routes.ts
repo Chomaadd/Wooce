@@ -30,6 +30,7 @@ import {
 import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel } from "./db";
 import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
+import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
 
@@ -1196,12 +1197,211 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
-  app.get("/api/novel/read/:slug/season-:seasonNum/bab-:chapterNum", async (req, res) => {
+  app.get("/api/novel/read/:slug/season-:seasonNum/bab-:chapterNum", async (req: any, res) => {
     try {
       const { slug, seasonNum, chapterNum } = req.params;
       const chapter = await storage.getNovelChapterByNumber(slug, seasonNum, Number(chapterNum));
       if (!chapter) return res.status(404).json({ message: "Chapter not found" });
-      res.json(chapter);
+
+      const premium = await ChapterPremiumModel.findOne({ chapterId: chapter.id }).lean() as any;
+      if (!premium) return res.json(chapter);
+
+      const userId = req.session?.userId;
+      if (userId) {
+        const unlocked = await UnlockedChapterModel.findOne({ userId, chapterId: chapter.id }).lean();
+        if (unlocked) return res.json({ ...chapter, isPremium: true, coinPrice: premium.coinPrice });
+      }
+
+      return res.json({
+        id: chapter.id,
+        storyId: chapter.storyId,
+        seasonId: chapter.seasonId,
+        chapterNumber: chapter.chapterNumber,
+        title: chapter.title,
+        content: "",
+        published: chapter.published,
+        scheduledAt: chapter.scheduledAt,
+        viewCount: chapter.viewCount,
+        createdAt: chapter.createdAt,
+        updatedAt: chapter.updatedAt,
+        isPremium: true,
+        coinPrice: premium.coinPrice,
+        isLocked: true,
+      });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Coin System ──────────────────────────────────────────────────────────────
+
+  async function getUserCoinBalance(userId: string): Promise<number> {
+    const result = await CoinTransactionModel.aggregate([
+      { $match: { userId: new (mongoose.Types.ObjectId as any)(userId) } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    return result[0]?.total ?? 0;
+  }
+
+  app.get("/api/coins/balance", requireUser, async (req: any, res) => {
+    try {
+      const coins = await getUserCoinBalance(req.session.userId);
+      res.json({ coins });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/coins/transactions", requireUser, async (req: any, res) => {
+    try {
+      const txns = await CoinTransactionModel.find({ userId: req.session.userId })
+        .sort({ createdAt: -1 }).limit(50).lean();
+      res.json(txns.map((t: any) => ({
+        id: t._id.toString(),
+        amount: t.amount,
+        type: t.type,
+        description: t.description,
+        chapterId: t.chapterId?.toString() ?? null,
+        createdAt: t.createdAt,
+      })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/coins/unlocked", requireUser, async (req: any, res) => {
+    try {
+      const unlocked = await UnlockedChapterModel.find({ userId: req.session.userId }).lean();
+      res.json(unlocked.map((u: any) => u.chapterId.toString()));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/coins/unlock", requireUser, async (req: any, res) => {
+    try {
+      const { chapterId } = z.object({ chapterId: z.string() }).parse(req.body);
+      const userId = req.session.userId;
+
+      const already = await UnlockedChapterModel.findOne({ userId, chapterId }).lean();
+      if (already) return res.json({ success: true, alreadyUnlocked: true });
+
+      const premium = await ChapterPremiumModel.findOne({ chapterId }).lean() as any;
+      if (!premium) return res.status(400).json({ message: "Chapter ini tidak memerlukan koin" });
+
+      const balance = await getUserCoinBalance(userId);
+      if (balance < premium.coinPrice) {
+        return res.status(400).json({ message: "Koin tidak cukup", coins: balance, required: premium.coinPrice });
+      }
+
+      await CoinTransactionModel.create({
+        userId,
+        amount: -premium.coinPrice,
+        type: "unlock",
+        description: `Buka chapter`,
+        chapterId,
+      });
+      await UnlockedChapterModel.create({ userId, chapterId, storyId: premium.storyId });
+
+      const newBalance = balance - premium.coinPrice;
+      res.json({ success: true, coins: newBalance });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/coins/users", requireAuth, async (_req, res) => {
+    try {
+      const users = await UserModel.find({ role: { $in: ["reader", "writer"] } })
+        .select("_id name email photoUrl role").lean();
+
+      const balances = await CoinTransactionModel.aggregate([
+        { $group: { _id: "$userId", coins: { $sum: "$amount" } } },
+      ]);
+      const balanceMap = new Map<string, number>();
+      for (const b of balances) balanceMap.set(b._id.toString(), b.coins);
+
+      res.json(users.map((u: any) => ({
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        photoUrl: u.photoUrl,
+        role: u.role,
+        coins: balanceMap.get(u._id.toString()) ?? 0,
+      })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/admin/coins/topup", requireAuth, async (req, res) => {
+    try {
+      const { userId, amount, description } = z.object({
+        userId: z.string(),
+        amount: z.number().int().positive(),
+        description: z.string().optional().default("Top-up oleh admin"),
+      }).parse(req.body);
+
+      const user = await storage.getUserById(userId);
+      if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+
+      await CoinTransactionModel.create({ userId, amount, type: "topup", description });
+      const newBalance = await getUserCoinBalance(userId);
+      res.json({ success: true, coins: newBalance });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/coins/transactions", requireAuth, async (_req, res) => {
+    try {
+      const txns = await CoinTransactionModel.find()
+        .populate("userId", "name email")
+        .sort({ createdAt: -1 }).limit(100).lean();
+      res.json(txns.map((t: any) => ({
+        id: t._id.toString(),
+        userId: t.userId?._id?.toString() ?? t.userId?.toString(),
+        userName: t.userId?.name ?? "–",
+        userEmail: t.userId?.email ?? "–",
+        amount: t.amount,
+        type: t.type,
+        description: t.description,
+        chapterId: t.chapterId?.toString() ?? null,
+        createdAt: t.createdAt,
+      })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.patch("/api/admin/chapters/:id/premium", requireAuth, async (req, res) => {
+    try {
+      const { coinPrice } = z.object({ coinPrice: z.number().int().min(1).nullable() }).parse(req.body);
+      const chapterId = req.params.id;
+
+      const chapter = await storage.getNovelChapter(chapterId);
+      if (!chapter) return res.status(404).json({ message: "Chapter tidak ditemukan" });
+
+      if (coinPrice === null) {
+        await ChapterPremiumModel.deleteOne({ chapterId });
+        return res.json({ isPremium: false, coinPrice: null });
+      }
+
+      await ChapterPremiumModel.findOneAndUpdate(
+        { chapterId },
+        { chapterId, storyId: chapter.storyId, coinPrice },
+        { upsert: true, new: true },
+      );
+      res.json({ isPremium: true, coinPrice });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/chapters/:id/premium", requireAuth, async (req, res) => {
+    try {
+      const premium = await ChapterPremiumModel.findOne({ chapterId: req.params.id }).lean() as any;
+      if (!premium) return res.json({ isPremium: false, coinPrice: null });
+      res.json({ isPremium: true, coinPrice: premium.coinPrice });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/chapters/:id/premium", async (req, res) => {
+    try {
+      const premium = await ChapterPremiumModel.findOne({ chapterId: req.params.id }).lean() as any;
+      if (!premium) return res.json({ isPremium: false, coinPrice: null });
+      res.json({ isPremium: true, coinPrice: premium.coinPrice });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
