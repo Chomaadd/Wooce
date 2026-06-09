@@ -720,6 +720,16 @@ const translations: Record<Language, Record<string, string>> = {
     "navbar.user.manageStories": "Manage Stories",
     "navbar.user.becomeWriter": "Register as Writer",
     "navbar.user.notifications": "Notifications",
+
+    "novel.by": "by",
+    "novel.lanjutBaca.subtitle": "Pick up where you left off",
+    "countdown.days": "Days",
+    "countdown.hours": "Hours",
+    "countdown.minutes": "Minutes",
+    "becomeWriter.countdown.later": "before you can reapply",
+    "verifyAuthor.rejected.title": "Application Rejected",
+    "verifyAuthor.rejected.desc": "Your previous verification request did not meet the requirements. You can reapply after the waiting period.",
+    "verifyAuthor.countdown.later": "before you can reapply for verification",
   },
   id: {
     "nav.home": "Beranda",
@@ -1439,6 +1449,16 @@ const translations: Record<Language, Record<string, string>> = {
     "navbar.user.manageStories": "Kelola Cerita",
     "navbar.user.becomeWriter": "Daftar sebagai Penulis",
     "navbar.user.notifications": "Notifikasi",
+
+    "novel.by": "oleh",
+    "novel.lanjutBaca.subtitle": "Lanjutkan dari mana kamu berhenti",
+    "countdown.days": "Hari",
+    "countdown.hours": "Jam",
+    "countdown.minutes": "Menit",
+    "becomeWriter.countdown.later": "lagi untuk bisa mendaftar ulang",
+    "verifyAuthor.rejected.title": "Pengajuan Ditolak",
+    "verifyAuthor.rejected.desc": "Pengajuan verifikasimu sebelumnya tidak memenuhi syarat. Kamu bisa mengajukan kembali setelah masa tunggu selesai.",
+    "verifyAuthor.countdown.later": "lagi untuk bisa mengajukan verifikasi ulang",
   },
 };
 

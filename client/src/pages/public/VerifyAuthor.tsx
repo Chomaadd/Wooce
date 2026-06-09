@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -50,6 +51,7 @@ const REQUIREMENTS = [
 export default function VerifyAuthor() {
   const { user, isLoading, refetch } = useAuth();
   const [, navigate] = useLocation();
+  const { t } = useLanguage();
   const { toast } = useToast();
 
   const [form, setForm] = useState({
@@ -261,17 +263,17 @@ export default function VerifyAuthor() {
                 <AlertTriangle size={22} className="text-red-500" />
               </div>
               <div>
-                <p className="font-bold text-foreground text-base">Pengajuan Ditolak</p>
+                <p className="font-bold text-foreground text-base">{t("verifyAuthor.rejected.title")}</p>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-1">
-                  Pengajuan verifikasimu sebelumnya tidak memenuhi syarat. Kamu bisa mengajukan kembali setelah masa tunggu selesai.
+                  {t("verifyAuthor.rejected.desc")}
                 </p>
               </div>
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center gap-2">
                   {[
-                    { value: cdDays, label: "Hari" },
-                    { value: cdHours, label: "Jam" },
-                    { value: cdMinutes, label: "Menit" },
+                    { value: cdDays, label: t("countdown.days") },
+                    { value: cdHours, label: t("countdown.hours") },
+                    { value: cdMinutes, label: t("countdown.minutes") },
                   ].map(({ value, label }, i) => (
                     <div key={label} className="flex items-center gap-2">
                       {i > 0 && <span className="text-red-400 font-bold text-lg">:</span>}
@@ -286,7 +288,7 @@ export default function VerifyAuthor() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock size={11} />
-                  lagi untuk bisa mengajukan verifikasi ulang
+                  {t("verifyAuthor.countdown.later")}
                 </p>
               </div>
             </div>

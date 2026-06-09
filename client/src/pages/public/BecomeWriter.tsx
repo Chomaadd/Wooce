@@ -202,9 +202,9 @@ export default function BecomeWriter() {
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center gap-2">
                   {[
-                    { value: suspendedCountdown.days, label: "Hari" },
-                    { value: suspendedCountdown.hours, label: "Jam" },
-                    { value: suspendedCountdown.minutes, label: "Menit" },
+                    { value: suspendedCountdown.days, label: t("countdown.days") },
+                    { value: suspendedCountdown.hours, label: t("countdown.hours") },
+                    { value: suspendedCountdown.minutes, label: t("countdown.minutes") },
                   ].map(({ value, label }, i) => (
                     <div key={label} className="flex items-center gap-2">
                       {i > 0 && <span className="text-orange-400 font-bold text-lg">:</span>}
@@ -219,7 +219,7 @@ export default function BecomeWriter() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock size={11} />
-                  lagi untuk bisa mendaftar ulang
+                  {t("becomeWriter.countdown.later")}
                 </p>
               </div>
             </div>
@@ -238,9 +238,9 @@ export default function BecomeWriter() {
               <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center gap-2">
                   {[
-                    { value: rejectedCountdown.days, label: "Hari" },
-                    { value: rejectedCountdown.hours, label: "Jam" },
-                    { value: rejectedCountdown.minutes, label: "Menit" },
+                    { value: rejectedCountdown.days, label: t("countdown.days") },
+                    { value: rejectedCountdown.hours, label: t("countdown.hours") },
+                    { value: rejectedCountdown.minutes, label: t("countdown.minutes") },
                   ].map(({ value, label }, i) => (
                     <div key={label} className="flex items-center gap-2">
                       {i > 0 && <span className="text-red-400 font-bold text-lg">:</span>}
@@ -255,7 +255,7 @@ export default function BecomeWriter() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock size={11} />
-                  lagi untuk bisa mendaftar ulang
+                  {t("becomeWriter.countdown.later")}
                 </p>
               </div>
             </div>

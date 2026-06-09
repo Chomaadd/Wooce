@@ -313,7 +313,7 @@ function NovelUnggulan({ stories }: { stories: StoryWithStats[] }) {
                           {story.totalChapters > 0 && (
                             <span className="flex items-center gap-1 text-[10px] font-semibold text-white">
                               <BookMarked size={9} />
-                              {story.totalChapters} bab
+                              {story.totalChapters} {t("novel.read.chapterUnit")}
                             </span>
                           )}
                         </div>
@@ -408,9 +408,23 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                   <span className="text-[8px] font-semibold text-white">{formatViewCount(story.viewCount)}</span>
                 </div>
               </div>
-              <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
-                {story.title}
-              </h3>
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+                  {story.title}
+                </h3>
+                {story.authorName && (
+                  <div className="flex items-center justify-center gap-1 text-[9px] text-muted-foreground/70">
+                    <span>{t("novel.by")}</span>
+                    <span
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
+                      className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
+                    >
+                      <span className="truncate">{story.authorName}</span>
+                      {story.authorVerified && <VerifiedBadge size="sm" />}
+                    </span>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </Link>
         ))}
@@ -510,7 +524,7 @@ function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
     <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-8 pb-2">
       <SectionHeader
         icon={<BookOpen size={15} />}
-        subtitle={language === "id" ? "Lanjutkan dari mana kamu berhenti" : "Pick up where you left off"}
+        subtitle={t("novel.lanjutBaca.subtitle")}
         title={t("novel.lanjutBaca.title")}
         scrollLeft={() => scroll(-1)}
         scrollRight={() => scroll(1)}
@@ -560,7 +574,7 @@ function LanjutBaca({ stories }: { stories: StoryWithStats[] }) {
                     )}
                     <div className={`absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                       <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                      {story.status}
+                      {t(`novel.status.${story.status}`)}
                     </div>
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-2 pt-6 pb-2">
                       <p className="text-[9px] font-bold text-white/95 leading-tight">
@@ -667,14 +681,28 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                     <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
                   </div>
                 </div>
-                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
-                  {story.title}
-                </h3>
-                {story.totalChapters > 0 && (
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5 justify-center">
-                    <BookMarked size={9} /> {story.totalChapters} bab
-                  </p>
-                )}
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+                    {story.title}
+                  </h3>
+                  {story.authorName && (
+                    <div className="flex items-center justify-center gap-1 text-[9px] text-muted-foreground/70">
+                      <span>{t("novel.by")}</span>
+                      <span
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
+                        className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
+                      >
+                        <span className="truncate">{story.authorName}</span>
+                        {story.authorVerified && <VerifiedBadge size="sm" />}
+                      </span>
+                    </div>
+                  )}
+                  {story.totalChapters > 0 && (
+                    <p className="text-[9px] text-muted-foreground flex items-center gap-0.5 justify-center">
+                      <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                    </p>
+                  )}
+                </div>
               </motion.div>
             </Link>
           );
@@ -758,9 +786,23 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                     </span>
                   </div>
                 </div>
-                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
-                  {story.title}
-                </h3>
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+                    {story.title}
+                  </h3>
+                  {story.authorName && (
+                    <div className="flex items-center justify-center gap-1 text-[9px] text-muted-foreground/70">
+                      <span>{t("novel.by")}</span>
+                      <span
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
+                        className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
+                      >
+                        <span className="truncate">{story.authorName}</span>
+                        {story.authorVerified && <VerifiedBadge size="sm" />}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </motion.div>
             </Link>
           );
@@ -852,7 +894,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                       {story.totalChapters > 0 && (
                         <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
                           <BookMarked size={8} />
-                          {story.totalChapters} bab
+                          {story.totalChapters} {t("novel.read.chapterUnit")}
                         </span>
                       )}
                     </div>
@@ -866,7 +908,7 @@ function Rekomendasi({ stories }: { stories: StoryWithStats[] }) {
                     </h3>
                     {story.authorName && (
                       <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/70">
-                        <span>oleh</span>
+                        <span>{t("novel.by")}</span>
                         <span
                           onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
                           className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
@@ -955,9 +997,23 @@ function SearchResults({ stories, search, onClose }: {
                       </div>
                     )}
                   </div>
-                  <p className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors text-center">
-                    {story.title}
-                  </p>
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors text-center">
+                      {story.title}
+                    </p>
+                    {story.authorName && (
+                      <div className="flex items-center justify-center gap-1 text-[9px] text-muted-foreground/70">
+                        <span>{t("novel.by")}</span>
+                        <span
+                          onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = `/penulis/${story.authorSlug}`; }}
+                          className="hover:text-primary transition-colors cursor-pointer flex items-center gap-0.5 truncate"
+                        >
+                          <span className="truncate">{story.authorName}</span>
+                          {story.authorVerified && <VerifiedBadge size="sm" />}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Link>
             </motion.div>
