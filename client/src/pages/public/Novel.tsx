@@ -403,13 +403,17 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                 }`}>
                   {i + 1}
                 </div>
-                <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5">
-                  <Eye size={7} className="text-white" />
-                  <span className="text-[8px] font-semibold text-white">{formatViewCount(story.viewCount)}</span>
-                </div>
+                {(story as any).ratingCount > 0 && (
+                  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                    <Star size={7} className="text-amber-400 fill-amber-400" />
+                    <span className="text-[8px] font-bold text-white">
+                      {((story as any).ratingSum / (story as any).ratingCount).toFixed(1)}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+              <div className="space-y-0.5 text-center">
+                <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                   {story.title}
                 </h3>
                 {story.authorName && (
@@ -424,6 +428,16 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                     </span>
                   </div>
                 )}
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                    <Eye size={8} /> {formatViewCount(story.viewCount)}
+                  </span>
+                  {story.totalChapters > 0 && (
+                    <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70">
+                      <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                    </span>
+                  )}
+                </div>
               </div>
             </motion.div>
           </Link>
@@ -680,9 +694,17 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                     <Zap size={7} className="text-white" />
                     <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
                   </div>
+                  {(story as any).ratingCount > 0 && (
+                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                      <Star size={7} className="text-amber-400 fill-amber-400" />
+                      <span className="text-[8px] font-bold text-white">
+                        {((story as any).ratingSum / (story as any).ratingCount).toFixed(1)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+                <div className="space-y-0.5 text-center">
+                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                     {story.title}
                   </h3>
                   {story.authorName && (
@@ -697,11 +719,16 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                       </span>
                     </div>
                   )}
-                  {story.totalChapters > 0 && (
-                    <p className="text-[9px] text-muted-foreground flex items-center gap-0.5 justify-center">
-                      <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
-                    </p>
-                  )}
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                      <Eye size={8} /> {formatViewCount(story.viewCount)}
+                    </span>
+                    {story.totalChapters > 0 && (
+                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70">
+                        <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             </Link>
@@ -773,21 +800,23 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                       {t(`novel.status.${story.status}`)}
                     </span>
                   </div>
-                  <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
-                    {story.totalChapters > 0 && (
-                      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-white">
-                        <BookMarked size={7} />
-                        {story.totalChapters}
-                      </span>
-                    )}
+                  <div className="absolute top-1.5 right-1.5">
                     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/90 text-white shadow-sm">
                       <Sparkles size={7} />
                       {t("novel.new")}
                     </span>
                   </div>
+                  {(story as any).ratingCount > 0 && (
+                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                      <Star size={7} className="text-amber-400 fill-amber-400" />
+                      <span className="text-[8px] font-bold text-white">
+                        {((story as any).ratingSum / (story as any).ratingCount).toFixed(1)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug text-center">
+                <div className="space-y-0.5 text-center">
+                  <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                     {story.title}
                   </h3>
                   {story.authorName && (
@@ -802,6 +831,16 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                       </span>
                     </div>
                   )}
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                      <Eye size={8} /> {formatViewCount(story.viewCount)}
+                    </span>
+                    {story.totalChapters > 0 && (
+                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70">
+                        <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             </Link>

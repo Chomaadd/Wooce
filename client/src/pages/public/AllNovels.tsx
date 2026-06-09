@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, BookMarked, Eye, Sparkles, Library, BadgeCheck } from "lucide-react";
+import { BookOpen, BookMarked, Eye, Sparkles, Library, BadgeCheck, Star } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -223,15 +223,23 @@ export default function AllNovels() {
                           </div>
                         )}
                         {story.featured && (
-                          <div className="absolute bottom-1.5 left-1.5">
+                          <div className="absolute bottom-1.5 right-1.5">
                             <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900">
                               ★ {t("novel.allNovels.featured")}
                             </span>
                           </div>
                         )}
+                        {(story.ratingCount ?? 0) > 0 && (
+                          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                            <Star size={7} className="text-amber-400 fill-amber-400" />
+                            <span className="text-[8px] font-bold text-white">
+                              {((story.ratingSum ?? 0) / (story.ratingCount ?? 1)).toFixed(1)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-1 text-center">
-                        <h3 className="font-semibold text-[11px] text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                        <h3 className="font-bold text-xs text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                           {story.title}
                         </h3>
                         {story.authorName && (
@@ -250,7 +258,7 @@ export default function AllNovels() {
                           </span>
                           {story.totalChapters > 0 && (
                             <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                              <BookMarked size={9} /> {story.totalChapters}
+                              <BookMarked size={9} /> {story.totalChapters} {t("novel.read.chapterUnit")}
                             </span>
                           )}
                         </div>
