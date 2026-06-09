@@ -6,11 +6,17 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, BookMarked, Eye, Sparkles, Library } from "lucide-react";
+import { BookOpen, BookMarked, Eye, Sparkles, Library, BadgeCheck } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
+type StoryWithStats = NovelStory & {
+  totalChapters: number;
+  lastChapterAt: string | null;
+  authorName: string | null;
+  authorSlug: string | null;
+  authorVerified: boolean;
+};
 
 const STATUS_CONFIG: Record<string, { color: string; dot: string }> = {
   ongoing:   { color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400" },
@@ -224,11 +230,21 @@ export default function AllNovels() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-0.5">
+                      <div className="space-y-1 text-center">
                         <h3 className="font-semibold text-[11px] text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                           {story.title}
                         </h3>
-                        <div className="flex items-center gap-1.5">
+                        {story.authorName && (
+                          <div className="flex items-center justify-center gap-0.5">
+                            <span className="text-[10px] text-muted-foreground/80 truncate leading-none">
+                              {story.authorName}
+                            </span>
+                            {story.authorVerified && (
+                              <BadgeCheck size={10} className="text-blue-400 shrink-0" />
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-center gap-1.5">
                           <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                             <Eye size={9} /> {formatViewCount(story.viewCount)}
                           </span>
