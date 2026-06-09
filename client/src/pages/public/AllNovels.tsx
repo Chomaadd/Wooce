@@ -207,7 +207,7 @@ export default function AllNovels() {
                             <BookOpen size={18} className="text-primary/50" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="absolute top-1.5 left-1.5">
                           <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                             <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
@@ -222,18 +222,28 @@ export default function AllNovels() {
                             </span>
                           </div>
                         )}
-                        {story.featured && (
-                          <div className="absolute bottom-1.5 right-1.5">
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900">
-                              ★ {t("novel.allNovels.featured")}
+                        {(story.ratingCount ?? 0) > 0 && (
+                          <div className="absolute bottom-7 left-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <Star size={7} className="text-amber-400 fill-amber-400" />
+                            <span className="text-[8px] font-semibold text-white">
+                              {((story.ratingSum ?? 0) / (story.ratingCount ?? 1)).toFixed(1)}
                             </span>
                           </div>
                         )}
-                        {(story.ratingCount ?? 0) > 0 && (
-                          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
-                            <Star size={7} className="text-amber-400 fill-amber-400" />
-                            <span className="text-[8px] font-bold text-white">
-                              {((story.ratingSum ?? 0) / (story.ratingCount ?? 1)).toFixed(1)}
+                        <div className="absolute bottom-0 left-0 right-0 px-2 py-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                            <Eye size={8} /> {formatViewCount(story.viewCount)}
+                          </span>
+                          {story.totalChapters > 0 && (
+                            <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                              <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                            </span>
+                          )}
+                        </div>
+                        {story.featured && (
+                          <div className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900">
+                              ★ {t("novel.allNovels.featured")}
                             </span>
                           </div>
                         )}
@@ -252,16 +262,6 @@ export default function AllNovels() {
                             )}
                           </div>
                         )}
-                        <div className="flex items-center justify-center gap-1.5">
-                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                            <Eye size={9} /> {formatViewCount(story.viewCount)}
-                          </span>
-                          {story.totalChapters > 0 && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                              <BookMarked size={9} /> {story.totalChapters} {t("novel.read.chapterUnit")}
-                            </span>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </Link>

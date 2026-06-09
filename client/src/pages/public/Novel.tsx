@@ -394,6 +394,7 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                     <BookOpen size={18} className="text-primary/40" />
                   </div>
                 )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 {/* Rank badge */}
                 <div className={`absolute top-2 left-2 w-6 h-6 rounded-lg flex items-center justify-center font-black text-[11px] shadow-lg ${
                   i === 0 ? "bg-amber-400 text-amber-900"
@@ -404,13 +405,23 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                   {i + 1}
                 </div>
                 {(story as any).ratingCount > 0 && (
-                  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                  <div className="absolute bottom-7 left-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <Star size={7} className="text-amber-400 fill-amber-400" />
-                    <span className="text-[8px] font-bold text-white">
+                    <span className="text-[8px] font-semibold text-white">
                       {((story as any).ratingSum / (story as any).ratingCount).toFixed(1)}
                     </span>
                   </div>
                 )}
+                <div className="absolute bottom-0 left-0 right-0 px-2 py-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                    <Eye size={8} /> {formatViewCount(story.viewCount)}
+                  </span>
+                  {story.totalChapters > 0 && (
+                    <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                      <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="space-y-0.5 text-center">
                 <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
@@ -428,16 +439,6 @@ function Trending({ stories }: { stories: StoryWithStats[] }) {
                     </span>
                   </div>
                 )}
-                <div className="flex items-center justify-center gap-1.5">
-                  <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
-                    <Eye size={8} /> {formatViewCount(story.viewCount)}
-                  </span>
-                  {story.totalChapters > 0 && (
-                    <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70">
-                      <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
-                    </span>
-                  )}
-                </div>
               </div>
             </motion.div>
           </Link>
@@ -684,24 +685,35 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                       <BookOpen size={18} className="text-primary/40" />
                     </div>
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute top-1.5 left-1.5">
                     <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                       <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
                       {t(`novel.status.${story.status}`)}
                     </span>
                   </div>
-                  <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-violet-600/80 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                  <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-violet-600/80 backdrop-blur-sm rounded-full px-1.5 py-0.5">
                     <Zap size={7} className="text-white" />
                     <span className="text-[8px] font-semibold text-white">{timeAgo(story.lastChapterAt!)}</span>
                   </div>
                   {(story as any).ratingCount > 0 && (
-                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                    <div className="absolute bottom-7 left-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <Star size={7} className="text-amber-400 fill-amber-400" />
-                      <span className="text-[8px] font-bold text-white">
+                      <span className="text-[8px] font-semibold text-white">
                         {((story as any).ratingSum / (story as any).ratingCount).toFixed(1)}
                       </span>
                     </div>
                   )}
+                  <div className="absolute bottom-0 left-0 right-0 px-2 py-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                      <Eye size={8} /> {formatViewCount(story.viewCount)}
+                    </span>
+                    {story.totalChapters > 0 && (
+                      <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                        <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-0.5 text-center">
                   <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
@@ -719,16 +731,6 @@ function BaruDiupdate({ stories }: { stories: StoryWithStats[] }) {
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
-                      <Eye size={8} /> {formatViewCount(story.viewCount)}
-                    </span>
-                    {story.totalChapters > 0 && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70">
-                        <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
-                      </span>
-                    )}
-                  </div>
                 </div>
               </motion.div>
             </Link>
@@ -794,6 +796,7 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                       <BookOpen size={18} className="text-primary/40" />
                     </div>
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute top-1.5 left-1.5">
                     <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
                       <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
@@ -807,13 +810,23 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                     </span>
                   </div>
                   {(story as any).ratingCount > 0 && (
-                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                    <div className="absolute bottom-7 left-1.5 flex items-center gap-0.5 bg-black/55 rounded-full px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <Star size={7} className="text-amber-400 fill-amber-400" />
-                      <span className="text-[8px] font-bold text-white">
+                      <span className="text-[8px] font-semibold text-white">
                         {((story as any).ratingSum / (story as any).ratingCount).toFixed(1)}
                       </span>
                     </div>
                   )}
+                  <div className="absolute bottom-0 left-0 right-0 px-2 py-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                      <Eye size={8} /> {formatViewCount(story.viewCount)}
+                    </span>
+                    {story.totalChapters > 0 && (
+                      <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white">
+                        <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-0.5 text-center">
                   <h3 className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
@@ -831,16 +844,6 @@ function TerbaruRilis({ stories }: { stories: StoryWithStats[] }) {
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
-                      <Eye size={8} /> {formatViewCount(story.viewCount)}
-                    </span>
-                    {story.totalChapters > 0 && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70">
-                        <BookMarked size={8} /> {story.totalChapters} {t("novel.read.chapterUnit")}
-                      </span>
-                    )}
-                  </div>
                 </div>
               </motion.div>
             </Link>
