@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
@@ -64,10 +64,26 @@ export default function VerifyAuthor() {
   const verificationStatus = (user as any)?.verificationStatus ?? "none";
   const verificationRejectedAt = (user as any)?.verificationRejectedAt;
 
+  // Live tick every minute
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const verifEndMs = verificationRejectedAt
+    ? new Date(verificationRejectedAt).getTime() + 30 * 86400000
+    : 0;
   const rejectedDaysLeft = verificationRejectedAt
-    ? Math.max(0, Math.ceil(30 - (Date.now() - new Date(verificationRejectedAt).getTime()) / 86400000))
+    ? Math.max(0, Math.ceil((verifEndMs - Date.now()) / 86400000))
     : 0;
   const hasRejectedCooldown = !!verificationRejectedAt && rejectedDaysLeft > 0;
+
+  const msLeft = Math.max(0, verifEndMs - Date.now());
+  const totalSeconds = Math.floor(msLeft / 1000);
+  const cdDays = Math.floor(totalSeconds / 86400);
+  const cdHours = Math.floor((totalSeconds % 86400) / 3600);
+  const cdMinutes = Math.floor((totalSeconds % 3600) / 60);
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -250,10 +266,27 @@ export default function VerifyAuthor() {
                   Pengajuan verifikasimu sebelumnya tidak memenuhi syarat. Kamu bisa mengajukan kembali setelah masa tunggu selesai.
                 </p>
               </div>
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-3 inline-flex items-center gap-2 mx-auto">
-                <Clock size={15} className="text-red-500 flex-shrink-0" />
-                <p className="text-sm font-semibold text-red-600">
-                  Bisa mengajukan lagi dalam <strong>{rejectedDaysLeft} hari</strong>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {[
+                    { value: cdDays, label: "Hari" },
+                    { value: cdHours, label: "Jam" },
+                    { value: cdMinutes, label: "Menit" },
+                  ].map(({ value, label }, i) => (
+                    <div key={label} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-red-400 font-bold text-lg">:</span>}
+                      <div className="flex flex-col items-center bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2 min-w-[58px]">
+                        <span className="text-2xl font-bold text-red-600 tabular-nums leading-none">
+                          {String(value).padStart(2, "0")}
+                        </span>
+                        <span className="text-[10px] font-medium text-red-500 mt-0.5 uppercase tracking-wide">{label}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock size={11} />
+                  lagi untuk bisa mengajukan verifikasi ulang
                 </p>
               </div>
               <Link href="/">
