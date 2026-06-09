@@ -999,8 +999,8 @@ export default function NovelRead() {
         <div
           className="fixed inset-0 z-30 flex flex-col select-none"
           style={{
-            background: modeStyle.bg !== "transparent" ? modeStyle.bg : "var(--background)",
-            color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+            background: modeStyle.bg !== "transparent" ? modeStyle.bg : "hsl(var(--background))",
+            color: modeStyle.text !== "inherit" ? modeStyle.text : "hsl(var(--foreground))",
           }}
         >
           {/* Minimal top bar */}
@@ -1017,14 +1017,24 @@ export default function NovelRead() {
               {chapter.title}
               <span className="font-mono opacity-50 ml-1">({flipPage + 1}/{flipPages.length})</span>
             </span>
-            <button
-              onClick={() => setSettingsOpen(v => !v)}
-              className={`p-1 rounded-lg transition-colors flex-shrink-0 ${settingsOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-              data-testid="button-flip-settings"
-              title="Pengaturan Baca"
-            >
-              <Settings2 size={16} />
-            </button>
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => { setTocOpen(v => !v); setSettingsOpen(false); }}
+                className={`p-1 rounded-lg transition-colors ${tocOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="button-flip-toc"
+                title="Daftar Bab"
+              >
+                <List size={16} />
+              </button>
+              <button
+                onClick={() => { setSettingsOpen(v => !v); setTocOpen(false); }}
+                className={`p-1 rounded-lg transition-colors ${settingsOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="button-flip-settings"
+                title="Pengaturan Baca"
+              >
+                <Settings2 size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Page content with swipe */}
