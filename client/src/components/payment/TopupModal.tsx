@@ -59,7 +59,10 @@ export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
   });
 
   const createMut = useMutation({
-    mutationFn: (packageId: string) => apiRequest("POST", "/api/payment/topup/create", { packageId }),
+    mutationFn: async (packageId: string) => {
+      const res = await apiRequest("POST", "/api/payment/topup/create", { packageId });
+      return res.json();
+    },
     onSuccess: async (data: any) => {
       if (!config?.clientKey) {
         setStep("error");
