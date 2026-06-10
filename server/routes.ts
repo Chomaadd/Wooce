@@ -1780,8 +1780,14 @@ export async function registerRoutes(
         const snap = await getMidtransSnap();
         statusResp = await (snap as any).transaction.status(orderId);
       } catch (err: any) {
-        const msg = err?.ApiResponse?.status_message || err?.message || "Gagal cek ke Midtrans";
-        return res.status(502).json({ message: msg });
+        const rawMsg: string = err?.ApiResponse?.status_message || err?.ApiResponse?.error_messages?.[0] || err?.message || "";
+        const isNotFound = /transaction doesn't exist|404|not found/i.test(rawMsg) || err?.httpStatusCode === 404;
+        if (isNotFound) {
+          // Transaksi tidak ditemukan di Midtrans = sudah expired
+          await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "expired" } });
+          return res.json({ status: "expired", coins: order.coins, price: order.amount, changed: true, expired: true });
+        }
+        return res.status(502).json({ message: "Gagal terhubung ke Midtrans. Coba beberapa saat lagi." });
       }
 
       const { transaction_status: txStatus, fraud_status: fraudStatus } = statusResp;

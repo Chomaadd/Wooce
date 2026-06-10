@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   Coins, ArrowUpCircle, ArrowDownCircle, ArrowLeft, Loader2,
   ShoppingBag, Lock, Copy, Check, BookOpen, ChevronDown, ChevronUp,
@@ -203,6 +204,7 @@ function TxRow({ item }: { item: HistoryItem }) {
 // ── Order row (Pesanan tab) ───────────────────────────────────────────────────
 function OrderRow({ order }: { order: TopupOrder }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [localStatus, setLocalStatus] = useState(order.status);
   const [localCoins, setLocalCoins] = useState(order.coins);
   const [expanded, setExpanded] = useState(false);
@@ -210,7 +212,9 @@ function OrderRow({ order }: { order: TopupOrder }) {
   const checkMut = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/payment/topup/check/${order.orderId}`, {});
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Gagal cek status");
+      return data;
     },
     onSuccess: (data: any) => {
       setLocalStatus(data.status);
@@ -220,6 +224,14 @@ function OrderRow({ order }: { order: TopupOrder }) {
         queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
         queryClient.invalidateQueries({ queryKey: ["/api/payment/topup/orders"] });
       }
+      if (data.expired) {
+        toast({ title: "Pesanan Kadaluarsa", description: "Batas waktu pembayaran sudah lewat. Buat pesanan baru untuk membeli koin.", variant: "destructive" });
+      } else if (data.status === "paid" && data.changed) {
+        toast({ title: "Pembayaran Berhasil!", description: `${data.coins} koin telah ditambahkan ke akunmu.` });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "Gagal Cek Status", description: err?.message || "Coba beberapa saat lagi.", variant: "destructive" });
     },
   });
 
@@ -302,8 +314,10 @@ function OrderRow({ order }: { order: TopupOrder }) {
               )}
 
               {!isPending && !isPaid && (
-                <p className="text-[11px] text-muted-foreground text-center">
-                  Transaksi ini sudah tidak aktif. Buat transaksi baru untuk membeli koin.
+                <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                  {localStatus === "expired"
+                    ? "Batas waktu pembayaran sudah lewat. Silakan buat pesanan baru."
+                    : "Transaksi ini sudah tidak aktif. Buat pesanan baru untuk membeli koin."}
                 </p>
               )}
             </div>
