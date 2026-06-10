@@ -869,45 +869,81 @@ export async function registerRoutes(
   });
 
   // ── Novel Stories ─────────────────────────────────────────────────────────
-  app.get("/api/novel/stories", async (req, res) => {
+  // In-memory cache for public stories list (avoids repeated MongoDB round-trips)
+  let storiesCache: { data: any[]; expiresAt: number } | null = null;
+  const STORIES_CACHE_TTL = 30_000; // 30 seconds
+  function invalidateStoriesCache() { storiesCache = null; }
+
+  async function buildStoriesList() {
+    const now = new Date();
+    // Run auto-publish and stories fetch in parallel (they don't depend on each other)
+    const [stories] = await Promise.all([
+      NovelStoryModel.find({ published: true }).sort({ createdAt: -1 }).lean() as Promise<any[]>,
+      NovelChapterModel.updateMany(
+        { scheduledAt: { $lte: now }, published: false },
+        [{ $set: { published: true, updatedAt: "$scheduledAt", scheduledAt: null } }]
+      ),
+    ]);
+
+    if (stories.length === 0) return [];
+
+    const storyIds = stories.map((s: any) => s._id);
+    const authorIds = Array.from(new Set(stories.map((s: any) => s.authorId?.toString()).filter(Boolean)));
+
+    // All 3 remaining queries run in parallel
+    const [chapterStats, authorDocs, userDocs] = await Promise.all([
+      NovelChapterModel.aggregate([
+        { $match: { storyId: { $in: storyIds }, published: true } },
+        { $group: { _id: "$storyId", totalChapters: { $sum: 1 }, lastChapterAt: { $max: "$updatedAt" } } },
+      ]),
+      authorIds.length ? AuthorModel.find({ _id: { $in: authorIds } }).lean() : Promise.resolve([]),
+      authorIds.length ? UserModel.find({ authorId: { $in: authorIds } }).lean() : Promise.resolve([]),
+    ]);
+
+    const statsMap: Record<string, { totalChapters: number; lastChapterAt: string | null }> = {};
+    for (const stat of chapterStats) {
+      statsMap[stat._id.toString()] = {
+        totalChapters: stat.totalChapters,
+        lastChapterAt: stat.lastChapterAt ? (stat.lastChapterAt as Date).toISOString() : null,
+      };
+    }
+    const authorsMap: Record<string, { name: string; slug: string }> = {};
+    for (const a of authorDocs as any[]) authorsMap[a._id.toString()] = { name: a.name, slug: a.slug };
+    const verificationMap: Record<string, boolean> = {};
+    for (const u of userDocs as any[]) {
+      if (u.authorId) verificationMap[u.authorId.toString()] = (u.verificationStatus === "verified");
+    }
+
+    return stories.map((s: any) => {
+      const sid = s._id.toString();
+      const aid = s.authorId?.toString() ?? null;
+      const stats = statsMap[sid] ?? { totalChapters: 0, lastChapterAt: null };
+      const authorInfo = aid ? (authorsMap[aid] ?? null) : null;
+      return {
+        id: sid, title: s.title, slug: s.slug,
+        coverUrl: s.coverUrl ?? null, description: s.description ?? null,
+        category: s.category ?? "novel", status: s.status ?? "ongoing",
+        tags: s.tags ?? [], published: s.published, featured: s.featured ?? false,
+        viewCount: s.viewCount ?? 0, ratingSum: s.ratingSum ?? 0, ratingCount: s.ratingCount ?? 0,
+        donationUrl: s.donationUrl ?? null, authorId: aid,
+        createdAt: s.createdAt?.toISOString() ?? null, updatedAt: s.updatedAt?.toISOString() ?? null,
+        totalChapters: stats.totalChapters, lastChapterAt: stats.lastChapterAt,
+        authorName: authorInfo?.name ?? null, authorSlug: authorInfo?.slug ?? null,
+        authorVerified: aid ? (verificationMap[aid] ?? false) : false,
+      };
+    });
+  }
+
+  app.get("/api/novel/stories", async (_req, res) => {
     try {
-      const stories = await storage.getNovelStories(true);
-      const authorIds = Array.from(new Set(stories.map(s => s.authorId).filter(Boolean))) as string[];
-      const authorsMap: Record<string, { name: string; slug: string }> = {};
-      for (const aId of authorIds) {
-        try { const a = await storage.getAuthorById(aId); if (a) authorsMap[a.id] = { name: a.name, slug: a.slug }; } catch {}
+      const now = Date.now();
+      if (storiesCache && storiesCache.expiresAt > now) {
+        return res.json(storiesCache.data);
       }
-      // Build verificationMap: authorId → verified boolean
-      const verificationMap: Record<string, boolean> = {};
-      if (authorIds.length) {
-        const userDocs = await UserModel.find({ authorId: { $in: authorIds } }).lean() as any[];
-        for (const u of userDocs) {
-          if (u.authorId) verificationMap[u.authorId.toString()] = (u.verificationStatus === "verified");
-        }
-      }
-      const storiesWithStats = await Promise.all(
-        stories.map(async (story) => {
-          const seasons = await storage.getNovelSeasons(story.id);
-          let totalChapters = 0;
-          let lastChapterAt: string | null = null;
-          for (const season of seasons) {
-            const chapters = await storage.getNovelChapters(season.id, true);
-            totalChapters += chapters.length;
-            for (const ch of chapters) {
-              const chDate = ch.updatedAt ?? ch.createdAt;
-              if (chDate) {
-                const d = typeof chDate === "string" ? chDate : (chDate as Date).toISOString();
-                if (!lastChapterAt || d > lastChapterAt) lastChapterAt = d;
-              }
-            }
-          }
-          const authorInfo = story.authorId ? (authorsMap[story.authorId] ?? null) : null;
-          const authorVerified = story.authorId ? (verificationMap[story.authorId] ?? false) : false;
-          return { ...story, totalChapters, lastChapterAt, authorName: authorInfo?.name ?? null, authorSlug: authorInfo?.slug ?? null, authorVerified };
-        })
-      );
-      res.json(storiesWithStats);
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+      const data = await buildStoriesList();
+      storiesCache = { data, expiresAt: now + STORIES_CACHE_TTL };
+      res.json(data);
+    } catch (e) { console.error(e); res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.get("/api/novel/stories/all", async (req, res) => {
@@ -998,6 +1034,7 @@ export async function registerRoutes(
   app.post("/api/novel/stories", requireAuth, async (req, res) => {
     try {
       const story = await storage.createNovelStory(req.body);
+      invalidateStoriesCache();
       res.status(201).json(story);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1005,6 +1042,7 @@ export async function registerRoutes(
   app.put("/api/novel/stories/:id", requireAuth, async (req, res) => {
     try {
       const story = await storage.updateNovelStory(req.params.id, req.body);
+      invalidateStoriesCache();
       res.json(story);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1012,6 +1050,7 @@ export async function registerRoutes(
   app.delete("/api/novel/stories/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteNovelStory(req.params.id);
+      invalidateStoriesCache();
       res.status(204).send();
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1158,6 +1197,7 @@ export async function registerRoutes(
   app.post("/api/novel/seasons", requireAuth, async (req, res) => {
     try {
       const season = await storage.createNovelSeason(req.body);
+      invalidateStoriesCache();
       res.status(201).json(season);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1165,6 +1205,7 @@ export async function registerRoutes(
   app.put("/api/novel/seasons/:id", requireAuth, async (req, res) => {
     try {
       const season = await storage.updateNovelSeason(req.params.id, req.body);
+      invalidateStoriesCache();
       res.json(season);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1172,6 +1213,7 @@ export async function registerRoutes(
   app.delete("/api/novel/seasons/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteNovelSeason(req.params.id);
+      invalidateStoriesCache();
       res.status(204).send();
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1562,6 +1604,7 @@ export async function registerRoutes(
   app.post("/api/novel/chapters", requireAuth, async (req, res) => {
     try {
       const chapter = await storage.createNovelChapter(req.body);
+      invalidateStoriesCache();
       res.status(201).json(chapter);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1569,6 +1612,7 @@ export async function registerRoutes(
   app.put("/api/novel/chapters/:id", requireAuth, async (req, res) => {
     try {
       const chapter = await storage.updateNovelChapter(req.params.id, req.body);
+      invalidateStoriesCache();
       res.json(chapter);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1576,6 +1620,7 @@ export async function registerRoutes(
   app.delete("/api/novel/chapters/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteNovelChapter(req.params.id);
+      invalidateStoriesCache();
       res.status(204).send();
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
