@@ -1519,7 +1519,7 @@ export async function registerRoutes(
 
       const orderId = `WOOCE-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-      const snap = getMidtransSnap();
+      const snap = await getMidtransSnap();
       const siteUrl = process.env.SITE_URL || "";
       const transaction = await snap.createTransaction({
         transaction_details: { order_id: orderId, gross_amount: pkg.price },
@@ -1559,7 +1559,7 @@ export async function registerRoutes(
 
   app.post("/api/payment/topup/notification", express.json(), async (req: any, res) => {
     try {
-      const snap = getMidtransSnap();
+      const snap = await getMidtransSnap();
       const status = await (snap as any).transaction.notification(req.body);
       const { order_id: orderId, transaction_status: txStatus, fraud_status: fraudStatus } = status;
 
@@ -1577,8 +1577,30 @@ export async function registerRoutes(
           description: `Top-up ${order.coins} koin (${orderId})`,
         });
         await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "paid" } });
+
+        // Notifikasi in-app: pembelian berhasil
+        const priceFormatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(order.amount);
+        storage.createNotification({
+          userId: order.userId.toString(),
+          type: "topup_success",
+          title: `${order.coins} Koin Berhasil Ditambahkan!`,
+          message: `Pembelian ${order.coins} koin seharga ${priceFormatted} telah berhasil. Koin langsung bisa digunakan untuk membaca chapter premium.`,
+          link: "/koin/riwayat",
+        }).catch(console.error);
+
       } else if (isFailed) {
         await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "failed" } });
+
+        // Notifikasi in-app: pembelian gagal
+        const reasonMap: Record<string, string> = { cancel: "dibatalkan", deny: "ditolak oleh bank", expire: "kedaluwarsa" };
+        const reason = reasonMap[txStatus] || "tidak berhasil";
+        storage.createNotification({
+          userId: order.userId.toString(),
+          type: "topup_failed",
+          title: "Pembelian Koin Gagal",
+          message: `Transaksi untuk ${order.coins} koin ${reason}. Tidak ada koin yang dikurangi. Kamu bisa coba lagi kapan saja.`,
+          link: "/koin/riwayat",
+        }).catch(console.error);
       }
 
       res.json({ ok: true });

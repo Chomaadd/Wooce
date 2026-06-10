@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -383,6 +383,10 @@ function notifIcon(type: AppNotification["type"]) {
   if (type === "suspended") return <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />;
   if (type === "announcement") return <Megaphone size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />;
   if (type === "chapter_new") return <BookMarked size={14} className="text-purple-500 flex-shrink-0 mt-0.5" />;
+  if (type === "story_removed") return <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />;
+  if (type === "report_rejected") return <XCircle size={14} className="text-muted-foreground flex-shrink-0 mt-0.5" />;
+  if (type === "topup_success") return <Coins size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />;
+  if (type === "topup_failed") return <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />;
   return <Clock size={14} className="text-yellow-500 flex-shrink-0 mt-0.5" />;
 }
 

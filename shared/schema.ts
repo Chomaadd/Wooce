@@ -144,7 +144,7 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export const notificationSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  type: z.enum(["pending", "approved", "rejected", "suspended", "announcement", "chapter_new"]),
+  type: z.enum(["pending", "approved", "rejected", "suspended", "announcement", "chapter_new", "story_removed", "report_rejected", "topup_success", "topup_failed"]),
   link: z.string().nullable().optional(),
   title: z.string(),
   message: z.string(),

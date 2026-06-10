@@ -324,9 +324,9 @@ export default function Credentials() {
                           </p>
                           <div className="flex items-center gap-1.5 bg-white dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
                             <code className="flex-1 text-xs font-mono text-amber-800 dark:text-amber-300 break-all select-all">
-                              {typeof window !== "undefined" ? `${window.location.origin}/api/payment/notification` : "/api/payment/notification"}
+                              {typeof window !== "undefined" ? `${window.location.origin}/api/payment/topup/notification` : "/api/payment/topup/notification"}
                             </code>
-                            <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/api/payment/notification` : "/api/payment/notification"} />
+                            <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/api/payment/topup/notification` : "/api/payment/topup/notification"} />
                           </div>
                         </div>
                       </div>
