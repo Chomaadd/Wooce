@@ -102,6 +102,7 @@ Secret di bawah bersifat opsional. App tetap berjalan tanpa keduanya, tapi fitur
 - Bahasa Indonesia sebagai default
 - Nama brand: **WOOCE Novel** (bukan Choiril Ahmad)
 - Footer: TikTok, Facebook, Instagram, Email (tanpa YouTube, GitHub, Telegram)
+- **Setiap fitur baru WAJIB langsung disertai terjemahan Bahasa Inggris** di `client/src/lib/i18n.ts` — jangan ditunda ke sesi berikutnya
 - URL bersih tanpa prefix `/novel/` di frontend
 - Tab browser: "WOOCE Novel"
 - **Jangan tanyakan atau sarankan fitur yang sudah ada di website** — hanya sarankan fitur yang benar-benar belum ada
