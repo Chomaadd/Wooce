@@ -34,8 +34,8 @@ const FIELD_META: Record<FieldKey, { label: string; hint: string; placeholder: s
   gmailAppPassword:     { label: "Gmail App Password",   hint: "App Password Gmail (bukan password biasa)",                               placeholder: "xxxx xxxx xxxx xxxx",                secret: true,  group: "email" },
   googleClientId:       { label: "Google Client ID",     hint: "Client ID dari Google Cloud Console untuk OAuth",                         placeholder: "xxxxxx.apps.googleusercontent.com",  secret: false, group: "oauth" },
   googleClientSecret:   { label: "Google Client Secret", hint: "Client Secret Google OAuth",                                              placeholder: "GOCSPX-xxxxxxxxxxxx",                secret: true,  group: "oauth" },
-  midtransServerKey:    { label: "Midtrans Server Key",  hint: "Server Key dari Midtrans (SB-Mid-server-... untuk sandbox)",              placeholder: "SB-Mid-server-xxxxxxxxxxxx",          secret: true,  group: "payment" },
-  midtransClientKey:    { label: "Midtrans Client Key",  hint: "Client Key dari Midtrans (SB-Mid-client-... untuk sandbox)",              placeholder: "SB-Mid-client-xxxxxxxxxxxx",          secret: true,  group: "payment" },
+  midtransServerKey:    { label: "Midtrans Server Key",  hint: "Server Key dari Midtrans — salin persis dari Settings → Access Keys (contoh: Mid-server-... atau SB-Mid-server-...)",  placeholder: "Mid-server-xxxxxxxxxxxx",  secret: true,  group: "payment" },
+  midtransClientKey:    { label: "Midtrans Client Key",  hint: "Client Key dari Midtrans — salin persis dari Settings → Access Keys (contoh: Mid-client-... atau SB-Mid-client-...)",  placeholder: "Mid-client-xxxxxxxxxxxx",  secret: true,  group: "payment" },
   midtransIsProduction: { label: "Mode Produksi",        hint: "Isi 'true' untuk mode produksi, kosongkan atau isi 'false' untuk sandbox", placeholder: "false",                              secret: false, group: "payment" },
 };
 
