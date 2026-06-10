@@ -1324,6 +1324,103 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.get("/api/coins/history", requireUser, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const userObjId = new mongoose.Types.ObjectId(userId);
+
+      const txns = await CoinTransactionModel.find({ userId: userObjId })
+        .sort({ createdAt: -1 }).limit(100).lean() as any[];
+
+      // Collect chapterIds for unlock transactions to enrich with novel/chapter info
+      const chapterIds = txns
+        .filter((t: any) => t.type === "unlock" && t.chapterId)
+        .map((t: any) => t.chapterId);
+
+      // Collect orderIds from topup descriptions to look up topup order status
+      const orderIdRegex = /\(([^)]+)\)$/;
+      const orderIds: string[] = [];
+      txns.forEach((t: any) => {
+        if (t.type === "topup") {
+          const match = (t.description || "").match(orderIdRegex);
+          if (match) orderIds.push(match[1]);
+        }
+      });
+
+      // Fetch chapter + story info for unlock transactions
+      const chapterDocs = chapterIds.length > 0
+        ? await NovelChapterModel.find({ _id: { $in: chapterIds } })
+            .select("_id title chapterNumber storyId seasonId").lean() as any[]
+        : [];
+
+      const storyIds = [...new Set(chapterDocs.map((c: any) => c.storyId.toString()))];
+      const storyDocs = storyIds.length > 0
+        ? await NovelStoryModel.find({ _id: { $in: storyIds } })
+            .select("_id title slug").lean() as any[]
+        : [];
+
+      const seasonIds = [...new Set(chapterDocs.map((c: any) => c.seasonId.toString()))];
+      const seasonDocs = seasonIds.length > 0
+        ? await NovelSeasonModel.find({ _id: { $in: seasonIds } })
+            .select("_id seasonNumber").lean() as any[]
+        : [];
+
+      const chapterMap = new Map(chapterDocs.map((c: any) => [c._id.toString(), c]));
+      const storyMap   = new Map(storyDocs.map((s: any) => [s._id.toString(), s]));
+      const seasonMap  = new Map(seasonDocs.map((s: any) => [s._id.toString(), s]));
+
+      // Fetch topup order statuses
+      const topupOrders = orderIds.length > 0
+        ? await TopupOrderModel.find({ orderId: { $in: orderIds } })
+            .select("orderId status amount").lean() as any[]
+        : [];
+      const topupOrderMap = new Map(topupOrders.map((o: any) => [o.orderId, o]));
+
+      const result = txns.map((t: any) => {
+        const base = {
+          id: t._id.toString(),
+          amount: t.amount,
+          type: t.type as string,
+          description: t.description || "",
+          createdAt: t.createdAt,
+        };
+
+        if (t.type === "unlock" && t.chapterId) {
+          const ch = chapterMap.get(t.chapterId.toString());
+          const story = ch ? storyMap.get(ch.storyId.toString()) : null;
+          const season = ch ? seasonMap.get(ch.seasonId.toString()) : null;
+          return {
+            ...base,
+            novelTitle: story?.title ?? null,
+            novelSlug: story?.slug ?? null,
+            chapterTitle: ch?.title ?? null,
+            chapterNumber: ch?.chapterNumber ?? null,
+            seasonNumber: season?.seasonNumber ?? null,
+          };
+        }
+
+        if (t.type === "topup") {
+          const match = (t.description || "").match(orderIdRegex);
+          const orderId = match ? match[1] : null;
+          const order = orderId ? topupOrderMap.get(orderId) : null;
+          return {
+            ...base,
+            orderId: orderId ?? null,
+            status: order?.status ?? "paid",
+            price: order?.amount ?? null,
+          };
+        }
+
+        return base;
+      });
+
+      res.json(result);
+    } catch (err) {
+      console.error("[coins-history]", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/coins/unlocked", requireUser, async (req: any, res) => {
     try {
       const unlocked = await UnlockedChapterModel.find({ userId: req.session.userId }).lean();
