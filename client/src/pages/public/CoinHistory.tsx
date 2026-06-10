@@ -113,13 +113,17 @@ function TxRow({ item }: { item: HistoryItem }) {
             {item.type === "topup" && <StatusBadge status={item.status} />}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {item.type === "unlock" && item.novelTitle ? item.novelTitle : item.description || typeLabel}
+            {item.type === "unlock"
+              ? (item.chapterNumber != null
+                  ? `Bab ${item.chapterNumber}${item.chapterTitle ? ` — ${item.chapterTitle}` : ""}${item.novelTitle ? ` · ${item.novelTitle}` : ""}`
+                  : item.novelTitle || item.description || typeLabel)
+              : item.description || typeLabel}
           </p>
           <p className="text-[11px] text-muted-foreground/60 mt-0.5">{formatDate(item.createdAt)}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className={`text-sm font-bold ${isCredit ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
-            {isCredit ? "+" : ""}{item.amount}<span className="text-xs font-normal ml-0.5">koin</span>
+            {isCredit ? "+" : "-"}{Math.abs(item.amount)}<span className="text-xs font-normal ml-0.5">koin</span>
           </span>
           {hasDetail && <span className="text-muted-foreground">{expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>}
         </div>
@@ -185,7 +189,7 @@ function TxRow({ item }: { item: HistoryItem }) {
                 )}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-muted-foreground font-medium">Koin Dipakai</span>
-                  <span className="font-bold text-amber-600 dark:text-amber-400">{item.amount} koin</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">-{Math.abs(item.amount)} koin</span>
                 </div>
               </>}
             </div>
