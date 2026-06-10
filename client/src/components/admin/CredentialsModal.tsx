@@ -5,7 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Lock, KeyRound, Eye, EyeOff, CheckCircle2, XCircle,
   Save, RefreshCw, Mail, Globe, Shield, ChevronRight,
-  Loader2, ShieldCheck, X, Copy, Check, ExternalLink,
+  Loader2, ShieldCheck, X, Copy, Check, ExternalLink, CreditCard,
 } from "lucide-react";
 import { useState as useLocalState } from "react";
 
@@ -21,22 +21,29 @@ interface SiteConfig {
   gmailUser: ConfigField;
   gmailAppPassword: ConfigField;
   siteUrl: ConfigField;
+  midtransServerKey: ConfigField;
+  midtransClientKey: ConfigField;
+  midtransIsProduction: ConfigField;
 }
 
 type FieldKey = keyof SiteConfig;
 
 const FIELD_META: Record<FieldKey, { label: string; hint: string; placeholder: string; secret: boolean; group: string }> = {
-  siteUrl:            { label: "Site URL",             hint: "URL publik platform, misal: https://wooce-novel.replit.app", placeholder: "https://wooce-novel.replit.app", secret: false, group: "general" },
-  gmailUser:          { label: "Gmail Address",        hint: "Alamat Gmail pengirim notifikasi email",                     placeholder: "yourmail@gmail.com",              secret: false, group: "email" },
-  gmailAppPassword:   { label: "Gmail App Password",   hint: "App Password Gmail (bukan password biasa)",                  placeholder: "xxxx xxxx xxxx xxxx",             secret: true,  group: "email" },
-  googleClientId:     { label: "Google Client ID",     hint: "Client ID dari Google Cloud Console untuk OAuth",            placeholder: "xxxxxx.apps.googleusercontent.com", secret: false, group: "oauth" },
-  googleClientSecret: { label: "Google Client Secret", hint: "Client Secret Google OAuth",                                 placeholder: "GOCSPX-xxxxxxxxxxxx",             secret: true,  group: "oauth" },
+  siteUrl:              { label: "Site URL",             hint: "URL publik platform, misal: https://wooce-novel.replit.app",              placeholder: "https://wooce-novel.replit.app",     secret: false, group: "general" },
+  gmailUser:            { label: "Gmail Address",        hint: "Alamat Gmail pengirim notifikasi email",                                  placeholder: "yourmail@gmail.com",                 secret: false, group: "email" },
+  gmailAppPassword:     { label: "Gmail App Password",   hint: "App Password Gmail (bukan password biasa)",                               placeholder: "xxxx xxxx xxxx xxxx",                secret: true,  group: "email" },
+  googleClientId:       { label: "Google Client ID",     hint: "Client ID dari Google Cloud Console untuk OAuth",                         placeholder: "xxxxxx.apps.googleusercontent.com",  secret: false, group: "oauth" },
+  googleClientSecret:   { label: "Google Client Secret", hint: "Client Secret Google OAuth",                                              placeholder: "GOCSPX-xxxxxxxxxxxx",                secret: true,  group: "oauth" },
+  midtransServerKey:    { label: "Midtrans Server Key",  hint: "Server Key dari Midtrans (SB-Mid-server-... untuk sandbox)",              placeholder: "SB-Mid-server-xxxxxxxxxxxx",          secret: true,  group: "payment" },
+  midtransClientKey:    { label: "Midtrans Client Key",  hint: "Client Key dari Midtrans (SB-Mid-client-... untuk sandbox)",              placeholder: "SB-Mid-client-xxxxxxxxxxxx",          secret: true,  group: "payment" },
+  midtransIsProduction: { label: "Mode Produksi",        hint: "Isi 'true' untuk mode produksi, kosongkan atau isi 'false' untuk sandbox", placeholder: "false",                              secret: false, group: "payment" },
 };
 
 const GROUP_META = {
-  general: { label: "Umum",         icon: Globe,  desc: "Konfigurasi dasar platform" },
-  email:   { label: "Email",        icon: Mail,   desc: "Notifikasi & pengiriman email via Gmail" },
-  oauth:   { label: "Google OAuth", icon: Shield, desc: "Login dengan Google untuk pembaca & penulis" },
+  general: { label: "Umum",         icon: Globe,       desc: "Konfigurasi dasar platform" },
+  email:   { label: "Email",        icon: Mail,        desc: "Notifikasi & pengiriman email via Gmail" },
+  oauth:   { label: "Google OAuth", icon: Shield,      desc: "Login dengan Google untuk pembaca & penulis" },
+  payment: { label: "Midtrans",     icon: CreditCard,  desc: "Payment gateway untuk pembelian koin (GoPay, QRIS, Transfer Bank)" },
 };
 
 function CopyButton({ text }: { text: string }) {
@@ -171,7 +178,7 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
   }
 
   const hasEdits = Object.keys(editing).length > 0;
-  const groups = (["general", "email", "oauth"] as const);
+  const groups = (["general", "email", "oauth", "payment"] as const);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -308,6 +315,37 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
                           <p className="text-[11px] text-muted-foreground">{group.desc}</p>
                         </div>
                       </div>
+
+                      {groupKey === "payment" && (
+                        <div className="px-4 py-3 border-b border-border bg-amber-50 dark:bg-amber-950/20 space-y-2.5">
+                          <div className="flex items-start gap-2">
+                            <CreditCard size={13} className="text-amber-600 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1">
+                                Cara mendapatkan API Key Midtrans
+                              </p>
+                              <ol className="text-[11px] text-amber-700 dark:text-amber-500 space-y-0.5 list-decimal list-inside">
+                                <li>Buka <a href="https://dashboard.midtrans.com" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-0.5">dashboard.midtrans.com <ExternalLink size={10} /></a></li>
+                                <li>Pilih environment <strong>Sandbox</strong> (testing) atau <strong>Production</strong></li>
+                                <li>Buka menu <strong>Settings → Access Keys</strong></li>
+                                <li>Salin <strong>Server Key</strong> dan <strong>Client Key</strong></li>
+                                <li>Daftarkan Notification URL di <strong>Settings → Payment → Payment Notification URL</strong></li>
+                              </ol>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1.5">
+                              Notification URL (salin & tempel ke Midtrans Dashboard):
+                            </p>
+                            <div className="flex items-center gap-1.5 bg-white dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                              <code className="flex-1 text-[11px] font-mono text-amber-800 dark:text-amber-300 truncate select-all">
+                                {typeof window !== "undefined" ? `${window.location.origin}/api/payment/topup/notification` : "/api/payment/topup/notification"}
+                              </code>
+                              <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/api/payment/topup/notification` : "/api/payment/topup/notification"} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {groupKey === "oauth" && (
                         <div className="px-4 py-3 border-b border-border bg-blue-50 dark:bg-blue-950/20 space-y-2.5">
