@@ -206,7 +206,7 @@ function SeasonAccordion({ story, season }: { story: NovelStory; season: NovelSe
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground/60 shrink-0 ml-2">
                       <Clock size={10} />
-                      <span>{(ch.scheduledAt ?? ch.createdAt) ? timeAgo((ch.scheduledAt ?? ch.createdAt)!, language) : "—"}</span>
+                      <span>{ch.updatedAt ? timeAgo(ch.updatedAt, language) : "—"}</span>
                     </div>
                   </div>
                 </Link>

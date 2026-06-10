@@ -1558,7 +1558,10 @@ export async function registerRoutes(
 
   app.get("/api/admin/chapters/:id/premium", requireAuth, async (req, res) => {
     try {
-      const premium = await ChapterPremiumModel.findOne({ chapterId: req.params.id }).lean() as any;
+      let chapterObjId: mongoose.Types.ObjectId;
+      try { chapterObjId = new mongoose.Types.ObjectId(req.params.id); }
+      catch { return res.json({ isPremium: false, coinPrice: null }); }
+      const premium = await ChapterPremiumModel.findOne({ chapterId: chapterObjId }).lean() as any;
       if (!premium) return res.json({ isPremium: false, coinPrice: null });
       res.json({ isPremium: true, coinPrice: premium.coinPrice });
     } catch { res.status(500).json({ message: "Internal server error" }); }
@@ -1566,7 +1569,10 @@ export async function registerRoutes(
 
   app.get("/api/chapters/:id/premium", async (req, res) => {
     try {
-      const premium = await ChapterPremiumModel.findOne({ chapterId: req.params.id }).lean() as any;
+      let chapterObjId: mongoose.Types.ObjectId;
+      try { chapterObjId = new mongoose.Types.ObjectId(req.params.id); }
+      catch { return res.json({ isPremium: false, coinPrice: null }); }
+      const premium = await ChapterPremiumModel.findOne({ chapterId: chapterObjId }).lean() as any;
       if (!premium) return res.json({ isPremium: false, coinPrice: null });
       res.json({ isPremium: true, coinPrice: premium.coinPrice });
     } catch { res.status(500).json({ message: "Internal server error" }); }
