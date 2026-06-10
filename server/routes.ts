@@ -1560,8 +1560,20 @@ export async function registerRoutes(
   app.post("/api/payment/topup/notification", express.json(), async (req: any, res) => {
     try {
       if (!req.body || !req.body.order_id) return res.json({ ok: true });
-      const snap = await getMidtransSnap();
-      const status = await (snap as any).transaction.notification(req.body);
+
+      let status: any;
+      try {
+        const snap = await getMidtransSnap();
+        status = await (snap as any).transaction.notification(req.body);
+      } catch (verifyErr: any) {
+        const msg = verifyErr?.ApiResponse?.status_message || verifyErr?.message || "Unknown error";
+        console.error("[payment-notification] Verifikasi Midtrans gagal:", msg);
+        if (verifyErr?.httpStatusCode === 401) {
+          console.error("[payment-notification] Server Key tidak valid — periksa konfigurasi di Admin → Credentials → Midtrans.");
+        }
+        return res.json({ ok: true });
+      }
+
       const { order_id: orderId, transaction_status: txStatus, fraud_status: fraudStatus } = status;
 
       const order = await TopupOrderModel.findOne({ orderId }).lean() as any;
