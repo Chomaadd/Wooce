@@ -1219,65 +1219,103 @@ export default function NovelRead() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 px-4"
             data-testid="section-chapter-locked"
           >
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-5">
-              <Lock size={28} className="text-amber-500" />
-            </div>
-            <h3 className="text-lg font-bold text-foreground mb-2">Chapter Premium</h3>
-            <p className="text-sm text-muted-foreground mb-1">Bab ini dikunci dan hanya bisa dibuka dengan koin.</p>
-            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-sm px-3 py-1.5 rounded-full mb-6 mt-2">
-              <Coins size={14} />
-              {coinPrice} koin
-            </div>
+            {/* ── Spoiler preview with fade-out ── */}
+            {(chapter as any)?.previewContent ? (
+              <div className="relative">
+                <div
+                  className={`prose prose-gray max-w-none
+                    prose-p:leading-[2] prose-headings:font-bold
+                    prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground
+                    prose-ul:my-2 prose-ol:my-2 prose-strong:font-bold prose-em:italic
+                    prose-p:my-5 prose-hr:my-10 ${proseInvert} ${fontClass}
+                    select-none pointer-events-none`}
+                  style={{
+                    fontSize: `${settings.fontSize}px`,
+                    color: modeStyle.text !== "inherit" ? modeStyle.text : undefined,
+                    ...proseColorVars,
+                    ...fontFamilyOverride,
+                    maxHeight: "340px",
+                    overflow: "hidden",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: renderRichContent((chapter as any).previewContent) }}
+                />
+                {/* Gradient fade-out */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
+                  style={{
+                    background: `linear-gradient(to bottom, transparent, ${
+                      settings.mode === "night" ? "#0f1117" :
+                      settings.mode === "sepia" ? "#faf3e8" :
+                      "var(--background)"
+                    })`,
+                  }}
+                />
+              </div>
+            ) : null}
 
-            {user && !user.isAdmin ? (
-              <div className="max-w-xs mx-auto space-y-3">
-                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-                  <Coins size={13} className="text-amber-500" />
-                  Saldo kamu: <span className="font-bold text-foreground ml-0.5">{coinBalance} koin</span>
-                </div>
-                <button
-                  onClick={() => unlockMut.mutate()}
-                  disabled={unlockMut.isPending || coinBalance < (coinPrice ?? 0)}
-                  className="w-full py-3 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
-                  data-testid="button-unlock-chapter"
-                >
-                  {unlockMut.isPending ? (
-                    <><Loader2 size={15} className="animate-spin" /> Membuka...</>
-                  ) : (
-                    <><LockOpen size={15} /> Buka dengan {coinPrice} Koin</>
+            {/* ── Lock wall ── */}
+            <div className="text-center pt-6 pb-16 px-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+                <Lock size={26} className="text-amber-500" />
+              </div>
+              <h3 className="text-base font-bold text-foreground mb-1.5">
+                {(chapter as any)?.previewContent ? "Penasaran? Lanjutkan dengan koin." : "Chapter Premium"}
+              </h3>
+              <p className="text-sm text-muted-foreground mb-1">Bab ini dikunci dan hanya bisa dibuka dengan koin.</p>
+              <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-sm px-3 py-1.5 rounded-full mb-6 mt-2">
+                <Coins size={14} />
+                {coinPrice} koin
+              </div>
+
+              {user && !user.isAdmin ? (
+                <div className="max-w-xs mx-auto space-y-3">
+                  <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+                    <Coins size={13} className="text-amber-500" />
+                    Saldo kamu: <span className="font-bold text-foreground ml-0.5">{coinBalance} koin</span>
+                  </div>
+                  <button
+                    onClick={() => unlockMut.mutate()}
+                    disabled={unlockMut.isPending || coinBalance < (coinPrice ?? 0)}
+                    className="w-full py-3 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                    data-testid="button-unlock-chapter"
+                  >
+                    {unlockMut.isPending ? (
+                      <><Loader2 size={15} className="animate-spin" /> Membuka...</>
+                    ) : (
+                      <><LockOpen size={15} /> Buka dengan {coinPrice} Koin</>
+                    )}
+                  </button>
+                  {coinBalance < (coinPrice ?? 0) && (
+                    <>
+                      <p className="text-xs text-muted-foreground">Koinmu tidak cukup untuk membuka chapter ini.</p>
+                      <button
+                        onClick={() => setShowTopup(true)}
+                        className="w-full py-2.5 px-6 rounded-xl border-2 border-amber-500 text-amber-600 dark:text-amber-400 font-semibold text-sm transition-all hover:bg-amber-500/8 flex items-center justify-center gap-2"
+                        data-testid="button-buy-coins-lockscreen"
+                      >
+                        <ShoppingBag size={14} /> Beli Koin
+                      </button>
+                    </>
                   )}
-                </button>
-                {coinBalance < (coinPrice ?? 0) && (
-                  <>
-                    <p className="text-xs text-muted-foreground">Koinmu tidak cukup untuk membuka chapter ini.</p>
-                    <button
-                      onClick={() => setShowTopup(true)}
-                      className="w-full py-2.5 px-6 rounded-xl border-2 border-amber-500 text-amber-600 dark:text-amber-400 font-semibold text-sm transition-all hover:bg-amber-500/8 flex items-center justify-center gap-2"
-                      data-testid="button-buy-coins-lockscreen"
-                    >
-                      <ShoppingBag size={14} /> Beli Koin
-                    </button>
-                  </>
-                )}
-                {unlockError && (
-                  <p className="text-xs text-red-500 mt-1">{unlockError}</p>
-                )}
-              </div>
-            ) : (
-              <div className="max-w-xs mx-auto space-y-3">
-                <p className="text-sm text-muted-foreground">Login terlebih dahulu untuk membuka chapter ini.</p>
-                <a
-                  href="/auth/google"
-                  className="inline-flex items-center gap-2 py-2.5 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
-                  data-testid="button-login-to-unlock"
-                >
-                  Login untuk Buka Chapter
-                </a>
-              </div>
-            )}
+                  {unlockError && (
+                    <p className="text-xs text-red-500 mt-1">{unlockError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="max-w-xs mx-auto space-y-3">
+                  <p className="text-sm text-muted-foreground">Login terlebih dahulu untuk membuka chapter ini.</p>
+                  <a
+                    href="/auth/google"
+                    className="inline-flex items-center gap-2 py-2.5 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+                    data-testid="button-login-to-unlock"
+                  >
+                    Login untuk Buka Chapter
+                  </a>
+                </div>
+              )}
+            </div>
           </motion.div>
         ) : (
           <motion.div

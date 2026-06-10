@@ -1278,10 +1278,16 @@ export async function registerRoutes(
         } catch { /* invalid userId shape */ }
       }
 
-      // Chapter is locked — return metadata only, no content
+      // Chapter is locked — return metadata + short preview, no full content
+      const rawContent = chapter.content || "";
+      // Extract first 3 <p> paragraphs for spoiler preview
+      const paragraphs = rawContent.match(/<p[^>]*>[\s\S]*?<\/p>/gi) ?? [];
+      const previewContent = paragraphs.slice(0, 3).join("") || rawContent.slice(0, 600);
+
       return res.json({
         ...chapter,
         content: "",
+        previewContent,
         isPremium: true,
         coinPrice: premium.coinPrice,
         isLocked: true,
