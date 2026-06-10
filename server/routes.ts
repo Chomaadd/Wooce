@@ -1559,6 +1559,7 @@ export async function registerRoutes(
 
   app.post("/api/payment/topup/notification", express.json(), async (req: any, res) => {
     try {
+      if (!req.body || !req.body.order_id) return res.json({ ok: true });
       const snap = await getMidtransSnap();
       const status = await (snap as any).transaction.notification(req.body);
       const { order_id: orderId, transaction_status: txStatus, fraud_status: fraudStatus } = status;
