@@ -1,8 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { X, Coins, Check, Loader2, ShoppingBag, Zap } from "lucide-react";
-import { motion } from "framer-motion";
+import {
+  X, Coins, Check, Loader2, ShoppingBag, Zap,
+  ArrowLeft, CreditCard, RefreshCw,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface CoinPackage {
   id: string;
@@ -11,6 +14,15 @@ interface CoinPackage {
   label: string;
 }
 
+interface ReadyData {
+  token: string;
+  orderId: string;
+  coins: number;
+  price: number;
+}
+
+type Step = "pick" | "ready" | "paying" | "success" | "error";
+
 interface TopupModalProps {
   onClose: () => void;
   onSuccess?: () => void;
@@ -18,9 +30,7 @@ interface TopupModalProps {
 
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
+    style: "currency", currency: "IDR", minimumFractionDigits: 0,
   }).format(amount);
 }
 
@@ -31,7 +41,13 @@ function loadSnapScript(clientKey: string, isSandbox: boolean): Promise<void> {
       ? "https://app.sandbox.midtrans.com/snap/snap.js"
       : "https://app.midtrans.com/snap/snap.js";
     const existing = document.querySelector(`script[src="${url}"]`);
-    if (existing) { setTimeout(() => { if ((window as any).snap) resolve(); else reject(new Error("Snap tidak tersedia")); }, 1000); return; }
+    if (existing) {
+      setTimeout(() => {
+        if ((window as any).snap) resolve();
+        else reject(new Error("Snap tidak tersedia"));
+      }, 1000);
+      return;
+    }
     const script = document.createElement("script");
     script.src = url;
     script.setAttribute("data-client-key", clientKey);
@@ -44,9 +60,16 @@ function loadSnapScript(clientKey: string, isSandbox: boolean): Promise<void> {
 export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
   const queryClient = useQueryClient();
   const [selectedPkg, setSelectedPkg] = useState<string | null>(null);
-  const [step, setStep] = useState<"pick" | "paying" | "success" | "error">("pick");
+  const [step, setStep] = useState<Step>("pick");
   const [errorMsg, setErrorMsg] = useState("");
   const [successCoins, setSuccessCoins] = useState(0);
+  const [readyData, setReadyData] = useState<ReadyData | null>(null);
+  const stepRef = useRef<Step>("pick");
+
+  const setStepSafe = (s: Step) => {
+    stepRef.current = s;
+    setStep(s);
+  };
 
   const { data: packages, isLoading: pkgLoading } = useQuery<CoinPackage[]>({
     queryKey: ["/api/payment/packages"],
@@ -58,47 +81,60 @@ export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
     queryFn: () => fetch("/api/payment/config").then(r => r.json()),
   });
 
+  const openSnap = useCallback(async (data: ReadyData) => {
+    if (!config?.clientKey) {
+      setStepSafe("error");
+      setErrorMsg("Konfigurasi pembayaran belum tersedia. Hubungi admin.");
+      return;
+    }
+    setStepSafe("paying");
+    try {
+      await loadSnapScript(config.clientKey, config.isSandbox ?? true);
+      if (!(window as any).snap) throw new Error("Midtrans Snap tidak tersedia");
+      (window as any).snap.pay(data.token, {
+        onSuccess: () => {
+          setSuccessCoins(data.coins);
+          setStepSafe("success");
+          queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/payment/topup/orders"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
+          onSuccess?.();
+        },
+        onPending: () => {
+          setStepSafe("ready");
+        },
+        onError: () => {
+          setStepSafe("error");
+          setErrorMsg("Pembayaran gagal atau ditolak. Kamu bisa coba metode lain.");
+        },
+        onClose: () => {
+          // Snap overlay ditutup user — kembali ke layar konfirmasi
+          if (stepRef.current === "paying") setStepSafe("ready");
+        },
+      });
+    } catch (err: any) {
+      setStepSafe("error");
+      setErrorMsg(err.message || "Gagal memuat halaman pembayaran.");
+    }
+  }, [config, queryClient, onSuccess]);
+
   const createMut = useMutation({
     mutationFn: async (packageId: string) => {
       const res = await apiRequest("POST", "/api/payment/topup/create", { packageId });
       return res.json();
     },
     onSuccess: async (data: any) => {
-      if (!config?.clientKey) {
-        setStep("error");
-        setErrorMsg("Konfigurasi pembayaran belum tersedia. Hubungi admin.");
-        return;
-      }
-      setStep("paying");
-      try {
-        await loadSnapScript(config.clientKey, config.isSandbox ?? true);
-        if (!(window as any).snap) throw new Error("Midtrans Snap tidak tersedia");
-        (window as any).snap.pay(data.token, {
-          onSuccess: (_result: any) => {
-            setSuccessCoins(data.coins);
-            setStep("success");
-            queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
-            onSuccess?.();
-          },
-          onPending: (_result: any) => {
-            setStep("error");
-            setErrorMsg(`Pembayaran sedang diproses. ${data.coins} koin akan otomatis ditambahkan setelah pembayaran terkonfirmasi.`);
-          },
-          onError: (_result: any) => {
-            setStep("error");
-            setErrorMsg("Pembayaran gagal atau dibatalkan. Kamu bisa coba lagi.");
-          },
-          onClose: () => {
-            if (step === "paying") setStep("pick");
-          },
-        });
-      } catch (err: any) {
-        setStep("error");
-        setErrorMsg(err.message || "Gagal memuat halaman pembayaran.");
-      }
+      const ready: ReadyData = {
+        token: data.token,
+        orderId: data.orderId,
+        coins: data.coins,
+        price: data.price,
+      };
+      setReadyData(ready);
+      setStepSafe("ready");
     },
     onError: (err: any) => {
-      setStep("error");
+      setStepSafe("error");
       setErrorMsg(err?.message || "Gagal membuat transaksi. Coba lagi.");
     },
   });
@@ -109,6 +145,12 @@ export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
   }, [selectedPkg, createMut]);
 
   const selectedPkgData = packages?.find(p => p.id === selectedPkg);
+
+  const goBackToPick = () => {
+    setStepSafe("pick");
+    setReadyData(null);
+    setErrorMsg("");
+  };
 
   return (
     <div
@@ -122,110 +164,217 @@ export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
         className="bg-background w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <div className="flex items-center gap-2">
+            {(step === "ready" || step === "paying") && (
+              <button
+                onClick={goBackToPick}
+                className="p-1 -ml-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                data-testid="button-back-to-pick"
+              >
+                <ArrowLeft size={16} />
+              </button>
+            )}
             <Coins size={18} className="text-amber-500" />
-            <span className="font-bold text-base text-foreground">Beli Koin</span>
+            <span className="font-bold text-base text-foreground">
+              {step === "ready" || step === "paying" ? "Konfirmasi Pembayaran" : "Beli Koin"}
+            </span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors" data-testid="button-close-topup">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            data-testid="button-close-topup"
+          >
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          {step === "success" ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                <Check size={28} className="text-green-500" />
-              </div>
-              <p className="text-lg font-bold text-foreground mb-1">Pembayaran Berhasil!</p>
-              <p className="text-sm text-muted-foreground mb-1">
-                <span className="font-bold text-amber-500">{successCoins} koin</span> telah ditambahkan ke akunmu.
-              </p>
-              <p className="text-xs text-muted-foreground">Kamu sekarang bisa membuka chapter premium.</p>
-              <button onClick={onClose} className="mt-6 w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm" data-testid="button-success-close">
-                Selesai
-              </button>
-            </div>
-          ) : step === "error" ? (
-            <div className="text-center py-6">
-              <p className="font-semibold text-foreground mb-2">Ada Masalah</p>
-              <p className="text-sm text-muted-foreground mb-5">{errorMsg}</p>
-              <button
-                onClick={() => { setStep("pick"); setErrorMsg(""); }}
-                className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
-                data-testid="button-retry-topup"
+        <div className="p-5">
+          <AnimatePresence mode="wait">
+
+            {/* ── STEP: pick ── */}
+            {step === "pick" && (
+              <motion.div
+                key="pick"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-4"
               >
-                Coba Lagi
-              </button>
-            </div>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">Pilih jumlah koin yang ingin kamu beli:</p>
+                <p className="text-sm text-muted-foreground">Pilih jumlah koin yang ingin kamu beli:</p>
 
-              {pkgLoading ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {[1, 2, 3, 4].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {packages?.map(pkg => {
-                    const isPopular = pkg.id === "pkg_50";
-                    const isSelected = selectedPkg === pkg.id;
-                    return (
-                      <button
-                        key={pkg.id}
-                        onClick={() => setSelectedPkg(pkg.id)}
-                        className={`relative rounded-xl border-2 p-3.5 text-left transition-all ${
-                          isSelected
-                            ? "border-amber-500 bg-amber-500/8 shadow-sm"
-                            : "border-border hover:border-amber-300 hover:bg-muted/30"
-                        }`}
-                        data-testid={`button-pkg-${pkg.id}`}
-                      >
-                        {isPopular && (
-                          <span className="absolute -top-2.5 left-2 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wide">
-                            POPULER
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <Coins size={13} className="text-amber-500" />
-                          <span className="font-bold text-foreground">{pkg.coins}</span>
-                          <span className="text-xs text-muted-foreground">koin</span>
-                        </div>
-                        <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                          {formatRupiah(pkg.price)}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">
-                          ≈ {formatRupiah(pkg.price / pkg.coins)}/koin
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
-                <Zap size={10} className="text-green-500" />
-                GoPay · OVO · QRIS · Transfer Bank
-              </div>
-
-              <button
-                onClick={handleBuy}
-                disabled={!selectedPkg || createMut.isPending || step === "paying"}
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
-                data-testid="button-buy-coins"
-              >
-                {createMut.isPending || step === "paying" ? (
-                  <><Loader2 size={15} className="animate-spin" /> Memproses...</>
-                ) : selectedPkgData ? (
-                  <><ShoppingBag size={15} /> Beli {selectedPkgData.coins} Koin — {formatRupiah(selectedPkgData.price)}</>
+                {pkgLoading ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+                  </div>
                 ) : (
-                  <><ShoppingBag size={15} /> Pilih Paket dulu</>
+                  <div className="grid grid-cols-2 gap-3">
+                    {packages?.map(pkg => {
+                      const isPopular = pkg.id === "pkg_50";
+                      const isSelected = selectedPkg === pkg.id;
+                      return (
+                        <button
+                          key={pkg.id}
+                          onClick={() => setSelectedPkg(pkg.id)}
+                          className={`relative rounded-xl border-2 p-3.5 text-left transition-all ${
+                            isSelected
+                              ? "border-amber-500 bg-amber-500/8 shadow-sm"
+                              : "border-border hover:border-amber-300 hover:bg-muted/30"
+                          }`}
+                          data-testid={`button-pkg-${pkg.id}`}
+                        >
+                          {isPopular && (
+                            <span className="absolute -top-2.5 left-2 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wide">
+                              POPULER
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <Coins size={13} className="text-amber-500" />
+                            <span className="font-bold text-foreground">{pkg.coins}</span>
+                            <span className="text-xs text-muted-foreground">koin</span>
+                          </div>
+                          <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                            {formatRupiah(pkg.price)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            ≈ {formatRupiah(pkg.price / pkg.coins)}/koin
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
-            </>
-          )}
+
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
+                  <Zap size={10} className="text-green-500" />
+                  GoPay · OVO · QRIS · Transfer Bank
+                </div>
+
+                <button
+                  onClick={handleBuy}
+                  disabled={!selectedPkg || createMut.isPending}
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                  data-testid="button-buy-coins"
+                >
+                  {createMut.isPending ? (
+                    <><Loader2 size={15} className="animate-spin" /> Membuat pesanan...</>
+                  ) : selectedPkgData ? (
+                    <><ShoppingBag size={15} /> Lanjut — {formatRupiah(selectedPkgData.price)}</>
+                  ) : (
+                    <><ShoppingBag size={15} /> Pilih Paket dulu</>
+                  )}
+                </button>
+              </motion.div>
+            )}
+
+            {/* ── STEP: ready ── */}
+            {(step === "ready" || step === "paying") && readyData && (
+              <motion.div
+                key="ready"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="space-y-4"
+              >
+                {/* Order summary card */}
+                <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Paket</span>
+                    <div className="flex items-center gap-1">
+                      <Coins size={14} className="text-amber-500" />
+                      <span className="font-bold text-foreground">{readyData.coins} Koin</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Bayar</span>
+                    <span className="font-bold text-foreground">{formatRupiah(readyData.price)}</span>
+                  </div>
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-[10px] text-muted-foreground mb-1">Order ID</p>
+                    <p className="font-mono text-xs text-foreground break-all" data-testid="text-order-id-confirm">
+                      {readyData.orderId}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground justify-center">
+                  <Zap size={10} className="text-green-500" />
+                  GoPay · OVO · QRIS · Transfer Bank · Kartu Kredit
+                </div>
+
+                {step === "paying" ? (
+                  <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
+                    <Loader2 size={15} className="animate-spin" />
+                    Menunggu pembayaran di jendela Midtrans…
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => openSnap(readyData)}
+                    className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+                    data-testid="button-open-snap"
+                  >
+                    <CreditCard size={15} /> Bayar Sekarang
+                  </button>
+                )}
+
+                <button
+                  onClick={goBackToPick}
+                  className="w-full py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+                  data-testid="button-change-package"
+                >
+                  <ArrowLeft size={13} /> Ganti Paket
+                </button>
+              </motion.div>
+            )}
+
+            {/* ── STEP: success ── */}
+            {step === "success" && (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-8"
+              >
+                <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                  <Check size={28} className="text-green-500" />
+                </div>
+                <p className="text-lg font-bold text-foreground mb-1">Pembayaran Berhasil!</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <span className="font-bold text-amber-500">{successCoins} koin</span> telah ditambahkan ke akunmu.
+                </p>
+                <p className="text-xs text-muted-foreground">Kamu sekarang bisa membuka chapter premium.</p>
+                <button
+                  onClick={onClose}
+                  className="mt-6 w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm"
+                  data-testid="button-success-close"
+                >
+                  Selesai
+                </button>
+              </motion.div>
+            )}
+
+            {/* ── STEP: error ── */}
+            {step === "error" && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-6"
+              >
+                <p className="font-semibold text-foreground mb-2">Ada Masalah</p>
+                <p className="text-sm text-muted-foreground mb-5">{errorMsg}</p>
+                <button
+                  onClick={goBackToPick}
+                  className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors flex items-center justify-center gap-1.5"
+                  data-testid="button-retry-topup"
+                >
+                  <RefreshCw size={13} /> Coba Lagi
+                </button>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
         </div>
       </motion.div>
     </div>

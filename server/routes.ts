@@ -1731,6 +1731,94 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── List all topup orders for logged-in user ─────────────────────────────
+  app.get("/api/payment/topup/orders", requireUser, async (req: any, res) => {
+    try {
+      const orders = await TopupOrderModel.find({
+        userId: new mongoose.Types.ObjectId(req.session.userId),
+      }).sort({ createdAt: -1 }).limit(50).lean() as any[];
+      res.json(orders.map((o: any) => ({
+        orderId:   o.orderId,
+        coins:     o.coins,
+        price:     o.amount,
+        packageId: o.packageId,
+        status:    o.status,
+        createdAt: o.createdAt,
+      })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Check & sync status from Midtrans for a specific order ───────────────
+  app.post("/api/payment/topup/check/:orderId", requireUser, async (req: any, res) => {
+    try {
+      const { orderId } = req.params;
+      const userObjId = new mongoose.Types.ObjectId(req.session.userId);
+
+      const order = await TopupOrderModel.findOne({ orderId, userId: userObjId }).lean() as any;
+      if (!order) return res.status(404).json({ message: "Order tidak ditemukan" });
+
+      // Already finalized — return as-is
+      if (order.status !== "pending") {
+        return res.json({ status: order.status, coins: order.coins, price: order.amount, changed: false });
+      }
+
+      // Query Midtrans
+      let statusResp: any;
+      try {
+        const snap = await getMidtransSnap();
+        statusResp = await (snap as any).transaction.status(orderId);
+      } catch (err: any) {
+        const msg = err?.ApiResponse?.status_message || err?.message || "Gagal cek ke Midtrans";
+        return res.status(502).json({ message: msg });
+      }
+
+      const { transaction_status: txStatus, fraud_status: fraudStatus } = statusResp;
+      const isSuccess = (txStatus === "capture" && fraudStatus === "accept") || txStatus === "settlement";
+      const isFailed  = ["cancel", "deny", "expire"].includes(txStatus);
+
+      let newStatus = order.status as string;
+
+      if (isSuccess) {
+        // Grant coins if not already granted
+        const alreadyGranted = await CoinTransactionModel.findOne({
+          userId: userObjId,
+          type: "topup",
+          description: { $regex: orderId },
+        }).lean();
+
+        if (!alreadyGranted) {
+          await CoinTransactionModel.create({
+            userId: userObjId,
+            amount: order.coins,
+            type: "topup",
+            description: `Top-up ${order.coins} koin (${orderId})`,
+          });
+          const priceFormatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(order.amount);
+          storage.createNotification({
+            userId: req.session.userId,
+            type: "topup_success",
+            title: `${order.coins} Koin Berhasil Ditambahkan!`,
+            message: `Pembelian ${order.coins} koin seharga ${priceFormatted} telah dikonfirmasi.`,
+            link: "/koin/riwayat",
+          }).catch(console.error);
+        }
+
+        await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "paid" } });
+        newStatus = "paid";
+
+      } else if (isFailed) {
+        const statusMap: Record<string, string> = { cancel: "failed", deny: "failed", expire: "expired" };
+        newStatus = statusMap[txStatus] || "failed";
+        await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: newStatus } });
+      }
+
+      res.json({ status: newStatus, coins: order.coins, price: order.amount, changed: newStatus !== order.status });
+    } catch (err) {
+      console.error("[topup-check]", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // ── Chapter CRUD ─────────────────────────────────────────────────────────────
 
   app.post("/api/novel/chapters", requireAuth, async (req, res) => {
