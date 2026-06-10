@@ -770,6 +770,16 @@ export function Navbar() {
                         </button>
                       </Link>
 
+                      <Link href="/koin/riwayat">
+                        <button
+                          className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-coin-history-menu"
+                        >
+                          <Coins size={12} /> Riwayat Koin
+                        </button>
+                      </Link>
+
                       <div className="hidden sm:block">
                         <Link href="/bookmarks">
                           <button

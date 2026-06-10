@@ -371,12 +371,16 @@ export async function registerRoutes(
     try {
       const effective = await getEffectiveConfig();
       const db = await getSiteConfig();
+      const mask = (v: string) => v ? "***" + v.slice(-4) : "";
       res.json({
-        googleClientId:     { value: effective.googleClientId ? "***" + effective.googleClientId.slice(-4) : "", configured: !!effective.googleClientId, fromDb: !!(db as any).googleClientId },
-        googleClientSecret: { value: effective.googleClientSecret ? "***" + effective.googleClientSecret.slice(-4) : "", configured: !!effective.googleClientSecret, fromDb: !!(db as any).googleClientSecret },
-        gmailUser:          { value: effective.gmailUser, configured: !!effective.gmailUser, fromDb: !!(db as any).gmailUser },
-        gmailAppPassword:   { value: effective.gmailAppPassword ? "***" + effective.gmailAppPassword.slice(-4) : "", configured: !!effective.gmailAppPassword, fromDb: !!(db as any).gmailAppPassword },
-        siteUrl:            { value: effective.siteUrl, configured: !!effective.siteUrl, fromDb: !!(db as any).siteUrl },
+        googleClientId:       { value: effective.googleClientId ? mask(effective.googleClientId) : "", configured: !!effective.googleClientId, fromDb: !!(db as any).googleClientId },
+        googleClientSecret:   { value: mask(effective.googleClientSecret), configured: !!effective.googleClientSecret, fromDb: !!(db as any).googleClientSecret },
+        gmailUser:            { value: effective.gmailUser, configured: !!effective.gmailUser, fromDb: !!(db as any).gmailUser },
+        gmailAppPassword:     { value: mask(effective.gmailAppPassword), configured: !!effective.gmailAppPassword, fromDb: !!(db as any).gmailAppPassword },
+        siteUrl:              { value: effective.siteUrl, configured: !!effective.siteUrl, fromDb: !!(db as any).siteUrl },
+        midtransServerKey:    { value: mask(effective.midtransServerKey), configured: !!effective.midtransServerKey, fromDb: !!(db as any).midtransServerKey },
+        midtransClientKey:    { value: mask(effective.midtransClientKey), configured: !!effective.midtransClientKey, fromDb: !!(db as any).midtransClientKey },
+        midtransIsProduction: { value: effective.midtransIsProduction || "false", configured: true, fromDb: !!(db as any).midtransIsProduction },
       });
     } catch (err) {
       console.error("site-config GET error:", err);
@@ -387,11 +391,14 @@ export async function registerRoutes(
   app.put("/api/admin/site-config", requireAuth, async (req, res) => {
     try {
       const schema = z.object({
-        googleClientId:     z.string().optional(),
-        googleClientSecret: z.string().optional(),
-        gmailUser:          z.string().optional(),
-        gmailAppPassword:   z.string().optional(),
-        siteUrl:            z.string().optional(),
+        googleClientId:       z.string().optional(),
+        googleClientSecret:   z.string().optional(),
+        gmailUser:            z.string().optional(),
+        gmailAppPassword:     z.string().optional(),
+        siteUrl:              z.string().optional(),
+        midtransServerKey:    z.string().optional(),
+        midtransClientKey:    z.string().optional(),
+        midtransIsProduction: z.string().optional(),
       });
       const data = schema.parse(req.body);
       await updateSiteConfig(data);
@@ -1428,21 +1435,24 @@ export async function registerRoutes(
 
   // ── Midtrans Payment Routes ──────────────────────────────────────────────────
 
-  function getMidtransSnap() {
-    const serverKey = process.env.MIDTRANS_SERVER_KEY;
-    if (!serverKey) throw new Error("MIDTRANS_SERVER_KEY belum dikonfigurasi");
+  async function getMidtransSnap() {
+    const effective = await getEffectiveConfig();
+    const serverKey = effective.midtransServerKey;
+    if (!serverKey) throw new Error("Midtrans Server Key belum dikonfigurasi. Atur di Admin → Kredensial → Midtrans.");
     return new MidtransClient.Snap({
-      isProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
+      isProduction: effective.midtransIsProduction === "true",
       serverKey,
-      clientKey: process.env.MIDTRANS_CLIENT_KEY || "",
+      clientKey: effective.midtransClientKey || "",
     });
   }
 
-  app.get("/api/payment/config", (_req, res) => {
-    const clientKey = process.env.MIDTRANS_CLIENT_KEY || "";
-    const isSandbox = process.env.MIDTRANS_IS_PRODUCTION !== "true";
-    if (!clientKey) return res.json({ clientKey: "", isSandbox, configured: false });
-    res.json({ clientKey, isSandbox, configured: true });
+  app.get("/api/payment/config", async (_req, res) => {
+    try {
+      const effective = await getEffectiveConfig();
+      const clientKey = effective.midtransClientKey;
+      const isSandbox = effective.midtransIsProduction !== "true";
+      res.json({ clientKey: clientKey || "", isSandbox, configured: !!clientKey });
+    } catch { res.json({ clientKey: "", isSandbox: true, configured: false }); }
   });
 
   app.get("/api/payment/packages", (_req, res) => {

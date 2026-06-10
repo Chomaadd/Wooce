@@ -6,6 +6,9 @@ const siteConfigSchema = new mongoose.Schema({
   gmailUser:          { type: String, default: '' },
   gmailAppPassword:   { type: String, default: '' },
   siteUrl:            { type: String, default: '' },
+  midtransServerKey:  { type: String, default: '' },
+  midtransClientKey:  { type: String, default: '' },
+  midtransIsProduction: { type: String, default: '' },
 }, { timestamps: true });
 
 export const SiteConfigModel =
@@ -35,6 +38,9 @@ export async function updateSiteConfig(data: {
   gmailUser?: string;
   gmailAppPassword?: string;
   siteUrl?: string;
+  midtransServerKey?: string;
+  midtransClientKey?: string;
+  midtransIsProduction?: string;
 }) {
   let doc = await SiteConfigModel.findOne();
   if (!doc) {
@@ -50,10 +56,13 @@ export async function updateSiteConfig(data: {
 export async function getEffectiveConfig() {
   const db = await getSiteConfig();
   return {
-    googleClientId:     (db.googleClientId     || process.env.GOOGLE_CLIENT_ID     || '').trim(),
-    googleClientSecret: (db.googleClientSecret || process.env.GOOGLE_CLIENT_SECRET || '').trim(),
-    gmailUser:          (db.gmailUser          || process.env.GMAIL_USER          || '').trim(),
-    gmailAppPassword:   (db.gmailAppPassword   || process.env.GMAIL_APP_PASSWORD  || '').trim(),
-    siteUrl:            (db.siteUrl            || process.env.SITE_URL            || '').trim(),
+    googleClientId:       (db.googleClientId     || process.env.GOOGLE_CLIENT_ID     || '').trim(),
+    googleClientSecret:   (db.googleClientSecret || process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+    gmailUser:            (db.gmailUser          || process.env.GMAIL_USER          || '').trim(),
+    gmailAppPassword:     (db.gmailAppPassword   || process.env.GMAIL_APP_PASSWORD  || '').trim(),
+    siteUrl:              (db.siteUrl            || process.env.SITE_URL            || '').trim(),
+    midtransServerKey:    (db.midtransServerKey  || process.env.MIDTRANS_SERVER_KEY || '').trim(),
+    midtransClientKey:    (db.midtransClientKey  || process.env.MIDTRANS_CLIENT_KEY || '').trim(),
+    midtransIsProduction: (db.midtransIsProduction || process.env.MIDTRANS_IS_PRODUCTION || '').trim(),
   };
 }
