@@ -1,19 +1,86 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginModal({ onClose }: { onClose: () => void }) {
   const [agreed, setAgreed] = useState(false);
   const [shook, setShook] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { refetch } = useAuth();
+  const { toast } = useToast();
+  const popupRef = useRef<Window | null>(null);
+  const listenerRef = useRef<((e: MessageEvent) => void) | null>(null);
 
-  const handleGoogleClick = (e: React.MouseEvent) => {
+  useEffect(() => {
+    return () => {
+      if (listenerRef.current) {
+        window.removeEventListener("message", listenerRef.current);
+      }
+      popupRef.current?.close();
+    };
+  }, []);
+
+  const handleGoogleLogin = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!agreed) {
-      e.preventDefault();
       setShook(true);
       setTimeout(() => setShook(false), 2200);
+      return;
     }
+
+    const w = 500, h = 640;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open(
+      "/auth/google",
+      "wooce-google-login",
+      `width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no`
+    );
+
+    if (!popup || popup.closed) {
+      toast({ title: "Popup diblokir", description: "Izinkan popup di browser kamu, lalu coba lagi.", variant: "destructive" });
+      return;
+    }
+
+    popupRef.current = popup;
+    setLoading(true);
+
+    const onMessage = async (e: MessageEvent) => {
+      if (e.data?.type !== "wooce-auth") return;
+      window.removeEventListener("message", onMessage);
+      listenerRef.current = null;
+      popup.close();
+
+      if (e.data.result === "success") {
+        await refetch();
+        toast({ title: "✅ Login berhasil!", description: "Selamat datang kembali." });
+        onClose();
+      } else if (e.data.result === "pending") {
+        setLoading(false);
+        toast({ title: "Akun dalam review", description: "Permohonan penulis kamu sedang diverifikasi admin.", variant: "destructive" });
+      } else {
+        setLoading(false);
+        toast({ title: "Login gagal", description: "Terjadi kesalahan saat login dengan Google.", variant: "destructive" });
+      }
+    };
+
+    listenerRef.current = onMessage;
+    window.addEventListener("message", onMessage);
+
+    const pollClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(pollClosed);
+        if (listenerRef.current) {
+          window.removeEventListener("message", listenerRef.current);
+          listenerRef.current = null;
+        }
+        setLoading(false);
+      }
+    }, 600);
   };
 
   return (
@@ -144,25 +211,34 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Tombol Google */}
-          <a
-            href={agreed ? "/auth/google" : undefined}
-            target="_top"
-            className="block w-full"
-            onClick={handleGoogleClick}
+          <button
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border transition-all text-sm font-medium shadow-sm ${
+              loading
+                ? "border-border/50 bg-muted/40 text-muted-foreground cursor-wait"
+                : agreed
+                ? "border-border bg-background hover:bg-muted text-foreground cursor-pointer"
+                : "border-border/50 bg-muted/40 text-muted-foreground cursor-not-allowed"
+            }`}
+            data-testid="button-login-google"
+            aria-disabled={!agreed || loading}
           >
-            <button
-              className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border transition-all text-sm font-medium shadow-sm ${
-                agreed
-                  ? "border-border bg-background hover:bg-muted text-foreground cursor-pointer"
-                  : "border-border/50 bg-muted/40 text-muted-foreground cursor-not-allowed"
-              }`}
-              data-testid="button-login-google"
-              aria-disabled={!agreed}
-            >
-              <FcGoogle size={18} className={agreed ? "" : "opacity-50"} />
-              Lanjutkan dengan Google
-            </button>
-          </a>
+            {loading ? (
+              <>
+                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Menunggu login...
+              </>
+            ) : (
+              <>
+                <FcGoogle size={18} className={agreed ? "" : "opacity-50"} />
+                Lanjutkan dengan Google
+              </>
+            )}
+          </button>
 
           <p className="text-[11px] text-muted-foreground/40 mt-5 leading-relaxed px-2">
             Site ini dilindungi oleh reCAPTCHA dan berlaku{" "}

@@ -182,26 +182,45 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/auth/done", (req: any, res: any) => {
+    const result = (req.query.result as string) || "error";
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Login</title></head><body><script>
+      (function(){
+        var result = ${JSON.stringify(result)};
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'wooce-auth', result: result }, '*');
+          setTimeout(function(){ window.close(); }, 100);
+        } else {
+          if (result === 'success') window.location.href = '/';
+          else if (result === 'pending') window.location.href = '/?auth=pending';
+          else window.location.href = '/?auth=error';
+        }
+      })();
+    </script></body></html>`;
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  });
+
   app.get("/auth/google/callback", async (req: any, res: any, next: any) => {
     try {
       await registerGoogleStrategy(req);
       passport.authenticate("google", (err: any, user: any, info: any) => {
         if (err) {
           console.error("[OAuth] Error:", err?.message || err);
-          return res.redirect("/?auth=error");
+          return res.redirect("/auth/done?result=error");
         }
         if (!user) {
           console.error("[OAuth] No user returned. Info:", JSON.stringify(info));
-          return res.redirect("/?auth=error");
+          return res.redirect("/auth/done?result=error");
         }
         req.session.userId = user.id;
         req.session.userRole = user.role;
         req.session.save((saveErr: any) => {
           if (saveErr) console.error("[OAuth] Session save error:", saveErr);
           if (user.role === "writer" && user.status === "pending") {
-            return res.redirect("/?auth=pending");
+            return res.redirect("/auth/done?result=pending");
           }
-          res.redirect("/?auth=success");
+          res.redirect("/auth/done?result=success");
         });
       })(req, res, next);
     } catch (err) {
