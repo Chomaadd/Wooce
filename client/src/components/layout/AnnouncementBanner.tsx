@@ -6,23 +6,23 @@ const TYPE_CONFIG = {
   info: {
     badge: "bg-blue-500",
     track: "bg-blue-500/8 border-blue-400/25",
-    text: "text-blue-700 dark:text-blue-300",
+    text: "text-blue-600 dark:text-blue-300",
     icon: Info,
-    label: "INFO",
+    label: "Info",
   },
   warning: {
-    badge: "bg-amber-500",
-    track: "bg-amber-500/8 border-amber-400/25",
-    text: "text-amber-700 dark:text-amber-300",
+    badge: "bg-yellow-400",
+    track: "bg-yellow-400/10 border-yellow-300/30",
+    text: "text-yellow-700 dark:text-yellow-300",
     icon: AlertTriangle,
-    label: "PENTING",
+    label: "Peringatan",
   },
   success: {
     badge: "bg-emerald-500",
     track: "bg-emerald-500/8 border-emerald-400/25",
     text: "text-emerald-700 dark:text-emerald-300",
     icon: CheckCircle2,
-    label: "UPDATE",
+    label: "Pembaruan",
   },
 };
 

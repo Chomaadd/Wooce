@@ -40,7 +40,8 @@ export default function Privacy() {
         "Data Pengajuan Verifikasi: Jika kamu mengajukan verifikasi penulis, kami menyimpan informasi yang kamu masukkan dalam formulir verifikasi, meliputi: judul novel, genre, tautan novel, jumlah total chapter, sinopsis, dan alasan pengajuan verifikasi. Data ini digunakan semata-mata untuk keperluan tinjauan admin.",
         "Data Notifikasi In-App: Notifikasi dalam aplikasi yang dikirimkan kepada akunmu (terkait status permohonan, verifikasi, atau pembaruan akun) disimpan di server kami dan terhubung ke ID akunmu.",
         "Data Penggunaan Anonim: Jumlah tampilan (view count) dan data rating per cerita dikumpulkan secara anonim untuk memahami popularitas konten. Data ini tidak terhubung ke identitas pribadimu.",
-        "Data Preferensi Lokal: Preferensi bahasa (Indonesia/Inggris) dan tema (terang/gelap) disimpan di localStorage browser perangkatmu, bukan di server kami.",
+        "Data Laporan Konten: Jika kamu mengirimkan laporan pelanggaran konten melalui fitur Laporkan di halaman baca, kami menyimpan informasi laporan tersebut — termasuk alasan laporan, ID chapter/cerita yang dilaporkan, dan waktu pengiriman — untuk ditinjau oleh admin. Laporan konten bersifat anonim dan tidak terhubung ke identitas akun pribadimu.",
+        "Data Preferensi Lokal: Preferensi bahasa (Indonesia/Inggris), tema (terang/gelap), dan riwayat chapter terakhir yang dibaca (digunakan oleh fitur 'Lanjut Baca' di halaman utama) disimpan di localStorage browser perangkatmu, bukan di server kami.",
       ],
     },
     {
@@ -243,7 +244,8 @@ export default function Privacy() {
         "Verification Request Data: If you apply for writer verification, we store the information you enter in the verification form, including: novel title, genre, novel link, total chapter count, synopsis, and reason for applying. This data is used solely for admin review purposes.",
         "In-App Notification Data: In-app notifications sent to your account (regarding application status, verification, or account updates) are stored on our servers and linked to your account ID.",
         "Anonymous Usage Data: View counts and rating data per story are collected anonymously to understand content popularity. This data is not linked to your personal identity.",
-        "Local Preference Data: Language preference (Indonesian/English) and theme (light/dark) are stored in your device's browser localStorage, not on our servers.",
+        "Content Report Data: If you submit a content violation report via the Report button on the reading page, we store the report information — including the reason for the report, the ID of the reported chapter/story, and the submission time — for admin review. Content reports are anonymous and not linked to your personal account identity.",
+        "Local Preference Data: Language preference (Indonesian/English), theme (light/dark), and the last read chapter history (used by the 'Continue Reading' feature on the homepage) are stored in your device's browser localStorage, not on our servers.",
       ],
     },
     {
@@ -445,7 +447,7 @@ export default function Privacy() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t("privacy.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("privacy.updated")}: 19 Mei 2026
+            {t("privacy.updated")}: 11 Juni 2026
           </p>
         </div>
 

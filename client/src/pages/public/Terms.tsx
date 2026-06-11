@@ -36,6 +36,12 @@ export default function Terms() {
         "Mendaftar sebagai penulis untuk mempublikasikan karya sendiri melalui proses permohonan dan persetujuan admin",
         "Mengelola karya dalam struktur Season dan Bab (Chapter) melalui dashboard penulis",
         "Menerima notifikasi email terkait status akun, karya, dan aktivitas penting lainnya",
+        "Menikmati pengalaman baca yang dapat disesuaikan dengan pengaturan font, mode baca (terang/gelap), scroll progress, dan pintasan keyboard (← → untuk navigasi chapter, F untuk mode fokus)",
+        "Menggunakan fitur Database Karakter per novel untuk mengenal tokoh-tokoh cerita lebih dalam tanpa keluar dari halaman baca",
+        "Membagikan kutipan favorit dari chapter sebagai kartu gambar (Quote Card) ke media sosial — menggunakan Canvas API tanpa data tambahan yang disimpan di server",
+        "Melanjutkan bacaan dari chapter terakhir yang dibuka melalui fitur 'Lanjut Baca' di halaman utama",
+        "Menyalin tautan chapter secara langsung melalui tombol Salin Link di halaman baca",
+        "Melaporkan konten yang melanggar ketentuan melalui tombol Laporkan di halaman baca",
         "Mengakses fitur pendukung seperti blog, tautan sosial, dan musik latar belakang platform",
       ],
       note: "WOOCE Novel berhak menambah, mengubah, membatasi, atau menghentikan fitur layanan kapan saja tanpa pemberitahuan terlebih dahulu.",
@@ -226,6 +232,12 @@ export default function Terms() {
         "Registering as a writer to publish your own works through an application and admin approval process",
         "Managing works in Season and Chapter structures via the writer dashboard",
         "Receiving email notifications regarding account status, works, and other important activities",
+        "Enjoying a fully customizable reading experience with font settings, reading modes (light/dark), scroll progress indicator, and keyboard shortcuts (← → for chapter navigation, F for focus mode)",
+        "Using the Character Database feature per novel to learn more about story characters without leaving the reading page",
+        "Sharing favorite chapter quotes as image cards (Quote Cards) to social media — using the Canvas API with no additional data stored on the server",
+        "Resuming reading from the last opened chapter via the 'Continue Reading' feature on the homepage",
+        "Copying the chapter link directly via the Copy Link button on the reading page",
+        "Reporting content that violates the terms via the Report button on the reading page",
         "Accessing supporting features such as the blog, social links, and platform background music",
       ],
       note: "WOOCE Novel reserves the right to add, modify, restrict, or discontinue service features at any time without prior notice.",
@@ -419,7 +431,7 @@ export default function Terms() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t("terms.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("terms.updated")}: 20 Mei 2026
+            {t("terms.updated")}: 11 Juni 2026
           </p>
         </div>
 
