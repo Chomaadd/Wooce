@@ -55,7 +55,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
       popup.close();
       if (success) {
         await refetch();
-        toast({ title: "✅ Login berhasil!", description: "Selamat datang kembali." });
+        toast({ title: "✅ Login berhasil!"});
         onClose();
       } else {
         setLoading(false);
