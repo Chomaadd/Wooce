@@ -47,6 +47,35 @@ export default function Terms() {
       note: "WOOCE Novel berhak menambah, mengubah, membatasi, atau menghentikan fitur layanan kapan saja tanpa pemberitahuan terlebih dahulu.",
     },
     {
+      title: "2a. Sistem Koin WOOCE",
+      paragraphs: [
+        "WOOCE Novel mengoperasikan sistem mata uang virtual bernama Koin WOOCE yang dapat digunakan di dalam platform. Koin bukan mata uang nyata, tidak dapat ditukar kembali menjadi uang tunai, dan hanya berlaku di dalam ekosistem WOOCE Novel.",
+        "Koin dapat diperoleh melalui cara-cara berikut:",
+      ],
+      items: [
+        "Login Harian (Daily Login): Klaim koin setiap hari sebagai bonus kesetiaan. Reward meningkat sesuai siklus 7 hari dan streak berturut-turut.",
+        "Quest Login: Bonus koin tambahan saat mencapai milestone streak tertentu (7, 14, atau 30 hari berturut-turut).",
+        "Quest Sosial Media: Dapatkan 50 koin per platform dengan mengikuti akun resmi WOOCE Novel di TikTok, Facebook, dan Instagram. Setiap platform hanya dapat diklaim satu kali.",
+        "Top-up dengan Uang Nyata: Pembelian koin langsung melalui sistem pembayaran yang terintegrasi. Tersedia berbagai paket koin mulai dari 10 hingga 100 koin.",
+      ],
+      note: "Koin yang diperoleh dari login harian, quest, dan aktivitas platform bersifat gratis dan tidak memiliki nilai moneter. Koin yang dibeli melalui top-up tunduk pada kebijakan non-refundable kecuali terjadi kesalahan teknis yang dapat dibuktikan.",
+    },
+    {
+      title: "2b. Kebijakan Pembayaran dan Top-up",
+      paragraphs: [
+        "Top-up koin dilakukan melalui sistem pembayaran Midtrans yang terintegrasi dengan platform. Midtrans adalah penyedia layanan pembayaran resmi yang beroperasi di Indonesia. Dengan melakukan top-up, kamu menyetujui ketentuan penggunaan Midtrans.",
+        "Ketentuan penting terkait pembayaran:",
+      ],
+      items: [
+        "Semua transaksi pembayaran diproses dalam mata uang Rupiah Indonesia (IDR).",
+        "Harga paket koin dapat berubah sewaktu-waktu. Harga yang berlaku adalah harga yang tercantum pada saat pembelian dilakukan.",
+        "Koin yang berhasil dibeli akan langsung dikreditkan ke saldo akunmu setelah pembayaran dikonfirmasi.",
+        "Koin tidak dapat ditarik, ditukar menjadi uang tunai, dipindahkan ke akun lain, atau digunakan di luar platform WOOCE Novel.",
+        "WOOCE Novel tidak bertanggung jawab atas kegagalan transaksi yang disebabkan oleh masalah pada metode pembayaran pengguna, gangguan bank, atau faktor eksternal di luar kendali platform.",
+        "Jika koin tidak masuk setelah pembayaran berhasil, pengguna dapat menghubungi tim support dengan bukti pembayaran untuk pengecekan manual.",
+      ],
+    },
+    {
       title: "3. Akun Pengguna",
       paragraphs: [
         "WOOCE Novel menyediakan dua jenis akun pengguna yang dapat diakses melalui Google OAuth:",
@@ -241,6 +270,35 @@ export default function Terms() {
         "Accessing supporting features such as the blog, social links, and platform background music",
       ],
       note: "WOOCE Novel reserves the right to add, modify, restrict, or discontinue service features at any time without prior notice.",
+    },
+    {
+      title: "2a. WOOCE Coin System",
+      paragraphs: [
+        "WOOCE Novel operates a virtual currency system called WOOCE Coins that can be used within the platform. Coins are not real money, cannot be exchanged back into cash, and are only valid within the WOOCE Novel ecosystem.",
+        "Coins can be obtained through the following methods:",
+      ],
+      items: [
+        "Daily Login: Claim coins every day as a loyalty bonus. Rewards increase according to a 7-day cycle and consecutive streak.",
+        "Login Quests: Additional coin bonuses when reaching certain streak milestones (7, 14, or 30 consecutive days).",
+        "Social Media Quests: Earn 50 coins per platform by following WOOCE Novel's official accounts on TikTok, Facebook, and Instagram. Each platform can only be claimed once.",
+        "Top-up with Real Money: Direct coin purchases through the integrated payment system. Various coin packages are available ranging from 10 to 100 coins.",
+      ],
+      note: "Coins earned through daily login, quests, and platform activities are free and have no monetary value. Coins purchased through top-up are subject to a non-refundable policy unless a provable technical error occurs.",
+    },
+    {
+      title: "2b. Payment and Top-up Policy",
+      paragraphs: [
+        "Coin top-ups are processed through the Midtrans payment system integrated with the platform. Midtrans is an official payment service provider operating in Indonesia. By topping up, you agree to Midtrans's terms of use.",
+        "Important terms regarding payment:",
+      ],
+      items: [
+        "All payment transactions are processed in Indonesian Rupiah (IDR).",
+        "Coin package prices may change at any time. The applicable price is the price listed at the time of purchase.",
+        "Successfully purchased coins will be immediately credited to your account balance after payment is confirmed.",
+        "Coins cannot be withdrawn, exchanged for cash, transferred to another account, or used outside the WOOCE Novel platform.",
+        "WOOCE Novel is not responsible for failed transactions caused by issues with the user's payment method, bank disruptions, or external factors beyond the platform's control.",
+        "If coins are not received after a successful payment, users may contact the support team with proof of payment for manual verification.",
+      ],
     },
     {
       title: "3. User Accounts",

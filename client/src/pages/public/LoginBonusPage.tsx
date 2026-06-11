@@ -8,8 +8,10 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { SiFacebook, SiTiktok } from "react-icons/si";
+import { Instagram } from "lucide-react";
 import {
-  Flame, CheckCircle2, Sparkles, ArrowLeft, Clock, Gift, Coins,
+  Flame, CheckCircle2, Sparkles, ArrowLeft, Clock, Gift, Coins, ExternalLink,
 } from "lucide-react";
 
 const DAY_REWARDS = [1, 2, 3, 5, 7, 10, 20];
@@ -17,6 +19,33 @@ const QUEST_MILESTONES = [
   { days: 7,  bonus: 10 },
   { days: 14, bonus: 25 },
   { days: 30, bonus: 50 },
+];
+
+const SOCIAL_QUESTS = [
+  {
+    id: "tiktok",
+    label: "TikTok",
+    url: "https://www.tiktok.com/@woocenovel",
+    icon: <SiTiktok size={18} />,
+    color: "text-foreground",
+    bg: "bg-muted/60",
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    url: "https://www.facebook.com/woocenovel",
+    icon: <SiFacebook size={18} />,
+    color: "text-blue-600",
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    url: "https://instagram.com/woocenovel",
+    icon: <Instagram size={18} strokeWidth={1.75} />,
+    color: "text-pink-500",
+    bg: "bg-pink-50 dark:bg-pink-950/30",
+  },
 ];
 
 interface BonusStatus {
@@ -82,6 +111,34 @@ export default function LoginBonusPage() {
     queryFn: () => fetch("/api/coins/history", { credentials: "include" }).then(r => r.json()),
     enabled: !!user && !user.isAdmin,
   });
+
+  const { data: socialStatus, refetch: refetchSocial } = useQuery<Record<string, boolean>>({
+    queryKey: ["/api/quests/social"],
+    queryFn: () => fetch("/api/quests/social", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user && !user.isAdmin,
+  });
+
+  const [claimingSocial, setClaimingSocial] = useState<string | null>(null);
+  async function claimSocial(platform: string, url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
+    setClaimingSocial(platform);
+    try {
+      const res = await apiRequest("POST", `/api/quests/social/${platform}`, {});
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data?.message || "Sudah diklaim sebelumnya", variant: "destructive" });
+      } else {
+        toast({ title: `🎉 +50 Koin dari Quest ${platform}!`, description: "Koin berhasil ditambahkan ke saldo." });
+        queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
+        refetchSocial();
+      }
+    } catch {
+      toast({ title: "Gagal klaim", variant: "destructive" });
+    } finally {
+      setClaimingSocial(null);
+    }
+  }
 
   const bonusHistory = (history ?? []).filter((t: any) => t.type === "bonus").slice(0, 10);
 
@@ -283,6 +340,66 @@ export default function LoginBonusPage() {
               );
             })}
           </div>
+        </div>
+
+        {/* Quest Sosial Media */}
+        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground">Quest Sosial Media</p>
+            <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">1× per platform</span>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">Ikuti akun resmi WOOCE Novel dan dapatkan koin gratis!</p>
+          <div className="space-y-2.5">
+            {SOCIAL_QUESTS.map(q => {
+              const done = socialStatus?.[q.id] === true;
+              const claiming = claimingSocial === q.id;
+              return (
+                <div
+                  key={q.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                    done ? "border-green-200 bg-green-50 dark:bg-green-950/20" : "border-border bg-muted/20"
+                  }`}
+                  data-testid={`quest-social-${q.id}`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${q.bg} ${q.color}`}>
+                    {q.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Follow {q.label}</p>
+                    <p className="text-xs text-muted-foreground">@woocenovel</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-sm font-bold ${done ? "text-green-600" : "text-amber-600"}`}>+50 🪙</span>
+                    {done ? (
+                      <div className="flex items-center gap-1 text-green-600 text-xs font-medium">
+                        <CheckCircle2 size={16} />
+                        <span>Diklaim</span>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-3 text-xs font-semibold border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                        disabled={claiming}
+                        onClick={() => claimSocial(q.id, q.url)}
+                        data-testid={`button-claim-social-${q.id}`}
+                      >
+                        {claiming ? "..." : (
+                          <span className="flex items-center gap-1">
+                            <ExternalLink size={11} />
+                            Ikuti & Klaim
+                          </span>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center pt-0.5">
+            Klik "Ikuti & Klaim" untuk membuka halaman sosmed dan otomatis klaim koin
+          </p>
         </div>
 
         {/* Bonus history */}

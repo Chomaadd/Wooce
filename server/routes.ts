@@ -1548,6 +1548,38 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── Quest Sosmed — follow sosmed WOOCE Novel dapat 50 koin ───────────────
+  app.get("/api/quests/social", requireUser, async (req: any, res) => {
+    try {
+      const userId = new mongoose.Types.ObjectId(req.session.userId);
+      const platforms = ["tiktok", "facebook", "instagram"];
+      const result: Record<string, boolean> = {};
+      for (const p of platforms) {
+        const tx = await CoinTransactionModel.findOne({ userId, description: `Quest Sosmed: ${p}` }).lean();
+        result[p] = !!tx;
+      }
+      res.json(result);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/quests/social/:platform", requireUser, async (req: any, res) => {
+    try {
+      const { platform } = z.object({
+        platform: z.enum(["tiktok", "facebook", "instagram"]),
+      }).parse(req.params);
+      const userId = new mongoose.Types.ObjectId(req.session.userId);
+      const desc = `Quest Sosmed: ${platform}`;
+      const already = await CoinTransactionModel.findOne({ userId, description: desc }).lean();
+      if (already) return res.status(400).json({ message: "Sudah diklaim" });
+      await CoinTransactionModel.create({ userId, amount: 50, type: "bonus", description: desc });
+      const coins = await getUserCoinBalance(req.session.userId);
+      res.json({ success: true, coins });
+    } catch (err: any) {
+      if (err?.errors) return res.status(400).json({ message: "Platform tidak valid" });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/coins/unlock", requireUser, async (req: any, res) => {
     try {
       const { chapterId } = z.object({ chapterId: z.string() }).parse(req.body);
