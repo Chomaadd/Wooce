@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Flame, CheckCircle2, Sparkles } from "lucide-react";
+import { X, Flame, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -215,6 +216,14 @@ export function DailyLoginBonus() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Link to full page */}
+          <Link href="/login-bonus" onClick={handleClose}>
+            <button className="w-full text-center text-xs text-muted-foreground hover:text-primary transition-colors py-0.5 flex items-center justify-center gap-1">
+              <ExternalLink size={11} />
+              Lihat halaman Login Harian
+            </button>
+          </Link>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle, Flame } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -781,6 +781,16 @@ export function Navbar() {
                           data-testid="button-coin-history-menu"
                         >
                           <Coins size={12} /> Riwayat Koin
+                        </button>
+                      </Link>
+
+                      <Link href="/login-bonus">
+                        <button
+                          className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-login-bonus-menu"
+                        >
+                          <Flame size={12} className="text-amber-500" /> Login Harian
                         </button>
                       </Link>
 
