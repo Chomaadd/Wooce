@@ -142,7 +142,7 @@ export default function LoginBonusPage() {
 
         {/* Back */}
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1 as any)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => window.history.back()} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft size={16} />
           </button>
           <h1 className="text-lg font-bold text-foreground">Login Harian</h1>
