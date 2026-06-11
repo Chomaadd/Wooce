@@ -8,7 +8,6 @@ import { useSearchContext } from "@/lib/search-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import type { NovelStory, AppNotification } from "@shared/schema";
-import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { apiRequest } from "@/lib/queryClient";
 import { LoginModal } from "@/components/layout/LoginModal";
 import { TopupModal } from "@/components/payment/TopupModal";
@@ -482,7 +481,6 @@ export function Navbar() {
 
   return (
     <>
-    <AnnouncementBanner />
     <header className="sticky top-0 z-40 w-full">
       <div className="glass border-b border-border/40">
         <div className="max-w-7xl mx-auto flex h-14 items-center gap-3 px-5 lg:px-8">

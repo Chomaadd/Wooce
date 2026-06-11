@@ -1,35 +1,47 @@
 import { useQuery } from "@tanstack/react-query";
-import { Info, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Info, AlertTriangle, CheckCircle2, Megaphone } from "lucide-react";
 import type { Announcement } from "@shared/schema";
 
 const TYPE_CONFIG = {
-  info:    { bg: "bg-blue-500/10 border-blue-500/20",       text: "text-blue-700 dark:text-blue-300",       icon: Info,          iconColor: "text-blue-500" },
-  warning: { bg: "bg-amber-500/10 border-amber-500/20",     text: "text-amber-700 dark:text-amber-300",     icon: AlertTriangle, iconColor: "text-amber-500" },
-  success: { bg: "bg-emerald-500/10 border-emerald-500/20", text: "text-emerald-700 dark:text-emerald-300", icon: CheckCircle2,  iconColor: "text-emerald-500" },
+  info: {
+    badge: "bg-blue-500",
+    track: "bg-blue-500/8 border-blue-400/25",
+    text: "text-blue-700 dark:text-blue-300",
+    icon: Info,
+    label: "INFO",
+  },
+  warning: {
+    badge: "bg-amber-500",
+    track: "bg-amber-500/8 border-amber-400/25",
+    text: "text-amber-700 dark:text-amber-300",
+    icon: AlertTriangle,
+    label: "PENTING",
+  },
+  success: {
+    badge: "bg-emerald-500",
+    track: "bg-emerald-500/8 border-emerald-400/25",
+    text: "text-emerald-700 dark:text-emerald-300",
+    icon: CheckCircle2,
+    label: "UPDATE",
+  },
 };
 
-function AnnItem({ ann }: { ann: Announcement }) {
-  const cfg = TYPE_CONFIG[ann.type as keyof typeof TYPE_CONFIG] ?? TYPE_CONFIG.info;
-  const Icon = cfg.icon;
+function TickerItem({ ann, textClass }: { ann: Announcement; textClass: string }) {
   return (
-    <span
-      className="inline-flex items-center gap-2 whitespace-nowrap"
-      style={{ paddingLeft: "6rem", paddingRight: "6rem" }}
-    >
-      <Icon size={12} className={`shrink-0 ${cfg.iconColor}`} />
-      <span className={`text-xs font-medium ${cfg.text}`}>{ann.message}</span>
+    <span className="inline-flex items-center gap-2 whitespace-nowrap px-10">
+      <span className={`text-[11.5px] font-medium ${textClass}`}>{ann.message}</span>
       {ann.link && (
         <a
           href={ann.link}
           target={ann.link.startsWith("http") ? "_blank" : "_self"}
           rel="noopener noreferrer"
-          className={`text-xs font-semibold underline ${cfg.text}`}
+          className={`text-[11px] font-semibold underline underline-offset-2 ${textClass} opacity-75 hover:opacity-100 transition-opacity`}
           onClick={e => e.stopPropagation()}
         >
-          {ann.linkText ?? "Selengkapnya"}
+          {ann.linkText ?? "Selengkapnya →"}
         </a>
       )}
-      <span className="text-muted-foreground/40 mx-4 text-xs select-none">·</span>
+      <span className="text-muted-foreground/25 text-xs select-none mx-1">✦</span>
     </span>
   );
 }
@@ -44,15 +56,13 @@ export function AnnouncementBanner() {
   const visible = (announcements ?? []).filter(a => a.active !== false);
   if (!visible.length) return null;
 
-  const primaryBg = TYPE_CONFIG[visible[0].type as keyof typeof TYPE_CONFIG]?.bg ?? TYPE_CONFIG.info.bg;
+  const primary = visible[0];
+  const cfg = TYPE_CONFIG[primary.type as keyof typeof TYPE_CONFIG] ?? TYPE_CONFIG.info;
 
-  const duration = Math.max(14, visible.length * 12);
+  const duration = Math.max(18, visible.length * 15);
 
   return (
-    <div
-      className={`border-b ${primaryBg} overflow-hidden py-1.5`}
-      data-testid="announcement-banner"
-    >
+    <div className="max-w-7xl mx-auto px-5 lg:px-8 pt-3">
       <style>{`
         @keyframes wooce-ticker {
           0%   { transform: translateX(0); }
@@ -62,14 +72,45 @@ export function AnnouncementBanner() {
           display: inline-flex;
           animation: wooce-ticker ${duration}s linear infinite;
           will-change: transform;
+          white-space: nowrap;
         }
         .wooce-ticker-track:hover {
           animation-play-state: paused;
         }
       `}</style>
-      <div className="wooce-ticker-track">
-        {visible.map(ann => <AnnItem key={ann.id} ann={ann} />)}
-        {visible.map(ann => <AnnItem key={`dup-${ann.id}`} ann={ann} />)}
+
+      <div
+        className={`flex items-stretch rounded-xl border overflow-hidden ${cfg.track}`}
+        data-testid="announcement-banner"
+      >
+        {/* Badge kiri — diam */}
+        <div className={`flex items-center gap-1.5 px-3 py-2 shrink-0 ${cfg.badge}`}>
+          <Megaphone size={11} className="text-white shrink-0" />
+          <span className="text-[10px] font-black tracking-wider text-white leading-none">{cfg.label}</span>
+        </div>
+
+        {/* Garis pembatas */}
+        <div className="w-px bg-border/20 shrink-0" />
+
+        {/* Area scrolling */}
+        <div className="flex-1 overflow-hidden flex items-center min-w-0 py-2">
+          <div className="wooce-ticker-track">
+            {visible.map(ann => (
+              <TickerItem
+                key={ann.id}
+                ann={ann}
+                textClass={(TYPE_CONFIG[ann.type as keyof typeof TYPE_CONFIG] ?? TYPE_CONFIG.info).text}
+              />
+            ))}
+            {visible.map(ann => (
+              <TickerItem
+                key={`dup-${ann.id}`}
+                ann={ann}
+                textClass={(TYPE_CONFIG[ann.type as keyof typeof TYPE_CONFIG] ?? TYPE_CONFIG.info).text}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

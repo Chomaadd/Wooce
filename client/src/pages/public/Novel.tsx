@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { useLanguage } from "@/hooks/use-language";
 import { useSearchContext } from "@/lib/search-context";
@@ -1146,6 +1147,8 @@ export default function Novel() {
         url="/"
       />
       <Navbar />
+
+      <AnnouncementBanner />
 
       <BannerSlideshow banners={activeBanners} featuredStory={featuredStory} />
 
