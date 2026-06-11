@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { SiFacebook, SiTiktok } from "react-icons/si";
 import { Instagram } from "lucide-react";
@@ -26,7 +27,8 @@ const SOCIAL_QUESTS = [
     id: "tiktok",
     label: "TikTok",
     url: "https://www.tiktok.com/@woocenovel",
-    icon: <SiTiktok size={18} />,
+    icon: <SiTiktok size={20} />,
+    bigIcon: <SiTiktok size={32} />,
     color: "text-foreground",
     bg: "bg-muted/60",
   },
@@ -34,7 +36,8 @@ const SOCIAL_QUESTS = [
     id: "facebook",
     label: "Facebook",
     url: "https://www.facebook.com/woocenovel",
-    icon: <SiFacebook size={18} />,
+    icon: <SiFacebook size={20} />,
+    bigIcon: <SiFacebook size={32} />,
     color: "text-blue-600",
     bg: "bg-blue-50 dark:bg-blue-950/30",
   },
@@ -42,7 +45,8 @@ const SOCIAL_QUESTS = [
     id: "instagram",
     label: "Instagram",
     url: "https://instagram.com/woocenovel",
-    icon: <Instagram size={18} strokeWidth={1.75} />,
+    icon: <Instagram size={20} strokeWidth={1.75} />,
+    bigIcon: <Instagram size={32} strokeWidth={1.75} />,
     color: "text-pink-500",
     bg: "bg-pink-50 dark:bg-pink-950/30",
   },
@@ -99,6 +103,11 @@ export default function LoginBonusPage() {
   const [claimed, setClaimed] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
 
+  // Social quest popup state
+  const [socialModal, setSocialModal] = useState<typeof SOCIAL_QUESTS[0] | null>(null);
+  const [opened, setOpened] = useState(false); // has user opened the link
+  const [claimingSocial, setClaimingSocial] = useState(false);
+
   const { data: status, isLoading } = useQuery<BonusStatus>({
     queryKey: ["/api/login-bonus/status"],
     queryFn: () => fetch("/api/login-bonus/status", { credentials: "include" }).then(r => r.json()),
@@ -117,28 +126,6 @@ export default function LoginBonusPage() {
     queryFn: () => fetch("/api/quests/social", { credentials: "include" }).then(r => r.json()),
     enabled: !!user && !user.isAdmin,
   });
-
-  const [claimingSocial, setClaimingSocial] = useState<string | null>(null);
-  async function claimSocial(platform: string, url: string) {
-    window.open(url, "_blank", "noopener,noreferrer");
-    setClaimingSocial(platform);
-    try {
-      const res = await apiRequest("POST", `/api/quests/social/${platform}`, {});
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: data?.message || "Sudah diklaim sebelumnya", variant: "destructive" });
-      } else {
-        toast({ title: `🎉 +50 Koin dari Quest ${platform}!`, description: "Koin berhasil ditambahkan ke saldo." });
-        queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
-        refetchSocial();
-      }
-    } catch {
-      toast({ title: "Gagal klaim", variant: "destructive" });
-    } finally {
-      setClaimingSocial(null);
-    }
-  }
 
   const bonusHistory = (history ?? []).filter((t: any) => t.type === "bonus").slice(0, 10);
 
@@ -169,6 +156,39 @@ export default function LoginBonusPage() {
       toast({ title: "Gagal klaim", description: err.message, variant: "destructive" });
     },
   });
+
+  async function handleClaimSocial() {
+    if (!socialModal) return;
+    setClaimingSocial(true);
+    try {
+      const res = await apiRequest("POST", `/api/quests/social/${socialModal.id}`, {});
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data?.message === "Sudah diklaim" ? "Quest ini sudah diklaim sebelumnya" : (data?.message || "Gagal klaim"), variant: "destructive" });
+      } else {
+        toast({ title: `🎉 +50 Koin dari Quest Follow ${socialModal.label}!`, description: "Koin sudah ditambahkan ke saldo kamu." });
+        queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
+        refetchSocial();
+        setSocialModal(null);
+        setOpened(false);
+      }
+    } catch {
+      toast({ title: "Gagal klaim", variant: "destructive" });
+    } finally {
+      setClaimingSocial(false);
+    }
+  }
+
+  function openSocialModal(q: typeof SOCIAL_QUESTS[0]) {
+    setSocialModal(q);
+    setOpened(false);
+  }
+
+  function closeSocialModal() {
+    setSocialModal(null);
+    setOpened(false);
+  }
 
   if (!user || user.isAdmin) {
     return (
@@ -348,11 +368,10 @@ export default function LoginBonusPage() {
             <p className="text-sm font-semibold text-foreground">Quest Sosial Media</p>
             <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">1× per platform</span>
           </div>
-          <p className="text-xs text-muted-foreground -mt-1">Ikuti akun resmi WOOCE Novel dan dapatkan koin gratis!</p>
+          <p className="text-xs text-muted-foreground">Ikuti akun resmi WOOCE Novel dan dapatkan koin gratis!</p>
           <div className="space-y-2.5">
             {SOCIAL_QUESTS.map(q => {
               const done = socialStatus?.[q.id] === true;
-              const claiming = claimingSocial === q.id;
               return (
                 <div
                   key={q.id}
@@ -373,23 +392,17 @@ export default function LoginBonusPage() {
                     {done ? (
                       <div className="flex items-center gap-1 text-green-600 text-xs font-medium">
                         <CheckCircle2 size={16} />
-                        <span>Diklaim</span>
+                        <span>Selesai</span>
                       </div>
                     ) : (
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-8 px-3 text-xs font-semibold border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                        disabled={claiming}
-                        onClick={() => claimSocial(q.id, q.url)}
-                        data-testid={`button-claim-social-${q.id}`}
+                        onClick={() => openSocialModal(q)}
+                        data-testid={`button-open-social-${q.id}`}
                       >
-                        {claiming ? "..." : (
-                          <span className="flex items-center gap-1">
-                            <ExternalLink size={11} />
-                            Ikuti & Klaim
-                          </span>
-                        )}
+                        Mulai Quest
                       </Button>
                     )}
                   </div>
@@ -397,9 +410,6 @@ export default function LoginBonusPage() {
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-foreground text-center pt-0.5">
-            Klik "Ikuti & Klaim" untuk membuka halaman sosmed dan otomatis klaim koin
-          </p>
         </div>
 
         {/* Bonus history */}
@@ -432,6 +442,82 @@ export default function LoginBonusPage() {
 
       </main>
       <Footer />
+
+      {/* Social Quest Popup */}
+      <Dialog open={!!socialModal} onOpenChange={(v) => { if (!v) closeSocialModal(); }}>
+        <DialogContent className="max-w-xs p-0 overflow-hidden gap-0 [&>button]:hidden">
+          {socialModal && (
+            <>
+              {/* Header bergradasi sesuai platform */}
+              <div className={`px-5 pt-5 pb-4 flex flex-col items-center gap-2 ${
+                socialModal.id === "facebook" ? "bg-blue-500" :
+                socialModal.id === "instagram" ? "bg-gradient-to-br from-pink-500 to-purple-600" :
+                "bg-zinc-900"
+              }`}>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white">
+                  {socialModal.bigIcon}
+                </div>
+                <p className="text-white font-bold text-base">Quest {socialModal.label}</p>
+                <p className="text-white/80 text-xs text-center">Follow akun resmi WOOCE Novel dan dapatkan <span className="font-bold text-white">50 Koin</span> gratis!</p>
+              </div>
+
+              <div className="px-5 py-4 space-y-3">
+                {/* Step 1 */}
+                <div className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${opened ? "border-green-200 bg-green-50 dark:bg-green-950/20" : "border-border bg-muted/30"}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 ${opened ? "bg-green-500 text-white" : "bg-amber-500 text-white"}`}>
+                    {opened ? "✓" : "1"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Buka & Follow {socialModal.label}</p>
+                    <p className="text-xs text-muted-foreground mb-2">Klik tombol di bawah, buka halaman {socialModal.label} dan ikuti akun @woocenovel</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={() => {
+                        window.open(socialModal.url, "_blank", "noopener,noreferrer");
+                        setOpened(true);
+                      }}
+                      data-testid={`button-open-link-${socialModal.id}`}
+                    >
+                      <ExternalLink size={12} />
+                      Buka {socialModal.label}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${!opened ? "border-border bg-muted/20 opacity-50" : "border-amber-200 bg-amber-50 dark:bg-amber-950/20"}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5 ${opened ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                    2
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Sudah diikuti? Klaim koinmu!</p>
+                    <p className="text-xs text-muted-foreground mb-2">Setelah kamu follow akun {socialModal.label} kami, klik klaim untuk menerima koin.</p>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold gap-1"
+                      disabled={!opened || claimingSocial}
+                      onClick={handleClaimSocial}
+                      data-testid={`button-claim-social-${socialModal.id}`}
+                    >
+                      {claimingSocial ? "Mengklaim..." : "✓ Sudah Diikuti — Klaim 50 Koin"}
+                    </Button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeSocialModal}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-1"
+                  data-testid="button-cancel-social-quest"
+                >
+                  Batal
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
