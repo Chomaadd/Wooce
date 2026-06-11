@@ -591,7 +591,7 @@ export default function NovelDetail() {
 
   const { data: story, isLoading: storyLoading } = useQuery<NovelStory>({
     queryKey: ["/api/novel/stories", slug],
-    queryFn: () => fetch(`/api/novel/stories/${slug}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/novel/stories/${slug}`).then(r => r.ok ? r.json() : null),
     enabled: !!slug,
   });
 

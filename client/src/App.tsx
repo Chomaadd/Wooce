@@ -1,4 +1,6 @@
 import { Switch, Route, Redirect } from "wouter";
+import { Component } from "react";
+import type { ReactNode } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +9,7 @@ import { LanguageProvider } from "@/hooks/use-language";
 import { HelmetProvider } from "react-helmet-async";
 import { SearchProvider } from "@/lib/search-context";
 import { AuthProvider } from "@/hooks/use-auth";
+import { RefreshCw, Home } from "lucide-react";
 
 import Novel from "./pages/public/Novel";
 import AllNovels from "./pages/public/AllNovels";
@@ -29,6 +32,46 @@ import CoinHistory from "./pages/public/CoinHistory";
 import LoginBonusPage from "./pages/public/LoginBonusPage";
 import NotFound from "@/pages/public/Not-Found";
 import { DailyLoginBonus } from "@/components/daily-login/DailyLoginBonus";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center px-6">
+          <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-5">
+            <RefreshCw size={28} className="text-destructive" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2">Terjadi Kesalahan</h2>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+            Halaman ini mengalami masalah teknis. Coba refresh atau kembali ke beranda.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all"
+            >
+              <RefreshCw size={14} /> Refresh
+            </button>
+            <button
+              onClick={() => { this.setState({ hasError: false }); window.location.href = "/"; }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium hover:bg-accent transition-all"
+            >
+              <Home size={14} /> Beranda
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function Router() {
   return (
@@ -66,9 +109,11 @@ function App() {
           <AuthProvider>
             <SearchProvider>
               <TooltipProvider>
-                <Toaster />
-                <DailyLoginBonus />
-                <Router />
+                <ErrorBoundary>
+                  <Toaster />
+                  <DailyLoginBonus />
+                  <Router />
+                </ErrorBoundary>
               </TooltipProvider>
             </SearchProvider>
           </AuthProvider>
