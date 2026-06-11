@@ -27,6 +27,7 @@ import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
 import CoinHistory from "./pages/public/CoinHistory";
 import NotFound from "@/pages/public/Not-Found";
+import { DailyLoginBonus } from "@/components/daily-login/DailyLoginBonus";
 
 function Router() {
   return (
@@ -64,6 +65,7 @@ function App() {
             <SearchProvider>
               <TooltipProvider>
                 <Toaster />
+                <DailyLoginBonus />
                 <Router />
               </TooltipProvider>
             </SearchProvider>

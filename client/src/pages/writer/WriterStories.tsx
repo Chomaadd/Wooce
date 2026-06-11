@@ -73,6 +73,12 @@ type WriterMe = {
 };
 
 type WriterView = "stories" | "seasons" | "chapters" | "write" | "stats" | "characters";
+
+const CHAR_ROLE_LABELS: Record<string, string> = {
+  utama: "Tokoh Utama", kedua: "Tokoh Kedua", pengantar: "Tokoh Pengantar",
+  antagonis: "Antagonis", pendukung: "Pendukung", figuran: "Figuran", lainnya: "Lainnya",
+  protagonis: "Protagonis", protagonist: "Protagonis",
+};
 type StoryWithStats = NovelStory & {
   totalChapters: number;
   publishedChapters?: number;
@@ -456,7 +462,9 @@ export default function WriterStories() {
   const [characterStory, setCharacterStory] = useState<StoryWithStats | null>(null);
   const [characterDialog, setCharacterDialog] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<any | null>(null);
-  const [characterForm, setCharacterForm] = useState({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" });
+  const [characterForm, setCharacterForm] = useState({ name: "", role: "utama", description: "", imageUrl: "", relations: "" });
+  const [charPhotoUploading, setCharPhotoUploading] = useState(false);
+  const charPhotoRef = useRef<HTMLInputElement>(null);
 
   const isWriter =
     !authLoading &&
@@ -2117,7 +2125,7 @@ export default function WriterStories() {
                   size="sm"
                   onClick={() => {
                     setEditingCharacter(null);
-                    setCharacterForm({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" });
+                    setCharacterForm({ name: "", role: "utama", description: "", imageUrl: "", relations: "" });
                     setCharacterDialog(true);
                   }}
                   data-testid="button-add-character"
@@ -2151,7 +2159,7 @@ export default function WriterStories() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="font-semibold text-sm text-foreground">{char.name}</span>
                           {char.role && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{char.role}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{CHAR_ROLE_LABELS[char.role] ?? char.role}</span>
                           )}
                         </div>
                         {char.description && <p className="text-xs text-muted-foreground line-clamp-2">{char.description}</p>}
@@ -2160,7 +2168,7 @@ export default function WriterStories() {
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <Button size="sm" variant="ghost" onClick={() => {
                           setEditingCharacter(char);
-                          setCharacterForm({ name: char.name, role: char.role || "pendukung", description: char.description || "", imageUrl: char.imageUrl || "", relations: char.relations || "" });
+                          setCharacterForm({ name: char.name, role: char.role || "utama", description: char.description || "", imageUrl: char.imageUrl || "", relations: char.relations || "" });
                           setCharacterDialog(true);
                         }} data-testid={`button-edit-character-${char.id}`}>
                           <Pencil size={13} />
@@ -2649,35 +2657,75 @@ export default function WriterStories() {
       </Dialog>
 
       {/* ── Character Dialog ── */}
-      <Dialog open={characterDialog} onOpenChange={(open) => { setCharacterDialog(open); if (!open) { setEditingCharacter(null); setCharacterForm({ name: "", role: "pendukung", description: "", imageUrl: "", relations: "" }); } }}>
+      <Dialog open={characterDialog} onOpenChange={(open) => { setCharacterDialog(open); if (!open) { setEditingCharacter(null); setCharacterForm({ name: "", role: "utama", description: "", imageUrl: "", relations: "" }); } }}>
         <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingCharacter ? "Edit Karakter" : "Tambah Karakter"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Photo upload */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Foto Karakter (opsional)</label>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex-shrink-0 border border-border">
+                  {characterForm.imageUrl ? (
+                    <img src={characterForm.imageUrl} alt="preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User size={22} className="text-muted-foreground/40" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <Button type="button" variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => charPhotoRef.current?.click()} disabled={charPhotoUploading} data-testid="button-char-photo-upload">
+                    {charPhotoUploading ? <><Loader2 size={12} className="mr-1 animate-spin" /> Mengupload…</> : <><Upload size={12} className="mr-1" /> Upload Foto</>}
+                  </Button>
+                  {characterForm.imageUrl && (
+                    <Button type="button" variant="ghost" size="sm" className="w-full text-xs h-7 text-destructive hover:text-destructive" onClick={() => setCharacterForm(f => ({ ...f, imageUrl: "" }))}>
+                      Hapus Foto
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={charPhotoRef} type="file" accept="image/*" className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setCharPhotoUploading(true);
+                  try {
+                    const form = new FormData();
+                    form.append("file", file);
+                    const res = await fetch("/api/upload", { method: "POST", body: form });
+                    const data = await res.json();
+                    setCharacterForm(f => ({ ...f, imageUrl: data.url }));
+                  } catch { toast({ title: "Gagal upload foto", variant: "destructive" }); }
+                  finally { setCharPhotoUploading(false); e.target.value = ""; }
+                }}
+              />
+            </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground block mb-1">Nama *</label>
               <Input value={characterForm.name} onChange={e => setCharacterForm(f => ({ ...f, name: e.target.value }))} placeholder="Nama karakter" data-testid="input-char-name" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">Peran</label>
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Peran Tokoh</label>
               <Select value={characterForm.role} onValueChange={v => setCharacterForm(f => ({ ...f, role: v }))}>
                 <SelectTrigger className="h-8 text-xs" data-testid="select-char-role"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="protagonis">Protagonis</SelectItem>
+                  <SelectItem value="utama">Tokoh Utama</SelectItem>
+                  <SelectItem value="kedua">Tokoh Kedua</SelectItem>
+                  <SelectItem value="pengantar">Tokoh Pengantar</SelectItem>
                   <SelectItem value="antagonis">Antagonis</SelectItem>
                   <SelectItem value="pendukung">Pendukung</SelectItem>
                   <SelectItem value="figuran">Figuran</SelectItem>
+                  <SelectItem value="lainnya">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">Deskripsi</label>
-              <Textarea value={characterForm.description} onChange={e => setCharacterForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Kepribadian, latar belakang, dll..." data-testid="input-char-desc" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">URL Foto (opsional)</label>
-              <Input value={characterForm.imageUrl} onChange={e => setCharacterForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://..." data-testid="input-char-image" />
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Info Tentang Tokoh</label>
+              <Textarea value={characterForm.description} onChange={e => setCharacterForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Kepribadian, latar belakang, kekuatan, kelemahan, dll..." data-testid="input-char-desc" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground block mb-1">Hubungan dengan karakter lain</label>
@@ -2687,7 +2735,7 @@ export default function WriterStories() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCharacterDialog(false)}>Batal</Button>
             <Button
-              disabled={!characterForm.name.trim() || createCharacter.isPending || updateCharacter.isPending}
+              disabled={!characterForm.name.trim() || createCharacter.isPending || updateCharacter.isPending || charPhotoUploading}
               onClick={() => {
                 if (editingCharacter) {
                   updateCharacter.mutate({ id: editingCharacter.id, data: characterForm });

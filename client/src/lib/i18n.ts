@@ -730,6 +730,17 @@ const translations: Record<Language, Record<string, string>> = {
     "verifyAuthor.rejected.title": "Application Rejected",
     "verifyAuthor.rejected.desc": "Your previous verification request did not meet the requirements. You can reapply after the waiting period.",
     "verifyAuthor.countdown.later": "before you can reapply for verification",
+
+    "dailyBonus.title": "Daily Login",
+    "dailyBonus.streak": "day streak 🔥",
+    "dailyBonus.startStreak": "Start your streak now!",
+    "dailyBonus.questTitle": "Login Quests",
+    "dailyBonus.questDays": "consecutive days",
+    "dailyBonus.claimBtn": "Claim {{coins}} Coins Today",
+    "dailyBonus.claiming": "Claiming...",
+    "dailyBonus.coinsReceived": "Coins Received!",
+    "dailyBonus.questBonus": "Including quest bonus +{{coins}} coins 🎉",
+    "dailyBonus.close": "Close",
   },
   id: {
     "nav.home": "Beranda",
@@ -1459,6 +1470,17 @@ const translations: Record<Language, Record<string, string>> = {
     "verifyAuthor.rejected.title": "Pengajuan Ditolak",
     "verifyAuthor.rejected.desc": "Pengajuan verifikasimu sebelumnya tidak memenuhi syarat. Kamu bisa mengajukan kembali setelah masa tunggu selesai.",
     "verifyAuthor.countdown.later": "lagi untuk bisa mengajukan verifikasi ulang",
+
+    "dailyBonus.title": "Login Harian",
+    "dailyBonus.streak": "hari berturut-turut 🔥",
+    "dailyBonus.startStreak": "Mulai streakmu sekarang!",
+    "dailyBonus.questTitle": "Quest Login",
+    "dailyBonus.questDays": "hari berturut-turut",
+    "dailyBonus.claimBtn": "Klaim {{coins}} Koin Hari Ini",
+    "dailyBonus.claiming": "Mengklaim...",
+    "dailyBonus.coinsReceived": "Koin Diterima!",
+    "dailyBonus.questBonus": "Termasuk bonus quest +{{coins}} koin 🎉",
+    "dailyBonus.close": "Tutup",
   },
 };
 

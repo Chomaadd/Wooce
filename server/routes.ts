@@ -32,6 +32,7 @@ import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
 import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
 import { TopupOrderModel, COIN_PACKAGES } from "./paymentModel";
+import { LoginBonusModel, DAY_REWARDS, QUEST_MILESTONES, todayStr, yesterdayStr } from "./loginBonusModel";
 import MidtransClient from "midtrans-client";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
@@ -783,7 +784,7 @@ export async function registerRoutes(
     try {
       const { name, role, description, imageUrl, relations, order } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: "Nama karakter wajib diisi" });
-      const story = await storage.getNovelStory(req.params.storyId);
+      const story = await storage.getNovelStoryById(req.params.storyId);
       if (!story) return res.status(404).json({ message: "Story not found" });
       const char = await storage.createCharacter({ storyId: req.params.storyId, name: name.trim(), role, description, imageUrl, relations, order: order ?? 0 });
       res.json(char);
@@ -1431,6 +1432,94 @@ export async function registerRoutes(
     try {
       const unlocked = await UnlockedChapterModel.find({ userId: req.session.userId }).lean();
       res.json(unlocked.map((u: any) => u.chapterId.toString()));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Daily Login Bonus ─────────────────────────────────────────────────────
+  app.get("/api/login-bonus/status", requireUser, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const record = await LoginBonusModel.findOne({ userId }).lean() as any;
+      const today = todayStr();
+      const yesterday = yesterdayStr();
+      const lastClaim: string | null = record?.lastClaimDate ?? null;
+      const alreadyToday = lastClaim === today;
+      let currentDay: number = record?.currentDay ?? 0;
+      let totalStreak: number = record?.totalStreak ?? 0;
+      // If missed a day, reset
+      if (lastClaim && lastClaim !== today && lastClaim !== yesterday) {
+        currentDay = 0;
+        totalStreak = 0;
+      }
+      const nextDay = (currentDay % 7) + 1;
+      const todayReward = DAY_REWARDS[nextDay - 1];
+      const questsGranted: number[] = record?.questsGranted ?? [];
+      const questProgress = QUEST_MILESTONES.map(q => ({
+        days: q.days,
+        bonus: q.bonus,
+        alreadyDone: questsGranted.includes(q.days),
+      }));
+      res.json({
+        canClaim: !alreadyToday,
+        currentDay,
+        todayReward,
+        totalStreak,
+        questProgress,
+        dayRewards: DAY_REWARDS,
+      });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/login-bonus/claim", requireUser, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const userObjId = new mongoose.Types.ObjectId(userId);
+      const today = todayStr();
+      const yesterday = yesterdayStr();
+      const record = await LoginBonusModel.findOne({ userId: userObjId }).lean() as any;
+      if (record?.lastClaimDate === today) return res.status(400).json({ message: "Sudah klaim hari ini" });
+      const lastClaim: string | null = record?.lastClaimDate ?? null;
+      let currentDay: number = record?.currentDay ?? 0;
+      let totalStreak: number = record?.totalStreak ?? 0;
+      let questsGranted: number[] = record?.questsGranted ?? [];
+      // Reset if streak broken
+      if (lastClaim && lastClaim !== yesterday) { currentDay = 0; totalStreak = 0; }
+      currentDay = (currentDay % 7) + 1;
+      totalStreak += 1;
+      const coinsEarned = DAY_REWARDS[currentDay - 1];
+      // Quest milestones
+      let questBonus = 0;
+      let questMilestone: number | null = null;
+      const newQuests = [...questsGranted];
+      for (const q of QUEST_MILESTONES) {
+        if (totalStreak >= q.days && !newQuests.includes(q.days)) {
+          questBonus += q.bonus;
+          questMilestone = q.days;
+          newQuests.push(q.days);
+        }
+      }
+      await LoginBonusModel.findOneAndUpdate(
+        { userId: userObjId },
+        { $set: { lastClaimDate: today, currentDay, totalStreak, questsGranted: newQuests } },
+        { upsert: true },
+      );
+      const totalCoins = coinsEarned + questBonus;
+      await CoinTransactionModel.create({
+        userId: userObjId,
+        amount: totalCoins,
+        type: "bonus",
+        description: `Login bonus hari ke-${currentDay} dalam siklus${questBonus > 0 ? ` + Quest ${questMilestone} hari` : ""}`,
+      });
+      if (questBonus > 0) {
+        storage.createNotification({
+          userId,
+          type: "bonus",
+          title: `Quest Selesai! +${questBonus} Koin`,
+          message: `Login ${questMilestone} hari berturut-turut! Bonus ${questBonus} koin langsung ditambahkan.`,
+          link: "/koin/riwayat",
+        }).catch(console.error);
+      }
+      res.json({ coinsEarned, questBonus, questMilestone, totalStreak, currentDay, totalCoins });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
