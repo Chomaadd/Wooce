@@ -465,6 +465,12 @@ export default function WriterStories() {
   const [characterForm, setCharacterForm] = useState({ name: "", role: "utama", description: "", imageUrl: "", relations: "" });
   const [charPhotoUploading, setCharPhotoUploading] = useState(false);
   const charPhotoRef = useRef<HTMLInputElement>(null);
+  const [charCropOpen, setCharCropOpen] = useState(false);
+  const [charRawSrc, setCharRawSrc] = useState<string | null>(null);
+  const [charCrop, setCharCrop] = useState({ x: 0, y: 0 });
+  const [charZoom, setCharZoom] = useState(1);
+  const [charCroppedAreaPixels, setCharCroppedAreaPixels] = useState<any>(null);
+  const onCharCropComplete = useCallback((_: any, pixels: any) => setCharCroppedAreaPixels(pixels), []);
 
   const isWriter =
     !authLoading &&
@@ -2689,18 +2695,18 @@ export default function WriterStories() {
               </div>
               <input
                 ref={charPhotoRef} type="file" accept="image/*" className="hidden"
-                onChange={async (e) => {
+                onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  setCharPhotoUploading(true);
-                  try {
-                    const form = new FormData();
-                    form.append("file", file);
-                    const res = await fetch("/api/upload", { method: "POST", body: form });
-                    const data = await res.json();
-                    setCharacterForm(f => ({ ...f, imageUrl: data.url }));
-                  } catch { toast({ title: "Gagal upload foto", variant: "destructive" }); }
-                  finally { setCharPhotoUploading(false); e.target.value = ""; }
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    setCharRawSrc(reader.result as string);
+                    setCharCrop({ x: 0, y: 0 });
+                    setCharZoom(1);
+                    setCharCropOpen(true);
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
                 }}
               />
             </div>
@@ -2746,6 +2752,72 @@ export default function WriterStories() {
               data-testid="button-submit-character"
             >
               {(createCharacter.isPending || updateCharacter.isPending) ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Character Photo Crop Dialog ── */}
+      <Dialog open={charCropOpen} onOpenChange={(v) => { if (!v) { setCharCropOpen(false); setCharRawSrc(null); } }}>
+        <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 [&>button]:hidden">
+          <DialogHeader className="px-4 pt-4 pb-2">
+            <DialogTitle className="text-sm">Crop Foto Karakter</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full bg-black" style={{ height: 280 }}>
+            {charRawSrc && (
+              <Cropper
+                image={charRawSrc}
+                crop={charCrop}
+                zoom={charZoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCharCrop}
+                onZoomChange={setCharZoom}
+                onCropComplete={onCharCropComplete}
+              />
+            )}
+          </div>
+          <div className="px-4 py-2 space-y-1">
+            <p className="text-[11px] text-muted-foreground text-center">Geser & pinch untuk menyesuaikan posisi foto</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground shrink-0">Zoom</span>
+              <input
+                type="range" min={1} max={3} step={0.05}
+                value={charZoom}
+                onChange={e => setCharZoom(Number(e.target.value))}
+                className="flex-1 accent-amber-500"
+              />
+            </div>
+          </div>
+          <DialogFooter className="px-4 pb-4 gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setCharCropOpen(false); setCharRawSrc(null); }}>Batal</Button>
+            <Button
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              disabled={charPhotoUploading}
+              onClick={async () => {
+                if (!charRawSrc || !charCroppedAreaPixels) return;
+                setCharPhotoUploading(true);
+                try {
+                  const blob = await getCroppedBlob(charRawSrc, charCroppedAreaPixels);
+                  const form = new FormData();
+                  form.append("file", blob, `char-${Date.now()}.jpg`);
+                  const res = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
+                  if (!res.ok) throw new Error("Upload gagal");
+                  const { url } = await res.json();
+                  setCharacterForm(f => ({ ...f, imageUrl: url }));
+                  setCharCropOpen(false);
+                  setCharRawSrc(null);
+                  toast({ title: "Foto berhasil diupload!" });
+                } catch {
+                  toast({ title: "Gagal upload foto", variant: "destructive" });
+                } finally {
+                  setCharPhotoUploading(false);
+                }
+              }}
+            >
+              {charPhotoUploading ? <><Loader2 size={12} className="mr-1 animate-spin" /> Mengupload…</> : "Gunakan Foto Ini"}
             </Button>
           </DialogFooter>
         </DialogContent>

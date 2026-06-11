@@ -55,7 +55,7 @@ export default function Privacy() {
         "Login Google OAuth: Saat kamu memilih untuk login menggunakan Google, Google mengirimkan data profil dasarmu (nama, email, foto, ID Google) kepada kami sesuai izin yang kamu berikan di layar persetujuan Google.",
         "Formulir dan Input Langsung: Data yang kamu masukkan secara langsung di platform, seperti formulir permohonan penulis, konten chapter, atau pengaturan profil.",
         "Aktivitas Platform: Data teknis seperti view count yang tercatat secara otomatis saat pengguna mengakses halaman cerita tertentu.",
-        "Unggahan File: Gambar cover novel yang kamu unggah disimpan menggunakan sistem GridFS di database kami.",
+        "Unggahan File: Gambar cover novel dan foto karakter yang kamu unggah (melalui fitur Database Karakter) disimpan menggunakan sistem GridFS di database kami.",
         "Komunikasi Email: Jika kamu menghubungi kami melalui formulir kontak atau email, informasi yang kamu berikan dalam komunikasi tersebut akan disimpan.",
       ],
     },
@@ -195,11 +195,11 @@ export default function Privacy() {
         "Hak Backup Data: Sebagai penulis, kamu berhak mendapatkan backup karya-karyamu dalam format PDF saat menghapus novel atau akun.",
         "Hak Keberatan: Kamu berhak mengajukan keberatan atas cara kami memproses datamu dengan menghubungi kami melalui saluran kontak resmi.",
       ],
-      note: "Untuk menggunakan hak-hak di atas atau mengajukan permintaan terkait data pribadimu, hubungi kami di wooce.novel@gmail.com. Kami akan merespons dalam waktu 7 hari kerja.",
+      note: "Untuk menggunakan hak-hak di atas atau mengajukan permintaan terkait data pribadimu, hubungi kami di support.woocenovel@gmail.com. Kami akan merespons dalam waktu 7 hari kerja.",
     },
     {
       title: "12. Batasan Usia",
-      content: "WOOCE Novel tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak secara sengaja mengumpulkan data pribadi dari anak-anak di bawah 13 tahun. Jika kamu adalah orang tua atau wali yang mengetahui bahwa anak di bawah asuhanmu telah membuat akun di platform kami, mohon hubungi kami segera di wooce.novel@gmail.com agar kami dapat menghapus data tersebut.",
+      content: "WOOCE Novel tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak secara sengaja mengumpulkan data pribadi dari anak-anak di bawah 13 tahun. Jika kamu adalah orang tua atau wali yang mengetahui bahwa anak di bawah asuhanmu telah membuat akun di platform kami, mohon hubungi kami segera di support.woocenovel@gmail.com agar kami dapat menghapus data tersebut.",
     },
     {
       title: "13. Perubahan Kebijakan Privasi",
@@ -215,7 +215,7 @@ export default function Privacy() {
         "Jika kamu memiliki pertanyaan, kekhawatiran, atau permintaan terkait Kebijakan Privasi ini atau cara kami mengelola data pribadimu, silakan hubungi kami melalui:",
       ],
       items: [
-        "Email: wooce.novel@gmail.com",
+        "Email: support.woocenovel@gmail.com",
         "Media Sosial: TikTok, Facebook, atau Instagram @woocenovel (tautan tersedia di footer platform)",
         "Formulir Kontak: Tersedia di halaman Hubungi Kami di platform",
       ],
@@ -261,7 +261,7 @@ export default function Privacy() {
         "Google OAuth Login: When you choose to log in using Google, Google sends your basic profile data (name, email, photo, Google ID) to us according to the permissions you grant on the Google consent screen.",
         "Forms and Direct Input: Data you enter directly on the platform, such as writer application forms, chapter content, or profile settings.",
         "Platform Activity: Technical data such as view counts that are automatically recorded when users access specific story pages.",
-        "File Uploads: Novel cover images you upload are stored using the GridFS system in our database.",
+        "File Uploads: Novel cover images and character photos you upload (via the Character Database feature) are stored using the GridFS system in our database.",
         "Email Communication: If you contact us via the contact form or email, information you provide in that communication will be stored.",
       ],
     },
@@ -401,11 +401,11 @@ export default function Privacy() {
         "Right to Data Backup: As a writer, you have the right to receive a PDF backup of your works when deleting a novel or account.",
         "Right to Object: You have the right to object to how we process your data by contacting us through official contact channels.",
       ],
-      note: "To exercise the above rights or submit requests regarding your personal data, contact us at wooce.novel@gmail.com. We will respond within 7 business days.",
+      note: "To exercise the above rights or submit requests regarding your personal data, contact us at support.woocenovel@gmail.com. We will respond within 7 business days.",
     },
     {
       title: "12. Age Restrictions",
-      content: "WOOCE Novel is not intended for children under the age of 13. We do not knowingly collect personal data from children under 13. If you are a parent or guardian who becomes aware that a child in your care has created an account on our platform, please contact us immediately at wooce.novel@gmail.com so we can delete that data.",
+      content: "WOOCE Novel is not intended for children under the age of 13. We do not knowingly collect personal data from children under 13. If you are a parent or guardian who becomes aware that a child in your care has created an account on our platform, please contact us immediately at support.woocenovel@gmail.com so we can delete that data.",
     },
     {
       title: "13. Changes to Privacy Policy",
@@ -421,7 +421,7 @@ export default function Privacy() {
         "If you have questions, concerns, or requests regarding this Privacy Policy or how we handle your personal data, please contact us through:",
       ],
       items: [
-        "Email: wooce.novel@gmail.com",
+        "Email: support.woocenovel@gmail.com",
         "Social Media: TikTok, Facebook, or Instagram @woocenovel (links available in the platform footer)",
         "Contact Form: Available on the Contact Us page on the platform",
       ],

@@ -103,10 +103,23 @@ export function DailyLoginBonus() {
     if (!socialModal) return;
     setClaimingSocial(true);
     try {
-      const res = await apiRequest("POST", `/api/quests/social/${socialModal.id}`, {});
-      const data = await res.json();
+      const res = await fetch(`/api/quests/social/${socialModal.id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast({ title: data?.message === "Sudah diklaim" ? "Quest ini sudah diklaim sebelumnya" : (data?.message || "Gagal klaim"), variant: "destructive" });
+        const msg = data?.message || "";
+        if (msg === "Sudah diklaim") {
+          toast({ title: "Quest ini sudah diklaim sebelumnya ✅", description: "Koin sudah masuk ke saldo kamu sebelumnya." });
+          refetchSocial();
+          setSocialModal(null);
+          setLinkOpened(false);
+        } else {
+          toast({ title: msg || "Gagal klaim, coba lagi.", variant: "destructive" });
+        }
       } else {
         toast({ title: `🎉 +50 Koin dari Quest Follow ${socialModal.label}!`, description: "Koin sudah ditambahkan ke saldo kamu." });
         queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
@@ -116,7 +129,7 @@ export function DailyLoginBonus() {
         setLinkOpened(false);
       }
     } catch {
-      toast({ title: "Gagal klaim", variant: "destructive" });
+      toast({ title: "Gagal klaim, cek koneksi internet kamu.", variant: "destructive" });
     } finally {
       setClaimingSocial(false);
     }
