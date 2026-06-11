@@ -13,13 +13,9 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
   const { refetch } = useAuth();
   const { toast } = useToast();
   const popupRef = useRef<Window | null>(null);
-  const listenerRef = useRef<((e: MessageEvent) => void) | null>(null);
 
   useEffect(() => {
     return () => {
-      if (listenerRef.current) {
-        window.removeEventListener("message", listenerRef.current);
-      }
       popupRef.current?.close();
     };
   }, []);
@@ -49,38 +45,42 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
     popupRef.current = popup;
     setLoading(true);
 
-    const onMessage = async (e: MessageEvent) => {
-      if (e.data?.type !== "wooce-auth") return;
-      window.removeEventListener("message", onMessage);
-      listenerRef.current = null;
-      popup.close();
+    let done = false;
 
-      if (e.data.result === "success") {
+    const finish = async (success: boolean) => {
+      if (done) return;
+      done = true;
+      clearInterval(authPoll);
+      clearInterval(closedPoll);
+      popup.close();
+      if (success) {
         await refetch();
         toast({ title: "✅ Login berhasil!", description: "Selamat datang kembali." });
         onClose();
-      } else if (e.data.result === "pending") {
-        setLoading(false);
-        toast({ title: "Akun dalam review", description: "Permohonan penulis kamu sedang diverifikasi admin.", variant: "destructive" });
       } else {
         setLoading(false);
-        toast({ title: "Login gagal", description: "Terjadi kesalahan saat login dengan Google.", variant: "destructive" });
       }
     };
 
-    listenerRef.current = onMessage;
-    window.addEventListener("message", onMessage);
-
-    const pollClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(pollClosed);
-        if (listenerRef.current) {
-          window.removeEventListener("message", listenerRef.current);
-          listenerRef.current = null;
+    // Poll /api/auth/me — detects login regardless of cross-window restrictions
+    const authPoll = setInterval(async () => {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+        if (res.ok) {
+          const user = await res.json();
+          if (user?.id && !user.isAdmin) {
+            finish(true);
+          }
         }
-        setLoading(false);
+      } catch {}
+    }, 1500);
+
+    // Also close modal if user manually closes popup
+    const closedPoll = setInterval(() => {
+      if (popup.closed) {
+        if (!done) finish(false);
       }
-    }, 600);
+    }, 500);
   };
 
   return (

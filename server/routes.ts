@@ -184,20 +184,26 @@ export async function registerRoutes(
 
   app.get("/auth/done", (req: any, res: any) => {
     const result = (req.query.result as string) || "error";
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Login</title></head><body><script>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Login</title>
+    <style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#0f0f0f;color:#fff;font-size:14px;}</style>
+    </head><body><p>Memproses login...</p><script>
       (function(){
         var result = ${JSON.stringify(result)};
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({ type: 'wooce-auth', result: result }, '*');
-          setTimeout(function(){ window.close(); }, 100);
-        } else {
-          if (result === 'success') window.location.href = '/';
-          else if (result === 'pending') window.location.href = '/?auth=pending';
-          else window.location.href = '/?auth=error';
-        }
+        try {
+          localStorage.setItem('wooce-auth-result', JSON.stringify({ result: result, ts: Date.now() }));
+        } catch(e) {}
+        window.close();
+        setTimeout(function(){
+          if (!window.closed) {
+            if (result === 'success') window.location.href = '/';
+            else if (result === 'pending') window.location.href = '/?auth=pending';
+            else window.location.href = '/?auth=error';
+          }
+        }, 400);
       })();
     </script></body></html>`;
-    res.setHeader("Content-Type", "text/html");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
     res.send(html);
   });
 
