@@ -1571,7 +1571,12 @@ export async function registerRoutes(
       const desc = `Quest Sosmed: ${platform}`;
       const already = await CoinTransactionModel.findOne({ userId, description: desc }).lean();
       if (already) return res.status(400).json({ message: "Sudah diklaim" });
-      await CoinTransactionModel.create({ userId, amount: 50, type: "bonus", description: desc });
+      try {
+        await CoinTransactionModel.create({ userId, amount: 50, type: "bonus", description: desc });
+      } catch (dupErr: any) {
+        if (dupErr?.code === 11000) return res.status(400).json({ message: "Sudah diklaim" });
+        throw dupErr;
+      }
       const coins = await getUserCoinBalance(req.session.userId);
       res.json({ success: true, coins });
     } catch (err: any) {

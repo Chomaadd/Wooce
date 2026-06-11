@@ -20,6 +20,15 @@ const coinTransactionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 coinTransactionSchema.index({ userId: 1, createdAt: -1 });
+coinTransactionSchema.index(
+  { userId: 1, description: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      description: { $in: ["Quest Sosmed: tiktok", "Quest Sosmed: facebook", "Quest Sosmed: instagram"] },
+    },
+  },
+);
 
 const unlockedChapterSchema = new mongoose.Schema(
   {

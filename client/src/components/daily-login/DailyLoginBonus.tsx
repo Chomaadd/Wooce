@@ -86,9 +86,9 @@ export function DailyLoginBonus() {
     onSuccess: (data) => {
       setClaimed(true);
       setResult(data);
-      queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/login-bonus/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
+      queryClient.refetchQueries({ queryKey: ["/api/coins/balance"] });
+      queryClient.refetchQueries({ queryKey: ["/api/login-bonus/status"] });
+      queryClient.refetchQueries({ queryKey: ["/api/coins/history"] });
       if (data.questBonus > 0) {
         toast({ title: `🎉 Quest Selesai! +${data.questBonus} koin bonus`, description: `${data.questMilestone} hari login berturut-turut!` });
       }
@@ -122,8 +122,11 @@ export function DailyLoginBonus() {
         }
       } else {
         toast({ title: `🎉 +50 Koin dari Quest Follow ${socialModal.label}!`, description: "Koin sudah ditambahkan ke saldo kamu." });
-        queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
+        if (typeof data.coins === "number") {
+          queryClient.setQueryData(["/api/coins/balance"], { coins: data.coins });
+        }
+        queryClient.refetchQueries({ queryKey: ["/api/coins/balance"] });
+        queryClient.refetchQueries({ queryKey: ["/api/coins/history"] });
         refetchSocial();
         setSocialModal(null);
         setLinkOpened(false);
