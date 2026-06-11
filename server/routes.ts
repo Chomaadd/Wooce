@@ -176,7 +176,7 @@ export async function registerRoutes(
         return res.status(503).json({ message: "Google OAuth belum dikonfigurasi. Atur Client ID & Secret di admin panel." });
       }
       log(`Google OAuth callback URL: ${callbackURL}`, "express");
-      passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+      passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })(req, res, next);
     } catch (err) {
       next(err);
     }
