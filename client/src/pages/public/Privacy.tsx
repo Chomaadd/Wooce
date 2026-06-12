@@ -177,7 +177,7 @@ export default function Privacy() {
       ],
       items: [
         "Data Akun Aktif: Data akun disimpan selama akunmu aktif di platform.",
-        "Data Setelah Penghapusan Akun: Saat akun dihapus (baik secara mandiri maupun oleh admin), semua data akun dan karya dihapus secara permanen dari sistem kami dalam waktu yang wajar.",
+        "Data Setelah Penghapusan Akun: Saat akun dihapus (baik secara mandiri maupun oleh admin), semua data yang terhubung ke akun tersebut dihapus secara permanen dan menyeluruh — meliputi data profil, karya (novel/season/chapter), riwayat transaksi koin, chapter yang di-unlock, login bonus & streak, notifikasi in-app, pesanan top-up, data follow, permohonan verifikasi, laporan konten yang pernah diajukan, file yang diunggah (GridFS), dan sesi login aktif.",
         "Data Sesi: Sesi login aktif disimpan selama 30 hari atau sampai kamu logout, mana yang lebih dahulu.",
         "Log Sistem: Log teknis server mungkin menyimpan informasi seperti waktu akses dan alamat IP untuk keperluan keamanan dan debugging dalam jangka waktu terbatas.",
         "Email Komunikasi: Riwayat komunikasi email yang masuk ke sistem kami (melalui formulir kontak) dapat disimpan untuk keperluan dukungan.",
@@ -383,7 +383,7 @@ export default function Privacy() {
       ],
       items: [
         "Active Account Data: Account data is retained as long as your account is active on the platform.",
-        "Data After Account Deletion: When an account is deleted (either self-deleted or by an admin), all account data and works are permanently deleted from our system within a reasonable timeframe.",
+        "Data After Account Deletion: When an account is deleted (either self-deleted or by an admin), all data linked to that account is permanently and comprehensively deleted — including profile data, works (novels/seasons/chapters), coin transaction history, unlocked chapters, login bonuses & streaks, in-app notifications, top-up orders, follow data, verification requests, content reports previously submitted, uploaded files (GridFS), and active login sessions.",
         "Session Data: Active login sessions are stored for 30 days or until you log out, whichever comes first.",
         "System Logs: Technical server logs may store information such as access times and IP addresses for security and debugging purposes for a limited period.",
         "Email Communication: History of email communications received by our system (via the contact form) may be stored for support purposes.",
