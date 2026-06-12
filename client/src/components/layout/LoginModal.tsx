@@ -28,6 +28,8 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
+    try { localStorage.removeItem("wooce-auth-result"); } catch {}
+
     const w = 500, h = 640;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
     const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
@@ -46,40 +48,75 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
     setLoading(true);
 
     let done = false;
+    let authPollId: ReturnType<typeof setInterval>;
+    let closedPollId: ReturnType<typeof setInterval>;
 
-    const finish = async (success: boolean) => {
+    const cleanup = () => {
+      clearInterval(authPollId);
+      clearInterval(closedPollId);
+      window.removeEventListener("storage", onStorage);
+      try { localStorage.removeItem("wooce-auth-result"); } catch {}
+    };
+
+    const finish = async (success: boolean, result?: string) => {
       if (done) return;
       done = true;
-      clearInterval(authPoll);
-      clearInterval(closedPoll);
-      popup.close();
+      cleanup();
+      try { popup.close(); } catch {}
+
       if (success) {
         await refetch();
-        toast({ title: "✅ Login berhasil!"});
+        toast({ title: "✅ Login berhasil!" });
         onClose();
+      } else if (result === "pending") {
+        setLoading(false);
+        toast({
+          title: "Akun menunggu verifikasi",
+          description: "Pengajuan writer kamu sedang ditinjau admin.",
+        });
       } else {
         setLoading(false);
       }
     };
 
-    // Poll /api/auth/me — detects login regardless of cross-window restrictions
-    const authPoll = setInterval(async () => {
+    // 1. Storage event — fires IMMEDIATELY when popup writes localStorage
+    //    This is the fastest & most reliable way to detect OAuth result
+    const onStorage = async (e: StorageEvent) => {
+      if (e.key !== "wooce-auth-result" || !e.newValue) return;
+      try {
+        const data = JSON.parse(e.newValue);
+        if (data.result === "success") await finish(true);
+        else if (data.result === "pending") await finish(false, "pending");
+        else await finish(false, "error");
+      } catch {}
+    };
+    window.addEventListener("storage", onStorage);
+
+    // 2. Auth poll — backup: detects session from server every 1.5s
+    authPollId = setInterval(async () => {
       try {
         const res = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
         if (res.ok) {
           const user = await res.json();
-          if (user?.id && !user.isAdmin) {
-            finish(true);
-          }
+          if (user?.id && !user.isAdmin) await finish(true);
         }
       } catch {}
     }, 1500);
 
-    // Also close modal if user manually closes popup
-    const closedPoll = setInterval(() => {
-      if (popup.closed) {
-        if (!done) finish(false);
-      }
+    // 3. Closed poll — when popup closes, read localStorage result first
+    //    Prevents false finish(false) when popup closes before authPoll fires
+    closedPollId = setInterval(async () => {
+      if (!popup.closed || done) return;
+      // Give a tiny buffer for storage event to fire first
+      setTimeout(async () => {
+        if (done) return;
+        try {
+          const stored = JSON.parse(localStorage.getItem("wooce-auth-result") || "{}");
+          if (stored.result === "success") { await finish(true); return; }
+          if (stored.result === "pending") { await finish(false, "pending"); return; }
+        } catch {}
+        await finish(false, "error");
+      }, 300);
     }, 500);
   };
 
