@@ -27,12 +27,13 @@ import {
   sendStoryDeletedByWriterEmail,
   sendStoryRemovedByReportEmail,
 } from "./email";
-import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel } from "./db";
+import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel, FollowModel } from "./db";
 import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
 import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
 import { TopupOrderModel, COIN_PACKAGES } from "./paymentModel";
 import { LoginBonusModel, DAY_REWARDS, QUEST_MILESTONES, todayStr, yesterdayStr } from "./loginBonusModel";
+import { NotificationModel } from "./notificationModel";
 import MidtransClient from "midtrans-client";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
@@ -715,6 +716,19 @@ export async function registerRoutes(
       } else {
         await sendAccountDeletedByAdminEmail(user.email, user.name);
       }
+
+      // Bersihkan semua data terkait user
+      const userObjId = new mongoose.Types.ObjectId(user.id);
+      await Promise.allSettled([
+        CoinTransactionModel.deleteMany({ userId: userObjId }),
+        UnlockedChapterModel.deleteMany({ userId: userObjId }),
+        LoginBonusModel.deleteOne({ userId: userObjId }),
+        NotificationModel.deleteMany({ userId: userObjId }),
+        TopupOrderModel.deleteMany({ userId: userObjId }),
+        FollowModel.deleteMany({ userId: userObjId }),
+        VerificationRequestModel.deleteMany({ userId: userObjId }),
+        ReportModel.deleteMany({ reporterId: user.id }),
+      ]);
 
       await storage.deleteUser(user.id);
       res.json({ ok: true });
@@ -2790,6 +2804,19 @@ export async function registerRoutes(
       } else {
         await sendSelfDeleteConfirmedEmail(user.email, user.name);
       }
+
+      // Bersihkan semua data terkait user (koin, notif, login bonus, dll)
+      const userObjId2 = new mongoose.Types.ObjectId(user.id);
+      await Promise.allSettled([
+        CoinTransactionModel.deleteMany({ userId: userObjId2 }),
+        UnlockedChapterModel.deleteMany({ userId: userObjId2 }),
+        LoginBonusModel.deleteOne({ userId: userObjId2 }),
+        NotificationModel.deleteMany({ userId: userObjId2 }),
+        TopupOrderModel.deleteMany({ userId: userObjId2 }),
+        FollowModel.deleteMany({ userId: userObjId2 }),
+        VerificationRequestModel.deleteMany({ userId: userObjId2 }),
+        ReportModel.deleteMany({ reporterId: user.id }),
+      ]);
 
       req.session.destroy(() => {});
       await storage.deleteUser(user.id);
