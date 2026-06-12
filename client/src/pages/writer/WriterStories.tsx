@@ -457,6 +457,7 @@ export default function WriterStories() {
     id: string;
     name: string;
   } | null>(null);
+  const [deleteConfirmTitle, setDeleteConfirmTitle] = useState("");
   const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
   const [characterStory, setCharacterStory] = useState<StoryWithStats | null>(null);
@@ -2498,8 +2499,10 @@ export default function WriterStories() {
       <Dialog
         open={!!deleteConfirm}
         onOpenChange={(o) => {
-          if (!o && !deleteStory.isPending && !deleteSeason.isPending && !deleteChapter.isPending)
+          if (!o && !deleteStory.isPending && !deleteSeason.isPending && !deleteChapter.isPending) {
             setDeleteConfirm(null);
+            setDeleteConfirmTitle("");
+          }
         }}
       >
         <DialogContent
@@ -2565,30 +2568,55 @@ export default function WriterStories() {
                   ? Aksi ini tidak bisa dibatalkan.
                 </p>
                 {deleteConfirm?.type === "story" && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex gap-3 items-start">
-                    <span className="text-base mt-0.5">📄</span>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Tenang — kami akan kirim{" "}
-                      <span className="font-semibold text-foreground">
-                        file backup PDF
-                      </span>{" "}
-                      berisi seluruh isi novel ini ke emailmu secara otomatis
-                      sebelum dihapus.
-                    </p>
-                  </div>
+                  <>
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex gap-3 items-start">
+                      <span className="text-base mt-0.5">📄</span>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Tenang — kami akan kirim{" "}
+                        <span className="font-semibold text-foreground">
+                          file backup PDF
+                        </span>{" "}
+                        berisi seluruh isi novel ini ke emailmu secara otomatis
+                        sebelum dihapus.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        Ketik judul novel untuk konfirmasi:
+                        <span className="block font-mono font-semibold text-foreground/80 mt-0.5 text-[11px] break-all">
+                          {deleteConfirm?.name}
+                        </span>
+                      </p>
+                      <input
+                        type="text"
+                        value={deleteConfirmTitle}
+                        onChange={e => setDeleteConfirmTitle(e.target.value)}
+                        placeholder="Ketik judul novel di sini..."
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/30 focus:border-destructive placeholder:text-muted-foreground/40"
+                        data-testid="input-delete-confirm-title"
+                        autoComplete="off"
+                      />
+                      {deleteConfirmTitle && deleteConfirmTitle !== deleteConfirm?.name && (
+                        <p className="text-[11px] text-destructive">Judul tidak cocok</p>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
               <DialogFooter>
                 <Button
                   variant="outline"
                   disabled={deleteSeason.isPending || deleteChapter.isPending}
-                  onClick={() => setDeleteConfirm(null)}
+                  onClick={() => { setDeleteConfirm(null); setDeleteConfirmTitle(""); }}
                 >
                   Batal
                 </Button>
                 <Button
                   variant="destructive"
-                  disabled={deleteStory.isPending || deleteSeason.isPending || deleteChapter.isPending}
+                  disabled={
+                    deleteStory.isPending || deleteSeason.isPending || deleteChapter.isPending ||
+                    (deleteConfirm?.type === "story" && deleteConfirmTitle !== deleteConfirm?.name)
+                  }
                   onClick={() => {
                     if (!deleteConfirm) return;
                     if (deleteConfirm.type === "story")

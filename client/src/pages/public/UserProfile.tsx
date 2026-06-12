@@ -12,6 +12,7 @@ import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
   Loader2, Copy, Upload, RotateCcw, Camera, AlertTriangle, Trash2,
+  LayoutGrid, Settings, Activity,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -172,8 +173,10 @@ type WriterMeData = {
   author: AuthorInfo | null;
 };
 
+type ProfileTab = "cerita" | "bookmark" | "aktivitas" | "pengaturan";
+
 export default function UserProfile() {
-  const { user, isLoading: authLoading, logout } = useAuth();
+  const { user, isLoading: authLoading, logout, refetch: refetchAuth } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [bookmarkSlugs, setBookmarkSlugs] = useState<string[]>([]);
@@ -186,6 +189,7 @@ export default function UserProfile() {
   const [bioVal, setBioVal] = useState("");
   const [socialVals, setSocialVals] = useState<Record<string, string>>({});
   const [donationVals, setDonationVals] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<ProfileTab>("cerita");
 
   // Delete account OTP flow
   const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "otp" | "deleting">("idle");
@@ -238,6 +242,7 @@ export default function UserProfile() {
     },
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ["/api/writer/me"] });
+      await refetchAuth();
       setEditingProfile(false);
       setSlugStatus("idle");
       toast({ title: "Profil berhasil disimpan!" });
@@ -335,8 +340,9 @@ export default function UserProfile() {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="max-w-3xl mx-auto px-4 py-10 space-y-4">
-          <Skeleton className="h-24 rounded-2xl" />
+        <div className="h-40 bg-gradient-to-br from-primary/20 via-primary/5 to-background" />
+        <div className="max-w-3xl mx-auto px-4 -mt-10 space-y-4">
+          <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
         </div>
       </div>
@@ -346,6 +352,7 @@ export default function UserProfile() {
   if (!user || user.isAdmin) return null;
 
   const isWriter = user.role === "writer" && user.status === "active";
+  const profilePhoto = authorData?.photoUrl || (user as any).photoUrl;
 
   const SOCIAL_FIELDS = [
     { key: "tiktok", label: "TikTok" },
@@ -360,612 +367,780 @@ export default function UserProfile() {
     { key: "trakteer", label: "Trakteer" },
   ];
 
+  const tabs: { key: ProfileTab; label: string; icon: any }[] = [
+    ...(isWriter ? [{ key: "cerita" as ProfileTab, label: "Cerita", icon: PenLine }] : []),
+    { key: "bookmark", label: "Bookmark", icon: Bookmark },
+    { key: "aktivitas", label: "Aktivitas", icon: Activity },
+    { key: "pengaturan", label: "Pengaturan", icon: Settings },
+  ];
+
+  const effectiveTab = isWriter ? activeTab : (activeTab === "cerita" ? "bookmark" : activeTab);
+
   return (
     <div className="min-h-screen bg-background">
       <SeoHead title={`Profil — WOOCE Novel`} description="Halaman profil WOOCE Novel." />
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 lg:px-6 py-8 space-y-6">
-
-        {/* Profile card */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border rounded-2xl p-6 flex items-center gap-5"
-        >
-          {user.photoUrl ? (
-            <img
-              src={user.photoUrl}
-              alt={user.name ?? ""}
-              className="w-16 h-16 rounded-2xl object-cover ring-2 ring-primary/20 flex-shrink-0"
-              data-testid="img-profile-photo"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <User size={28} className="text-primary" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg font-bold text-foreground truncate" data-testid="text-profile-name">{user.name}</h1>
-              {isWriter && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                  <PenLine size={9} /> Penulis
-                </span>
-              )}
-              {user.role === "writer" && user.status === "pending" && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/20">
-                  Menunggu Approval
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground truncate" data-testid="text-profile-email">{user.email}</p>
-            <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1"><Bookmark size={10} /> {bookmarked.length} bookmark</span>
-              {isWriter && <span className="flex items-center gap-1"><BookOpen size={10} /> {writerStories?.length ?? 0} cerita</span>}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            {isWriter && (
-              <Link href="/writer/cerita">
-                <button
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-                  data-testid="button-go-writer-dashboard"
-                >
-                  <PenLine size={12} /> Kelola Cerita
-                </button>
-              </Link>
-            )}
-            <button
-              onClick={logout}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors"
-              data-testid="button-profile-logout"
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary/30 via-primary/10 to-background border-b border-border/50">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.15)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--primary)/0.08)_0%,transparent_60%)]" />
+        <div className="max-w-3xl mx-auto px-4 pt-10 pb-16 relative">
+          <div className="flex items-start gap-4">
+            {/* Avatar */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative flex-shrink-0"
             >
-              <LogOut size={12} /> Keluar
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Writer public profile section */}
-        {isWriter && (
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-2xl overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <User size={13} className="text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-sm text-foreground">Profil Publik Penulis</h2>
-                  <p className="text-[11px] text-muted-foreground">Yang dilihat pembaca di halaman profilmu</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {authorData?.slug && (
-                  <a
-                    href={`/penulis/${authorData.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border"
-                    data-testid="link-view-author-profile"
-                  >
-                    <ExternalLink size={11} /> Lihat
-                  </a>
-                )}
-                {!editingProfile && (
-                  <button
-                    onClick={openEdit}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                    data-testid="button-edit-profile"
-                  >
-                    <Edit2 size={11} /> Edit
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Info bar: URL + AuthorId */}
-            <div className="px-5 py-3 bg-muted/30 border-b border-border flex flex-wrap items-center gap-4 text-[11px]">
-              <span className="text-muted-foreground">
-                URL Profil:{" "}
-                {authorData?.slug
-                  ? <span className="font-mono text-primary">/penulis/{authorData.slug}</span>
-                  : <span className="text-muted-foreground/50 italic">belum diset</span>
-                }
-              </span>
-              {writerMe?.authorId && (
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  ID Penulis:{" "}
-                  <span className="font-mono text-foreground/80 bg-muted px-1.5 py-0.5 rounded-md text-[10px]" data-testid="text-author-id">
-                    {writerMe.authorId}
-                  </span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(writerMe.authorId); toast({ title: "AuthorId disalin!" }); }}
-                    className="text-muted-foreground hover:text-primary transition-colors"
-                    title="Salin AuthorId"
-                    data-testid="button-copy-author-id"
-                  >
-                    <Copy size={10} />
-                  </button>
-                </span>
-              )}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {editingProfile ? (
-                <motion.div
-                  key="edit"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="px-5 pb-5 pt-4 space-y-4"
-                >
-                  {/* Nama penulis */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Nama Penulis</label>
-                    <input
-                      type="text"
-                      value={nameVal}
-                      onChange={e => setNameVal(e.target.value)}
-                      placeholder="Nama yang ditampilkan ke pembaca"
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
-                      data-testid="input-name"
-                    />
-                  </div>
-
-                  {/* URL / Username */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Username / URL Profil</label>
-                    <div className={`flex items-center border rounded-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
-                      slugStatus === "available" ? "border-emerald-500 bg-emerald-500/5" :
-                      slugStatus === "taken" ? "border-destructive bg-destructive/5" :
-                      slugStatus === "invalid" ? "border-amber-500/60 bg-amber-500/5" :
-                      "border-border bg-muted/40"
-                    }`}>
-                      <span className="px-3 text-[11px] text-muted-foreground bg-muted/60 border-r border-border py-2 shrink-0">/penulis/</span>
-                      <input
-                        type="text"
-                        value={slugVal}
-                        onChange={e => handleSlugChange(e.target.value)}
-                        placeholder="username-kamu"
-                        className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40"
-                        data-testid="input-slug"
-                      />
-                      <div className="px-3 flex-shrink-0">
-                        {slugStatus === "checking" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
-                        {slugStatus === "available" && <Check size={12} className="text-emerald-500" />}
-                        {slugStatus === "taken" && <X size={12} className="text-destructive" />}
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {slugStatus === "available" && <span className="text-emerald-600">✓ Username tersedia</span>}
-                      {slugStatus === "taken" && <span className="text-destructive">✗ Sudah dipakai, coba yang lain</span>}
-                      {slugStatus === "invalid" && <span className="text-amber-600">Min. 3 karakter, huruf kecil, angka, tanda hubung</span>}
-                      {(slugStatus === "idle" || slugStatus === "checking") && "Huruf kecil (a-z), angka (0-9), tanda hubung (-)"}
-                    </p>
-                  </div>
-
-                  {/* Foto */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Foto Profil</label>
-                    <ProfilePhotoUpload value={photoVal} onChange={setPhotoVal} />
-                  </div>
-
-                  {/* Bio */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Bio</label>
-                    <textarea
-                      value={bioVal}
-                      onChange={e => setBioVal(e.target.value)}
-                      rows={3}
-                      placeholder="Ceritakan sedikit tentang dirimu sebagai penulis..."
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
-                      data-testid="input-bio"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Media Sosial</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {SOCIAL_FIELDS.map(f => (
-                        <div key={f.key} className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground">{f.label}</span>
-                          <input
-                            type="url"
-                            value={socialVals[f.key] ?? ""}
-                            onChange={e => setSocialVals(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            placeholder="https://..."
-                            className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
-                            data-testid={`input-social-${f.key}`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Donasi</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {DONATION_FIELDS.map(f => (
-                        <div key={f.key} className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground">{f.label}</span>
-                          <input
-                            type="url"
-                            value={donationVals[f.key] ?? ""}
-                            onChange={e => setDonationVals(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            placeholder="https://..."
-                            className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
-                            data-testid={`input-donation-${f.key}`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={saveProfile}
-                      disabled={updateProfile.isPending || slugStatus === "taken" || slugStatus === "checking"}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
-                      data-testid="button-save-profile"
-                    >
-                      {updateProfile.isPending ? <><Loader2 size={11} className="animate-spin" /> Menyimpan...</> : <><Check size={12} /> Simpan</>}
-                    </button>
-                    <button
-                      onClick={() => setEditingProfile(false)}
-                      disabled={updateProfile.isPending}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      data-testid="button-cancel-edit"
-                    >
-                      <X size={12} /> Batal
-                    </button>
-                  </div>
-                </motion.div>
+              {profilePhoto ? (
+                <img
+                  src={profilePhoto}
+                  alt={user.name ?? ""}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-4 ring-background shadow-lg"
+                  data-testid="img-profile-photo"
+                />
               ) : (
-                <motion.div
-                  key="view"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="px-5 pb-5 pt-3 space-y-3"
-                >
-                  {authorData?.bio ? (
-                    <p className="text-sm text-muted-foreground leading-relaxed">{authorData.bio}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground/50 italic">Belum ada bio. Klik Edit untuk menambahkan.</p>
-                  )}
-                  {authorData && (
-                    <div className="flex flex-wrap gap-2">
-                      {(["tiktok","instagram","facebook","twitter","website"] as const).map(k => {
-                        const v = authorData[k];
-                        return v ? (
-                          <a key={k} href={v} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors capitalize"
-                            data-testid={`link-social-${k}`}
-                          >
-                            {k}
-                          </a>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.section>
-        )}
-
-        {/* Writer stories section */}
-        {isWriter && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <PenLine size={13} className="text-primary" />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-primary/20 flex items-center justify-center ring-4 ring-background shadow-lg">
+                  <User size={36} className="text-primary/60" />
                 </div>
-                <h2 className="font-bold text-sm text-foreground">Cerita Saya</h2>
-              </div>
-              <Link href="/writer/cerita">
-                <button className="text-[11px] text-primary hover:underline font-semibold" data-testid="link-manage-stories">
-                  Kelola semua →
-                </button>
-              </Link>
-            </div>
+              )}
+              {isWriter && (
+                <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-xl bg-primary flex items-center justify-center shadow-md ring-2 ring-background">
+                  <PenLine size={12} className="text-primary-foreground" />
+                </div>
+              )}
+            </motion.div>
 
-            {writerLoading ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                {[1,2,3].map(i => <Skeleton key={i} className="aspect-[2/3] rounded-xl" />)}
+            {/* Name + badges */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="flex-1 min-w-0 pt-1"
+            >
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate" data-testid="text-profile-name">
+                  {user.name}
+                </h1>
+                {isWriter && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 backdrop-blur-sm">
+                    <PenLine size={9} /> Penulis
+                  </span>
+                )}
+                {user.role === "writer" && user.status === "pending" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-600 border border-yellow-500/30 backdrop-blur-sm">
+                    Menunggu Approval
+                  </span>
+                )}
               </div>
-            ) : !writerStories || writerStories.length === 0 ? (
-              <div className="border border-dashed border-border rounded-2xl py-10 text-center">
-                <BookOpen size={28} className="mx-auto text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground">Belum ada cerita. Mulai tulis sekarang!</p>
+              <p className="text-sm text-muted-foreground truncate" data-testid="text-profile-email">{user.email}</p>
+              {authorData?.slug && (
+                <p className="text-[11px] text-primary/70 font-mono mt-0.5">@{authorData.slug}</p>
+              )}
+
+              {/* Quick stats */}
+              <div className="flex items-center gap-4 mt-3 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Bookmark size={11} className="text-primary/70" />
+                  <span className="text-foreground font-semibold">{bookmarked.length}</span> bookmark
+                </span>
+                {isWriter && (
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <BookOpen size={11} className="text-primary/70" />
+                    <span className="text-foreground font-semibold">{writerStories?.length ?? 0}</span> cerita
+                  </span>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Action buttons */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="flex flex-col gap-2 flex-shrink-0"
+            >
+              {isWriter && (
                 <Link href="/writer/cerita">
-                  <button className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90" data-testid="button-start-writing">
-                    Mulai Nulis
+                  <button
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity shadow-sm"
+                    data-testid="button-go-writer-dashboard"
+                  >
+                    <PenLine size={12} /> Kelola Cerita
                   </button>
                 </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                {writerStories.slice(0, 8).map((story, i) => {
-                  const cfg = STATUS_CFG[story.status] ?? STATUS_CFG.ongoing;
-                  return (
-                    <motion.div
-                      key={story.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="group"
-                      data-testid={`card-writer-story-${story.id}`}
-                    >
-                      <Link href={`/${story.slug}`}>
-                        <div className="aspect-[2/3] rounded-xl overflow-hidden mb-1.5 bg-muted relative shadow-sm cursor-pointer">
-                          {story.coverUrl ? (
-                            <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                              <BookOpen size={18} className="text-primary/40" />
-                            </div>
-                          )}
-                          <div className="absolute top-1.5 left-1.5">
-                            <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
-                              <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                              {story.status}
-                            </span>
-                          </div>
-                          {!story.published && (
-                            <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-full font-semibold">
-                              Draft
-                            </div>
-                          )}
-                        </div>
-                        <h3 className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                          {story.title}
-                        </h3>
-                      </Link>
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-                        <span className="flex items-center gap-0.5"><Eye size={8} />{fmtViews(story.viewCount)}</span>
-                        <span className="flex items-center gap-0.5"><BookMarked size={8} />{(story as any).totalChapters ?? 0}</span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Bookmarks section */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Bookmark size={13} className="text-primary" />
-            </div>
-            <h2 className="font-bold text-sm text-foreground">Bookmark Novel</h2>
-            <span className="text-xs text-muted-foreground">({bookmarked.length})</span>
+              )}
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground bg-background/60 hover:bg-background border border-border/60 backdrop-blur-sm transition-colors"
+                data-testid="button-profile-logout"
+              >
+                <LogOut size={12} /> Keluar
+              </button>
+            </motion.div>
           </div>
+        </div>
+      </div>
 
-          {storiesLoading ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {[1,2,3,4].map(i => <Skeleton key={i} className="aspect-[2/3] rounded-xl" />)}
-            </div>
-          ) : bookmarked.length === 0 ? (
-            <div className="border border-dashed border-border rounded-2xl py-10 text-center">
-              <BookmarkX size={28} className="mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-sm text-muted-foreground">Belum ada novel yang di-bookmark.</p>
-              <Link href="/">
-                <button className="mt-3 px-4 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors" data-testid="button-browse-novels">
-                  Jelajahi Novel
+      {/* Tab bar */}
+      <div className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-20 shadow-sm">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = effectiveTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all ${
+                    isActive
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                  data-testid={`tab-${tab.key}`}
+                >
+                  <Icon size={12} />
+                  {tab.label}
+                  {tab.key === "bookmark" && bookmarked.length > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {bookmarked.length}
+                    </span>
+                  )}
                 </button>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {bookmarked.map((story, i) => {
-                const cfg = STATUS_CFG[story.status] ?? STATUS_CFG.ongoing;
-                const progress = (() => {
-                  try {
-                    const saved = localStorage.getItem(`novel-progress-${story.slug}`);
-                    return saved ? JSON.parse(saved) : null;
-                  } catch { return null; }
-                })();
-                return (
-                  <motion.div
-                    key={story.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="group relative"
-                    data-testid={`card-bookmark-${story.id}`}
-                  >
-                    <Link href={progress ? `/${story.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}` : `/${story.slug}`}>
-                      <div className="aspect-[2/3] rounded-xl overflow-hidden mb-1.5 bg-muted relative shadow-sm cursor-pointer">
-                        {story.coverUrl ? (
-                          <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                            <BookOpen size={18} className="text-primary/40" />
-                          </div>
-                        )}
-                        <div className="absolute top-1.5 left-1.5">
-                          <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
-                            <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
-                            {story.status}
-                          </span>
-                        </div>
-                      </div>
-                      <h3 className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                        {story.title}
-                      </h3>
-                    </Link>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Eye size={8} />{fmtViews(story.viewCount)}
-                        {story.totalChapters > 0 && <><BookMarked size={8} />{story.totalChapters}</>}
-                      </div>
-                      <button
-                        onClick={e => { e.preventDefault(); removeBookmark(story.slug); }}
-                        className="text-muted-foreground/40 hover:text-destructive transition-colors"
-                        title="Hapus bookmark"
-                        data-testid={`button-remove-bookmark-${story.id}`}
-                      >
-                        <BookmarkX size={11} />
-                      </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-16">
+        <AnimatePresence mode="wait">
+
+          {/* ── Tab: Cerita (writer only) ── */}
+          {effectiveTab === "cerita" && isWriter && (
+            <motion.div key="cerita" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+
+              {/* Writer public profile card */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden mb-6">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <User size={14} className="text-primary" />
                     </div>
-                    {progress && (
-                      <div className="mt-0.5 text-[9px] text-primary font-medium truncate">
-                        Lanjut Bab {progress.chapterNum}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Reading activity */}
-        <section className="pb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Star size={13} className="text-primary" />
-            </div>
-            <h2 className="font-bold text-sm text-foreground">Aktivitas Baca</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Bookmark", value: bookmarked.length, icon: <Bookmark size={14} className="text-primary" /> },
-              { label: "Sedang Baca", value: bookmarkSlugs.filter(s => {
-                try { return !!localStorage.getItem(`novel-progress-${s}`); } catch { return false; }
-              }).length, icon: <BookOpen size={14} className="text-primary" /> },
-              { label: "Total Chapter", value: bookmarkSlugs.reduce((acc, s) => {
-                try {
-                  const p = JSON.parse(localStorage.getItem(`novel-progress-${s}`) || "{}");
-                  return acc + (p.chapterNum || 0);
-                } catch { return acc; }
-              }, 0), icon: <BookMarked size={14} className="text-primary" /> },
-            ].map(stat => (
-              <div key={stat.label} className="bg-card border border-border rounded-xl p-3 text-center">
-                <div className="flex justify-center mb-1">{stat.icon}</div>
-                <div className="text-lg font-bold text-foreground">{stat.value}</div>
-                <div className="text-[10px] text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Danger Zone — Delete Account */}
-        <section className="pb-6">
-          <div className="border border-destructive/20 rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-3.5 bg-destructive/5 border-b border-destructive/20">
-              <AlertTriangle size={14} className="text-destructive flex-shrink-0" />
-              <h2 className="font-bold text-sm text-destructive">Zona Berbahaya</h2>
-            </div>
-            <div className="px-5 py-4">
-              <AnimatePresence mode="wait">
-                {deleteStep === "idle" && (
-                  <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-foreground mb-0.5">Hapus Akun</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Menghapus akun bersifat permanen dan tidak bisa dibatalkan.
-                        {user?.role === "writer" && " Semua ceritamu akan dihapus dan kamu akan menerima PDF backup via email."}
-                      </p>
+                      <h2 className="font-bold text-sm text-foreground">Profil Publik Penulis</h2>
+                      <p className="text-[11px] text-muted-foreground">Yang dilihat pembaca di halaman profilmu</p>
                     </div>
-                    <button
-                      onClick={() => setDeleteStep("confirm")}
-                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 transition-colors"
-                      data-testid="button-delete-account-start"
-                    >
-                      <Trash2 size={12} /> Hapus Akun
-                    </button>
-                  </motion.div>
-                )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {authorData?.slug && (
+                      <a
+                        href={`/penulis/${authorData.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border"
+                        data-testid="link-view-author-profile"
+                      >
+                        <ExternalLink size={11} /> Lihat
+                      </a>
+                    )}
+                    {!editingProfile && (
+                      <button
+                        onClick={openEdit}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        data-testid="button-edit-profile"
+                      >
+                        <Edit2 size={11} /> Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                {deleteStep === "confirm" && (
-                  <motion.div key="confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-                    <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-destructive/8 border border-destructive/15">
-                      <AlertTriangle size={15} className="text-destructive mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-foreground mb-0.5">Yakin ingin menghapus akun?</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Tindakan ini tidak dapat dibatalkan. Klik "Kirim OTP" untuk melanjutkan — kami akan mengirim kode verifikasi ke <strong>{user?.email}</strong>.
+                {/* Info bar */}
+                <div className="px-5 py-2.5 bg-muted/20 border-b border-border flex flex-wrap items-center gap-4 text-[11px]">
+                  <span className="text-muted-foreground">
+                    URL Profil:{" "}
+                    {authorData?.slug
+                      ? <span className="font-mono text-primary">/penulis/{authorData.slug}</span>
+                      : <span className="text-muted-foreground/50 italic">belum diset</span>
+                    }
+                  </span>
+                  {writerMe?.authorId && (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      ID Penulis:{" "}
+                      <span className="font-mono text-foreground/80 bg-muted px-1.5 py-0.5 rounded-md text-[10px]" data-testid="text-author-id">
+                        {writerMe.authorId}
+                      </span>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(writerMe.authorId); toast({ title: "AuthorId disalin!" }); }}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        title="Salin AuthorId"
+                        data-testid="button-copy-author-id"
+                      >
+                        <Copy size={10} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {editingProfile ? (
+                    <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-5 pb-5 pt-4 space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Nama Penulis</label>
+                        <input
+                          type="text"
+                          value={nameVal}
+                          onChange={e => setNameVal(e.target.value)}
+                          placeholder="Nama yang ditampilkan ke pembaca"
+                          className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                          data-testid="input-name"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Username / URL Profil</label>
+                        <div className={`flex items-center border rounded-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
+                          slugStatus === "available" ? "border-emerald-500 bg-emerald-500/5" :
+                          slugStatus === "taken" ? "border-destructive bg-destructive/5" :
+                          slugStatus === "invalid" ? "border-amber-500/60 bg-amber-500/5" :
+                          "border-border bg-muted/40"
+                        }`}>
+                          <span className="px-3 text-[11px] text-muted-foreground bg-muted/60 border-r border-border py-2 shrink-0">/penulis/</span>
+                          <input
+                            type="text"
+                            value={slugVal}
+                            onChange={e => handleSlugChange(e.target.value)}
+                            placeholder="username-kamu"
+                            className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40"
+                            data-testid="input-slug"
+                          />
+                          <div className="px-3 flex-shrink-0">
+                            {slugStatus === "checking" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+                            {slugStatus === "available" && <Check size={12} className="text-emerald-500" />}
+                            {slugStatus === "taken" && <X size={12} className="text-destructive" />}
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {slugStatus === "available" && <span className="text-emerald-600">✓ Username tersedia</span>}
+                          {slugStatus === "taken" && <span className="text-destructive">✗ Sudah dipakai, coba yang lain</span>}
+                          {slugStatus === "invalid" && <span className="text-amber-600">Min. 3 karakter, huruf kecil, angka, tanda hubung</span>}
+                          {(slugStatus === "idle" || slugStatus === "checking") && "Huruf kecil (a-z), angka (0-9), tanda hubung (-)"}
                         </p>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => requestOtpMutation.mutate()}
-                        disabled={requestOtpMutation.isPending}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-destructive hover:bg-destructive/90 disabled:opacity-60 transition-opacity"
-                        data-testid="button-request-otp"
-                      >
-                        {requestOtpMutation.isPending ? <><Loader2 size={11} className="animate-spin" /> Mengirim...</> : "Kirim OTP ke Email"}
-                      </button>
-                      <button
-                        onClick={() => setDeleteStep("idle")}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        data-testid="button-cancel-delete"
-                      >
-                        <X size={12} /> Batal
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
 
-                {deleteStep === "otp" && (
-                  <motion.div key="otp" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Masukkan kode 6-digit yang sudah dikirim ke <strong>{user?.email}</strong>. Kode berlaku 10 menit.
-                    </p>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={otpInput}
-                        onChange={e => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        placeholder="123456"
-                        className="w-36 px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-destructive/30 focus:border-destructive placeholder:text-muted-foreground/30"
-                        data-testid="input-otp-delete"
-                      />
-                      <button
-                        onClick={() => confirmDeleteMutation.mutate()}
-                        disabled={otpInput.length !== 6 || confirmDeleteMutation.isPending}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-destructive hover:bg-destructive/90 disabled:opacity-60 transition-opacity"
-                        data-testid="button-confirm-delete"
-                      >
-                        {confirmDeleteMutation.isPending ? <><Loader2 size={11} className="animate-spin" /> Menghapus...</> : <><Trash2 size={11} /> Konfirmasi Hapus</>}
-                      </button>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Foto Profil</label>
+                        <ProfilePhotoUpload value={photoVal} onChange={setPhotoVal} />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Bio</label>
+                        <textarea
+                          value={bioVal}
+                          onChange={e => setBioVal(e.target.value)}
+                          rows={3}
+                          placeholder="Ceritakan sedikit tentang dirimu sebagai penulis..."
+                          className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                          data-testid="input-bio"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Media Sosial</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {SOCIAL_FIELDS.map(f => (
+                            <div key={f.key} className="space-y-1">
+                              <span className="text-[10px] text-muted-foreground">{f.label}</span>
+                              <input
+                                type="url"
+                                value={socialVals[f.key] ?? ""}
+                                onChange={e => setSocialVals(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                placeholder="https://..."
+                                className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
+                                data-testid={`input-social-${f.key}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Donasi</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {DONATION_FIELDS.map(f => (
+                            <div key={f.key} className="space-y-1">
+                              <span className="text-[10px] text-muted-foreground">{f.label}</span>
+                              <input
+                                type="url"
+                                value={donationVals[f.key] ?? ""}
+                                onChange={e => setDonationVals(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                placeholder="https://..."
+                                className="w-full px-3 py-1.5 rounded-lg border border-border bg-muted/40 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/30"
+                                data-testid={`input-donation-${f.key}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={saveProfile}
+                          disabled={updateProfile.isPending || slugStatus === "taken" || slugStatus === "checking"}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+                          data-testid="button-save-profile"
+                        >
+                          {updateProfile.isPending ? <><Loader2 size={11} className="animate-spin" /> Menyimpan...</> : <><Check size={12} /> Simpan</>}
+                        </button>
+                        <button
+                          onClick={() => setEditingProfile(false)}
+                          disabled={updateProfile.isPending}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          data-testid="button-cancel-edit"
+                        >
+                          <X size={12} /> Batal
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-5 pb-5 pt-4 space-y-3">
+                      {authorData?.bio ? (
+                        <p className="text-sm text-muted-foreground leading-relaxed">{authorData.bio}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground/50 italic">Belum ada bio. Klik Edit untuk menambahkan.</p>
+                      )}
+                      {authorData && (
+                        <div className="flex flex-wrap gap-2">
+                          {(["tiktok","instagram","facebook","twitter","website"] as const).map(k => {
+                            const v = authorData[k];
+                            return v ? (
+                              <a key={k} href={v} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors capitalize"
+                                data-testid={`link-social-${k}`}
+                              >
+                                {k}
+                              </a>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Writer stories grid */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <LayoutGrid size={13} className="text-primary" />
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => requestOtpMutation.mutate()}
-                        disabled={requestOtpMutation.isPending}
-                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                        data-testid="button-resend-otp"
-                      >
-                        {requestOtpMutation.isPending ? "Mengirim..." : "Kirim ulang OTP"}
-                      </button>
-                      <span className="text-muted-foreground/30 text-[11px]">·</span>
-                      <button
-                        onClick={() => { setDeleteStep("idle"); setOtpInput(""); }}
-                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                        data-testid="button-cancel-otp"
-                      >
-                        Batal
-                      </button>
+                    <h2 className="font-bold text-sm text-foreground">Cerita Saya</h2>
+                  </div>
+                  <Link href="/writer/cerita">
+                    <button className="text-[11px] text-primary hover:underline font-semibold" data-testid="link-manage-stories">
+                      Kelola semua →
+                    </button>
+                  </Link>
+                </div>
+
+                {writerLoading ? (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {[1,2,3].map(i => <Skeleton key={i} className="aspect-[2/3] rounded-xl" />)}
+                  </div>
+                ) : !writerStories || writerStories.length === 0 ? (
+                  <div className="border border-dashed border-border rounded-2xl py-12 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center mx-auto mb-3">
+                      <BookOpen size={24} className="text-primary/30" />
                     </div>
-                  </motion.div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Belum ada cerita</p>
+                    <p className="text-xs text-muted-foreground/60 mb-4">Mulai tulis cerita pertamamu!</p>
+                    <Link href="/writer/cerita">
+                      <button className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90" data-testid="button-start-writing">
+                        Mulai Nulis
+                      </button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {writerStories.slice(0, 8).map((story, i) => {
+                      const cfg = STATUS_CFG[story.status] ?? STATUS_CFG.ongoing;
+                      return (
+                        <motion.div
+                          key={story.id}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className="group"
+                          data-testid={`card-writer-story-${story.id}`}
+                        >
+                          <Link href={`/${story.slug}`}>
+                            <div className="aspect-[2/3] rounded-xl overflow-hidden mb-1.5 bg-muted relative shadow-sm cursor-pointer">
+                              {story.coverUrl ? (
+                                <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                                  <BookOpen size={18} className="text-primary/40" />
+                                </div>
+                              )}
+                              <div className="absolute top-1.5 left-1.5">
+                                <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                                  <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                                  {story.status}
+                                </span>
+                              </div>
+                              {!story.published && (
+                                <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded-full font-semibold">
+                                  Draft
+                                </div>
+                              )}
+                            </div>
+                            <h3 className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                              {story.title}
+                            </h3>
+                          </Link>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+                            <span className="flex items-center gap-0.5"><Eye size={8} />{fmtViews(story.viewCount)}</span>
+                            <span className="flex items-center gap-0.5"><BookMarked size={8} />{(story as any).totalChapters ?? 0}</span>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </section>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Tab: Bookmark ── */}
+          {effectiveTab === "bookmark" && (
+            <motion.div key="bookmark" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Bookmark size={13} className="text-primary" />
+                </div>
+                <h2 className="font-bold text-sm text-foreground">Bookmark Novel</h2>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">({bookmarked.length})</span>
+              </div>
+
+              {storiesLoading ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {[1,2,3,4].map(i => <Skeleton key={i} className="aspect-[2/3] rounded-xl" />)}
+                </div>
+              ) : bookmarked.length === 0 ? (
+                <div className="border border-dashed border-border rounded-2xl py-14 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center mx-auto mb-3">
+                    <BookmarkX size={24} className="text-primary/30" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Belum ada bookmark</p>
+                  <p className="text-xs text-muted-foreground/60 mb-4">Simpan novel favoritmu di sini</p>
+                  <Link href="/">
+                    <button className="px-4 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors" data-testid="button-browse-novels">
+                      Jelajahi Novel
+                    </button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {bookmarked.map((story, i) => {
+                    const cfg = STATUS_CFG[story.status] ?? STATUS_CFG.ongoing;
+                    const progress = (() => {
+                      try {
+                        const saved = localStorage.getItem(`novel-progress-${story.slug}`);
+                        return saved ? JSON.parse(saved) : null;
+                      } catch { return null; }
+                    })();
+                    return (
+                      <motion.div
+                        key={story.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="group relative"
+                        data-testid={`card-bookmark-${story.id}`}
+                      >
+                        <Link href={progress ? `/${story.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}` : `/${story.slug}`}>
+                          <div className="aspect-[2/3] rounded-xl overflow-hidden mb-1.5 bg-muted relative shadow-sm cursor-pointer">
+                            {story.coverUrl ? (
+                              <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                                <BookOpen size={18} className="text-primary/40" />
+                              </div>
+                            )}
+                            <div className="absolute top-1.5 left-1.5">
+                              <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm ${cfg.color}`}>
+                                <span className={`w-1 h-1 rounded-full ${cfg.dot}`} />
+                                {story.status}
+                              </span>
+                            </div>
+                          </div>
+                          <h3 className="text-[11px] font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                            {story.title}
+                          </h3>
+                        </Link>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Eye size={8} />{fmtViews(story.viewCount)}
+                            {story.totalChapters > 0 && <><BookMarked size={8} />{story.totalChapters}</>}
+                          </div>
+                          <button
+                            onClick={e => { e.preventDefault(); removeBookmark(story.slug); }}
+                            className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                            title="Hapus bookmark"
+                            data-testid={`button-remove-bookmark-${story.id}`}
+                          >
+                            <BookmarkX size={11} />
+                          </button>
+                        </div>
+                        {progress && (
+                          <div className="mt-0.5 text-[9px] text-primary font-medium truncate">
+                            Lanjut Bab {progress.chapterNum}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Tab: Aktivitas ── */}
+          {effectiveTab === "aktivitas" && (
+            <motion.div key="aktivitas" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Activity size={13} className="text-primary" />
+                </div>
+                <h2 className="font-bold text-sm text-foreground">Aktivitas Baca</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                {[
+                  {
+                    label: "Novel Disimpan",
+                    value: bookmarked.length,
+                    icon: <Bookmark size={18} className="text-primary" />,
+                    bg: "bg-primary/8",
+                    desc: "Total bookmark aktif",
+                  },
+                  {
+                    label: "Sedang Dibaca",
+                    value: bookmarkSlugs.filter(s => {
+                      try { return !!localStorage.getItem(`novel-progress-${s}`); } catch { return false; }
+                    }).length,
+                    icon: <BookOpen size={18} className="text-emerald-500" />,
+                    bg: "bg-emerald-500/8",
+                    desc: "Ada progres baca",
+                  },
+                  {
+                    label: "Bab Terbaca",
+                    value: bookmarkSlugs.reduce((acc, s) => {
+                      try {
+                        const p = JSON.parse(localStorage.getItem(`novel-progress-${s}`) || "{}");
+                        return acc + (p.chapterNum || 0);
+                      } catch { return acc; }
+                    }, 0),
+                    icon: <BookMarked size={18} className="text-blue-500" />,
+                    bg: "bg-blue-500/8",
+                    desc: "Total bab dibaca",
+                  },
+                ].map(stat => (
+                  <div key={stat.label} className={`${stat.bg} border border-border rounded-2xl p-4 flex items-center gap-4`}>
+                    <div className="w-12 h-12 rounded-xl bg-background/60 flex items-center justify-center shadow-sm flex-shrink-0">
+                      {stat.icon}
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                      <div className="text-xs font-semibold text-foreground/80">{stat.label}</div>
+                      <div className="text-[10px] text-muted-foreground">{stat.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recent progress */}
+              {bookmarked.filter(s => {
+                try { return !!localStorage.getItem(`novel-progress-${s.slug}`); } catch { return false; }
+              }).length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Progres Terakhir</h3>
+                  <div className="space-y-2">
+                    {bookmarked
+                      .filter(s => {
+                        try { return !!localStorage.getItem(`novel-progress-${s.slug}`); } catch { return false; }
+                      })
+                      .slice(0, 5)
+                      .map(story => {
+                        const progress = (() => {
+                          try { return JSON.parse(localStorage.getItem(`novel-progress-${story.slug}`) || "{}"); } catch { return {}; }
+                        })();
+                        return (
+                          <Link key={story.id} href={`/${story.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}`}>
+                            <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group">
+                              <div className="w-10 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                                {story.coverUrl
+                                  ? <img src={story.coverUrl} alt="" className="w-full h-full object-cover" />
+                                  : <div className="w-full h-full flex items-center justify-center"><BookOpen size={14} className="text-muted-foreground/40" /></div>
+                                }
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{story.title}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                  Season {progress.seasonNum} · Bab {progress.chapterNum}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0 text-[11px] text-primary font-semibold">Lanjut →</div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Tab: Pengaturan ── */}
+          {effectiveTab === "pengaturan" && (
+            <motion.div key="pengaturan" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Settings size={13} className="text-primary" />
+                </div>
+                <h2 className="font-bold text-sm text-foreground">Pengaturan Akun</h2>
+              </div>
+
+              {/* Account info */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border bg-muted/20">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Informasi Akun</h3>
+                </div>
+                <div className="px-5 py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Nama</p>
+                      <p className="text-sm font-semibold text-foreground">{user.name}</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-border/50 pt-3">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="text-sm font-semibold text-foreground">{user.email}</p>
+                  </div>
+                  <div className="border-t border-border/50 pt-3">
+                    <p className="text-xs text-muted-foreground">Role</p>
+                    <p className="text-sm font-semibold text-foreground capitalize">
+                      {user.role === "writer" ? (user.status === "active" ? "Penulis Aktif" : "Penulis (Pending)") : "Pembaca"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danger zone */}
+              <div className="border border-destructive/20 rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-2.5 px-5 py-3.5 bg-destructive/5 border-b border-destructive/20">
+                  <AlertTriangle size={14} className="text-destructive flex-shrink-0" />
+                  <h3 className="font-bold text-sm text-destructive">Zona Berbahaya</h3>
+                </div>
+                <div className="px-5 py-4">
+                  <AnimatePresence mode="wait">
+                    {deleteStep === "idle" && (
+                      <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground mb-0.5">Hapus Akun</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Menghapus akun bersifat permanen dan tidak bisa dibatalkan.
+                            {user?.role === "writer" && " Semua ceritamu akan dihapus dan kamu akan menerima PDF backup via email."}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setDeleteStep("confirm")}
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 transition-colors"
+                          data-testid="button-delete-account-start"
+                        >
+                          <Trash2 size={12} /> Hapus Akun
+                        </button>
+                      </motion.div>
+                    )}
+
+                    {deleteStep === "confirm" && (
+                      <motion.div key="confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+                        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-destructive/8 border border-destructive/15">
+                          <AlertTriangle size={15} className="text-destructive mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground mb-0.5">Yakin ingin menghapus akun?</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              Tindakan ini tidak dapat dibatalkan. Klik "Kirim OTP" untuk melanjutkan — kami akan mengirim kode verifikasi ke <strong>{user?.email}</strong>.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => requestOtpMutation.mutate()}
+                            disabled={requestOtpMutation.isPending}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-destructive hover:bg-destructive/90 disabled:opacity-60 transition-opacity"
+                            data-testid="button-request-otp"
+                          >
+                            {requestOtpMutation.isPending ? <><Loader2 size={11} className="animate-spin" /> Mengirim...</> : "Kirim OTP ke Email"}
+                          </button>
+                          <button
+                            onClick={() => setDeleteStep("idle")}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            data-testid="button-cancel-delete"
+                          >
+                            <X size={12} /> Batal
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {deleteStep === "otp" && (
+                      <motion.div key="otp" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Masukkan kode 6-digit yang sudah dikirim ke <strong>{user?.email}</strong>. Kode berlaku 10 menit.
+                        </p>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={otpInput}
+                            onChange={e => setOtpInput(e.target.value.replace(/\D/g, ""))}
+                            placeholder="000000"
+                            className="w-32 px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm text-center font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-muted-foreground/40"
+                            data-testid="input-otp"
+                          />
+                          <button
+                            onClick={() => confirmDeleteMutation.mutate()}
+                            disabled={otpInput.length !== 6 || confirmDeleteMutation.isPending}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-destructive hover:bg-destructive/90 disabled:opacity-60 transition-opacity"
+                            data-testid="button-confirm-delete-otp"
+                          >
+                            {confirmDeleteMutation.isPending ? <><Loader2 size={11} className="animate-spin" /> Memproses...</> : "Konfirmasi Hapus"}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => setDeleteStep("idle")}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          data-testid="button-cancel-delete-otp"
+                        >
+                          Batalkan
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </main>
 
       <Footer />

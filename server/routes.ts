@@ -2206,6 +2206,9 @@ export async function registerRoutes(
       if (updateData.name && typeof updateData.name === "string" && updateData.name.trim()) {
         try { await storage.updateUser(user.id, { name: updateData.name.trim() }); } catch (e) { console.error("updateUser name failed:", e); }
       }
+      if ("photoUrl" in updateData) {
+        try { await storage.updateUser(user.id, { photoUrl: updateData.photoUrl ?? null }); } catch (e) { console.error("updateUser photoUrl failed:", e); }
+      }
       res.json(updated);
     } catch (err) {
       console.error("PATCH /api/writer/profile error:", err);
