@@ -2498,60 +2498,123 @@ export default function WriterStories() {
       <Dialog
         open={!!deleteConfirm}
         onOpenChange={(o) => {
-          if (!o) setDeleteConfirm(null);
+          if (!o && !deleteStory.isPending && !deleteSeason.isPending && !deleteChapter.isPending)
+            setDeleteConfirm(null);
         }}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent
+          className="max-w-sm"
+          onPointerDownOutside={(e) => {
+            if (deleteStory.isPending || deleteSeason.isPending || deleteChapter.isPending)
+              e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (deleteStory.isPending || deleteSeason.isPending || deleteChapter.isPending)
+              e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               Hapus{" "}
               {deleteConfirm?.type === "story" ? "Novel" : deleteConfirm?.type}?
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Yakin mau hapus{" "}
-              <span className="font-semibold text-foreground">
-                "{deleteConfirm?.name}"
-              </span>
-              ? Aksi ini tidak bisa dibatalkan.
-            </p>
-            {deleteConfirm?.type === "story" && (
-              <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex gap-3 items-start">
-                <span className="text-base mt-0.5">📄</span>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Tenang — kami akan kirim{" "}
-                  <span className="font-semibold text-foreground">
-                    file backup PDF
-                  </span>{" "}
-                  berisi seluruh isi novel ini ke emailmu secara otomatis
-                  sebelum dihapus.
-                </p>
+
+          {/* Loading state khusus untuk hapus novel (ada PDF + email) */}
+          {deleteStory.isPending && deleteConfirm?.type === "story" ? (
+            <div className="py-4 space-y-4">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-amber-600 dark:text-amber-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Sedang memproses…</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Sistem sedang membuat file backup PDF dan mengirimnya ke emailmu. Mohon tunggu dan <span className="font-medium text-foreground">jangan tutup halaman ini</span>.
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (!deleteConfirm) return;
-                if (deleteConfirm.type === "story")
-                  deleteStory.mutate(deleteConfirm.id);
-                if (deleteConfirm.type === "season")
-                  deleteSeason.mutate(deleteConfirm.id);
-                if (deleteConfirm.type === "chapter")
-                  deleteChapter.mutate(deleteConfirm.id);
-              }}
-              data-testid="button-confirm-delete"
-            >
-              {deleteConfirm?.type === "story"
-                ? "Hapus & Kirim Backup"
-                : "Hapus"}
-            </Button>
-          </DialogFooter>
+
+              {/* Step indicators */}
+              <div className="space-y-2 rounded-xl border border-border/60 bg-muted/40 p-3">
+                {[
+                  { icon: "📚", label: "Mengumpulkan data novel & chapter" },
+                  { icon: "📄", label: "Membuat file PDF backup" },
+                  { icon: "📧", label: "Mengirim PDF ke emailmu" },
+                  { icon: "🗑️", label: "Menghapus novel dari server" },
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <span className="text-sm w-5 text-center">{step.icon}</span>
+                    <span className="text-xs text-muted-foreground flex-1">{step.label}</span>
+                    <div className="w-3 h-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Yakin mau hapus{" "}
+                  <span className="font-semibold text-foreground">
+                    "{deleteConfirm?.name}"
+                  </span>
+                  ? Aksi ini tidak bisa dibatalkan.
+                </p>
+                {deleteConfirm?.type === "story" && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex gap-3 items-start">
+                    <span className="text-base mt-0.5">📄</span>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Tenang — kami akan kirim{" "}
+                      <span className="font-semibold text-foreground">
+                        file backup PDF
+                      </span>{" "}
+                      berisi seluruh isi novel ini ke emailmu secara otomatis
+                      sebelum dihapus.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  disabled={deleteSeason.isPending || deleteChapter.isPending}
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleteStory.isPending || deleteSeason.isPending || deleteChapter.isPending}
+                  onClick={() => {
+                    if (!deleteConfirm) return;
+                    if (deleteConfirm.type === "story")
+                      deleteStory.mutate(deleteConfirm.id);
+                    if (deleteConfirm.type === "season")
+                      deleteSeason.mutate(deleteConfirm.id);
+                    if (deleteConfirm.type === "chapter")
+                      deleteChapter.mutate(deleteConfirm.id);
+                  }}
+                  data-testid="button-confirm-delete"
+                >
+                  {(deleteSeason.isPending || deleteChapter.isPending) && (
+                    <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                    </svg>
+                  )}
+                  {deleteConfirm?.type === "story"
+                    ? "Hapus & Kirim Backup"
+                    : deleteSeason.isPending || deleteChapter.isPending
+                      ? "Menghapus…"
+                      : "Hapus"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
