@@ -20,14 +20,14 @@ import {
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
-  Coins, Lock, LockOpen, Search, PlusCircle,
+  Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1492,9 +1492,16 @@ export default function ManageNovel() {
           >
             <Coins size={13} /> Koin
           </button>
+          <button
+            onClick={() => setView("messages")}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "messages" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            data-testid="tab-messages"
+          >
+            <Mail size={13} /> Pesan
+          </button>
         </div>
 
-      {view !== "approvals" && view !== "reports" && view !== "coins" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2161,6 +2168,7 @@ export default function ManageNovel() {
       {view === "approvals" && <ApprovalsView />}
       {(view as View) === "reports" && <ReportsView />}
       {(view as View) === "coins" && <CoinAdminView />}
+      {(view as View) === "messages" && <MessagesView />}
 
       </div>
 
@@ -2721,6 +2729,131 @@ function ApprovalsView() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── MessagesView ───────────────────────────────────────────────────────────────
+function MessagesView() {
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<any | null>(null);
+
+  const { data: messages = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/admin/contact-messages"],
+    queryFn: () => fetch("/api/admin/contact-messages", { credentials: "include" }).then(r => r.json()),
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/contact-messages/${id}/read`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-messages"] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/contact-messages/${id}`),
+    onSuccess: () => {
+      setSelected(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-messages"] });
+      toast({ title: "Pesan dihapus" });
+    },
+  });
+
+  const unreadCount = messages.filter((m: any) => !m.read).length;
+
+  function openMessage(msg: any) {
+    setSelected(msg);
+    if (!msg.read) markReadMutation.mutate(msg.id);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+          <Inbox size={14} className="text-primary" /> Pesan Masuk
+          {unreadCount > 0 && (
+            <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount} belum dibaca</span>
+          )}
+        </h2>
+        <button onClick={() => refetch()} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+          <RotateCcw size={12} /> Refresh
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
+      ) : messages.length === 0 ? (
+        <div className="text-center py-16 border border-dashed border-border rounded-xl">
+          <Mail size={32} className="mx-auto mb-3 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">Belum ada pesan masuk</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-5 gap-4">
+          <div className="sm:col-span-2 space-y-1.5 max-h-[70vh] overflow-y-auto pr-1">
+            {messages.map((msg: any) => (
+              <button
+                key={msg.id}
+                onClick={() => openMessage(msg)}
+                className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${selected?.id === msg.id ? "border-primary/50 bg-primary/5" : !msg.read ? "border-primary/20 bg-primary/5 hover:border-primary/40" : "border-border bg-muted/20 hover:bg-muted/40"}`}
+                data-testid={`button-msg-${msg.id}`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <span className={`text-sm font-semibold truncate ${!msg.read ? "text-foreground" : "text-muted-foreground"}`}>
+                    {!msg.read && <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1.5 align-middle" />}
+                    {msg.name}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {new Date(msg.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short" })}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{msg.subject}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="sm:col-span-3">
+            {selected ? (
+              <div className="border border-border rounded-xl p-5 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-foreground">{selected.subject}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Dari: <span className="font-medium text-foreground">{selected.name}</span>
+                      {" · "}
+                      <a href={`mailto:${selected.email}`} className="text-primary hover:underline">{selected.email}</a>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(selected.createdAt).toLocaleString("id-ID", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`mailto:${selected.email}?subject=Re: ${encodeURIComponent(selected.subject)}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+                      data-testid="button-reply-message"
+                    >
+                      <Mail size={12} /> Balas
+                    </a>
+                    <button
+                      onClick={() => deleteMutation.mutate(selected.id)}
+                      disabled={deleteMutation.isPending}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                      data-testid="button-delete-message"
+                    >
+                      <Trash size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selected.message}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="border border-dashed border-border rounded-xl h-48 flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">Pilih pesan untuk membaca</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

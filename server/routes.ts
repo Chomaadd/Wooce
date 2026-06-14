@@ -37,6 +37,7 @@ import { NotificationModel } from "./notificationModel";
 import MidtransClient from "midtrans-client";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
+import { ContactMessageModel } from "./contactMessageModel";
 
 declare module "express-session" {
   interface SessionData {
@@ -2840,11 +2841,47 @@ export async function registerRoutes(
       if (!name || !email || !subject || !message) {
         return res.status(400).json({ message: "All fields are required" });
       }
-      await sendContactNotification({ name, email, subject, message });
+
+      // Save to DB first so messages are never lost
+      await ContactMessageModel.create({ name, email, subject, message, ipAddress: ip });
+
+      // Try to send email notification (silently skipped if Gmail not configured)
+      sendContactNotification({ name, email, subject, message }).catch((err) => {
+        console.error("Contact email error (non-fatal):", err);
+      });
+
       res.json({ ok: true });
     } catch (err) {
       console.error("Contact error:", err);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // ── Admin: Contact Messages ────────────────────────────────────────────────
+  app.get("/api/admin/contact-messages", requireAuth, async (req, res) => {
+    try {
+      const messages = await ContactMessageModel.find().sort({ createdAt: -1 }).limit(200).lean();
+      res.json(messages.map((m: any) => ({ ...m, id: m._id.toString() })));
+    } catch (err) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/contact-messages/:id/read", requireAuth, async (req, res) => {
+    try {
+      await ContactMessageModel.findByIdAndUpdate(req.params.id, { read: true });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/admin/contact-messages/:id", requireAuth, async (req, res) => {
+    try {
+      await ContactMessageModel.findByIdAndDelete(req.params.id);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
