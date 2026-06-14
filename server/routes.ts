@@ -1681,15 +1681,16 @@ export async function registerRoutes(
 
   app.post("/api/admin/coins/topup", requireAuth, async (req, res) => {
     try {
-      const { userId, amount, description } = z.object({
+      const { userId, amount, note } = z.object({
         userId: z.string(),
         amount: z.number().int().positive(),
-        description: z.string().optional().default("Top-up oleh admin"),
+        note: z.string().optional(),
       }).parse(req.body);
 
       const user = await storage.getUserById(userId);
       if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
 
+      const description = note ? note : "Top-up oleh admin";
       await CoinTransactionModel.create({ userId, amount, type: "topup", description });
       const newBalance = await getUserCoinBalance(userId);
       res.json({ success: true, coins: newBalance });

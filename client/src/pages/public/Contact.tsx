@@ -5,12 +5,14 @@ import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Mail, MessageSquare, Send, Instagram } from "lucide-react";
 import { SiFacebook, SiTiktok } from "react-icons/si";
 
 export default function Contact() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
 
@@ -166,6 +168,30 @@ export default function Contact() {
                         data-testid="input-contact-email"
                         className="w-full bg-background border border-border/60 rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                       />
+                      {user && (user as any).email && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] text-muted-foreground/70">{language === "id" ? "Pakai:" : "Use:"}</span>
+                          <button
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, email: (user as any).email }))}
+                            data-testid="button-use-my-email"
+                            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                          >
+                            <Mail size={9} />
+                            {(user as any).email}
+                          </button>
+                          {form.email === (user as any).email && (
+                            <button
+                              type="button"
+                              onClick={() => setForm(prev => ({ ...prev, email: "" }))}
+                              data-testid="button-use-custom-email"
+                              className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60 hover:bg-muted/80 transition-colors"
+                            >
+                              {language === "id" ? "Email lain" : "Other email"}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -98,7 +98,8 @@ function TxRow({ item }: { item: HistoryItem }) {
   const typeLabel = ({ topup: "Top-up Koin", unlock: "Buka Chapter", bonus: "Bonus Koin", refund: "Refund" } as any)[item.type]
     ?? (isCredit ? "Masuk" : "Keluar");
 
-  const hasDetail = !!(item.orderId || item.novelTitle || item.chapterTitle);
+  const isAdminTopupWithNote = item.type === "topup" && !item.orderId && !!item.description && item.description !== "Top-up oleh admin";
+  const hasDetail = !!(item.orderId || item.novelTitle || item.chapterTitle || isAdminTopupWithNote);
 
   return (
     <div className="border-b border-border/50 last:border-0">
@@ -141,6 +142,12 @@ function TxRow({ item }: { item: HistoryItem }) {
           >
             <div className="mx-4 mb-3.5 rounded-xl bg-muted/50 border border-border p-3.5 space-y-2.5 text-xs">
               {item.type === "topup" && <>
+                {isAdminTopupWithNote && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-muted-foreground font-medium shrink-0">Catatan Admin</span>
+                    <span className="font-medium text-foreground text-right">{item.description}</span>
+                  </div>
+                )}
                 {item.orderId && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-muted-foreground font-medium shrink-0">Order ID</span>
@@ -156,10 +163,12 @@ function TxRow({ item }: { item: HistoryItem }) {
                     <span className="font-semibold text-foreground">{formatRupiah(item.price)}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground font-medium">Status</span>
-                  <StatusBadge status={item.status} />
-                </div>
+                {!isAdminTopupWithNote && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground font-medium">Status</span>
+                    <StatusBadge status={item.status} />
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-muted-foreground font-medium">Koin Diterima</span>
                   <span className="font-bold text-green-600 dark:text-green-400">+{item.amount} koin</span>
