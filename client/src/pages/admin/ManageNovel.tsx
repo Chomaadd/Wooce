@@ -2502,6 +2502,13 @@ function ApprovalsView() {
     refetchOnMount: "always",
   });
 
+  const { data: suspendedWriters, refetch: refetchSuspended } = useQuery<AppUser[]>({
+    queryKey: ["/api/admin/users", "writer", "suspended"],
+    queryFn: () => fetch("/api/admin/users?role=writer&status=suspended", { credentials: "include" }).then(r => r.json()),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/approve`),
     onSuccess: () => {
@@ -2543,7 +2550,17 @@ function ApprovalsView() {
     onSuccess: () => {
       refetch();
       refetchActive();
+      refetchSuspended();
       toast({ title: "Akun disuspend." });
+    },
+  });
+
+  const unsuspendMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/unsuspend`),
+    onSuccess: () => {
+      refetchSuspended();
+      refetchActive();
+      toast({ title: "Akun berhasil dipulihkan." });
     },
   });
 
@@ -2579,7 +2596,7 @@ function ApprovalsView() {
           <p className="text-sm text-muted-foreground mt-1">Tinjau dan kelola permohonan bergabung sebagai penulis</p>
         </div>
         <button
-          onClick={() => { refetch(); refetchActive(); refetchVerif(); }}
+          onClick={() => { refetch(); refetchActive(); refetchVerif(); refetchSuspended(); }}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border shrink-0 mt-1"
           data-testid="button-refresh-approvals"
         >
@@ -2691,6 +2708,58 @@ function ApprovalsView() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-semibold disabled:opacity-50"
                     title="Hapus permanen"
                     data-testid={`button-delete-user-${u.id}`}
+                  >
+                    <Trash2 size={13} /> Hapus
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Suspended Writers */}
+      <div>
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+          <UserX size={14} className="text-red-500" /> Penulis Tersuspend
+          {!!suspendedWriters?.length && (
+            <span className="bg-red-500/10 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{suspendedWriters.length}</span>
+          )}
+        </h2>
+        {!suspendedWriters?.length ? (
+          <div className="text-center py-8 border border-dashed border-border rounded-xl">
+            <p className="text-sm text-muted-foreground">Tidak ada penulis yang tersuspend</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {suspendedWriters.map(u => (
+              <div key={u.id} className="flex items-center gap-3 p-4 border border-red-500/20 bg-red-500/5 rounded-xl">
+                {u.photoUrl
+                  ? <img src={u.photoUrl} alt={u.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0 opacity-60" />
+                  : <div className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0 text-red-500 font-bold text-sm opacity-60">{u.name.charAt(0).toUpperCase()}</div>
+                }
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm text-foreground">{u.name}</p>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 uppercase tracking-wide">Suspended</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => unsuspendMutation.mutate(u.id)}
+                    disabled={unsuspendMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    data-testid={`button-unsuspend-${u.id}`}
+                  >
+                    <UserCheck size={13} /> Pulihkan
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(u)}
+                    disabled={deleteUserMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-semibold disabled:opacity-50"
+                    title="Hapus permanen"
+                    data-testid={`button-delete-suspended-${u.id}`}
                   >
                     <Trash2 size={13} /> Hapus
                   </button>

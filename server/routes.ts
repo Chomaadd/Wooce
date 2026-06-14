@@ -621,6 +621,17 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.patch("/api/admin/users/:id/unsuspend", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUserById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      await UserModel.updateOne({ _id: req.params.id }, { $unset: { suspendedAt: 1 } }, { strict: false });
+      const updated = await storage.updateUser(req.params.id, { status: "active" });
+      storage.createNotification({ userId: user.id, type: "general", title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa mengakses platform kembali." }).catch(console.error);
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   app.get("/api/admin/users/pending-verification", requireAuth, async (_req, res) => {
     try {
       const users = await UserModel.find({ verificationStatus: "pending", role: "writer" }).lean();
