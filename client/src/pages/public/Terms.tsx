@@ -211,7 +211,7 @@ export default function Terms() {
       ],
       items: [
         "Google OAuth 2.0: Digunakan sebagai sistem autentikasi login. Dengan login menggunakan Google, kamu tunduk pada Kebijakan Privasi dan Ketentuan Layanan Google.",
-        "Gmail SMTP: Digunakan untuk mengirim notifikasi email kepada pengguna dan penulis. Email dikirim melalui infrastruktur Google.",
+        "Resend: Digunakan untuk mengirim notifikasi email kepada pengguna dan penulis. Email transaksional dikirim dari noreply@woocenovel.my.id, email dukungan dari support@woocenovel.my.id.",
         "MongoDB: Digunakan sebagai database untuk menyimpan data platform. Dioperasikan oleh MongoDB, Inc.",
         "Midtrans: Digunakan sebagai penyedia layanan pembayaran untuk memproses transaksi top-up Koin WOOCE. Dengan melakukan pembayaran, kamu tunduk pada ketentuan layanan dan kebijakan privasi Midtrans.",
         "Tautan Eksternal: Platform menyertakan tautan ke media sosial (TikTok, Facebook, Instagram) dan situs eksternal lainnya. WOOCE Novel tidak bertanggung jawab atas konten atau kebijakan privasi situs eksternal tersebut.",
@@ -249,7 +249,8 @@ export default function Terms() {
         "Jika kamu memiliki pertanyaan, keberatan, atau laporan terkait Ketentuan Layanan ini atau penggunaan platform, silakan hubungi kami melalui:",
       ],
       items: [
-        "Email: support@woocenovel.my.id",
+        "Email Support: support@woocenovel.my.id",
+        "Email Notifikasi (noreply — tidak perlu dibalas): noreply@woocenovel.my.id",
         "Media Sosial: TikTok, Facebook, atau Instagram @woocenovel (cek tautan di footer platform)",
         "Formulir Kontak: Tersedia di halaman Hubungi Kami di platform",
       ],
@@ -451,7 +452,7 @@ export default function Terms() {
       ],
       items: [
         "Google OAuth 2.0: Used as the login authentication system. By logging in with Google, you are subject to Google's Privacy Policy and Terms of Service.",
-        "Gmail SMTP: Used to send email notifications to users and writers. Emails are sent through Google's infrastructure.",
+        "Resend: Used to send email notifications to users and writers. Transactional emails are sent from noreply@woocenovel.my.id, support emails from support@woocenovel.my.id.",
         "MongoDB: Used as the database to store platform data. Operated by MongoDB, Inc.",
         "Midtrans: Used as the payment service provider to process WOOCE Coin top-up transactions. By making a payment, you are subject to Midtrans's terms of service and privacy policy.",
         "External Links: The platform includes links to social media (TikTok, Facebook, Instagram) and other external sites. WOOCE Novel is not responsible for the content or privacy policies of those external sites.",
@@ -489,7 +490,8 @@ export default function Terms() {
         "If you have questions, objections, or reports regarding these Terms of Service or platform usage, please contact us through:",
       ],
       items: [
-        "Email: support@woocenovel.my.id",
+        "Support Email: support@woocenovel.my.id",
+        "Notification Email (noreply — no reply needed): noreply@woocenovel.my.id",
         "Social Media: TikTok, Facebook, or Instagram @woocenovel (see links in the platform footer)",
         "Contact Form: Available on the Contact Us page on the platform",
       ],

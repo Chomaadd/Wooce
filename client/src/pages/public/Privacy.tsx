@@ -97,9 +97,10 @@ export default function Privacy() {
         "WOOCE Novel menggunakan dua saluran notifikasi untuk menjaga penggunanya tetap terinformasi:",
       ],
       items: [
-        "Notifikasi Email (via Gmail SMTP): Dikirimkan untuk kejadian penting yang memerlukan perhatian di luar platform, seperti konfirmasi tindakan dan backup data.",
+        "Notifikasi Email (via Resend): Dikirimkan untuk kejadian penting yang memerlukan perhatian di luar platform, seperti konfirmasi tindakan dan backup data.",
         "Notifikasi In-App: Ditampilkan langsung di dalam platform saat kamu login, untuk memberikan informasi terkini mengenai status akun dan aktivitas terkait.",
       ],
+      note: "WOOCE Novel memiliki 2 alamat email resmi: noreply@woocenovel.my.id (email transaksional — digunakan untuk OTP, verifikasi, approval, dan notifikasi sistem) dan support@woocenovel.my.id (email dukungan — digunakan untuk pesan dari halaman Kontak dan laporan konten).",
     },
     {
       title: "6a. Daftar Notifikasi Email",
@@ -215,7 +216,8 @@ export default function Privacy() {
         "Jika kamu memiliki pertanyaan, kekhawatiran, atau permintaan terkait Kebijakan Privasi ini atau cara kami mengelola data pribadimu, silakan hubungi kami melalui:",
       ],
       items: [
-        "Email: support@woocenovel.my.id",
+        "Email Support: support@woocenovel.my.id",
+        "Email Notifikasi (noreply — tidak perlu dibalas): noreply@woocenovel.my.id",
         "Media Sosial: TikTok, Facebook, atau Instagram @woocenovel (tautan tersedia di footer platform)",
         "Formulir Kontak: Tersedia di halaman Hubungi Kami di platform",
       ],
@@ -303,9 +305,10 @@ export default function Privacy() {
         "WOOCE Novel uses two notification channels to keep users informed:",
       ],
       items: [
-        "Email Notifications (via Gmail SMTP): Sent for important events that require attention outside the platform, such as action confirmations and data backups.",
+        "Email Notifications (via Resend): Sent for important events that require attention outside the platform, such as action confirmations and data backups.",
         "In-App Notifications: Displayed directly within the platform when you log in, to provide real-time updates about your account status and related activities.",
       ],
+      note: "WOOCE Novel has 2 official email addresses: noreply@woocenovel.my.id (transactional email — used for OTP, verification, approval, and system notifications) and support@woocenovel.my.id (support email — used for messages from the Contact page and content reports).",
     },
     {
       title: "6a. Email Notification List",
@@ -421,7 +424,8 @@ export default function Privacy() {
         "If you have questions, concerns, or requests regarding this Privacy Policy or how we handle your personal data, please contact us through:",
       ],
       items: [
-        "Email: support@woocenovel.my.id",
+        "Support Email: support@woocenovel.my.id",
+        "Notification Email (noreply — no reply needed): noreply@woocenovel.my.id",
         "Social Media: TikTok, Facebook, or Instagram @woocenovel (links available in the platform footer)",
         "Contact Form: Available on the Contact Us page on the platform",
       ],
