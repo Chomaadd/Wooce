@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { log, colorMethod, colorStatus, clr } from "./logger";
 import { NotificationModel } from "./notificationModel";
+import { ContactMessageModel } from "./contactMessageModel";
 
 export { log };
 
@@ -87,6 +88,15 @@ httpServer.listen(
       if (deletedCount > 0) log(`Cleaned up ${deletedCount} expired notifications`, "mongodb");
     } catch (e) {
       log(`Notification cleanup error: ${e}`, "mongodb");
+    }
+
+    // Delete contact messages older than 30 days on startup
+    try {
+      const cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const { deletedCount } = await ContactMessageModel.deleteMany({ createdAt: { $lt: cutoff30 } });
+      if (deletedCount > 0) log(`Cleaned up ${deletedCount} old contact messages`, "mongodb");
+    } catch (e) {
+      log(`Contact message cleanup error: ${e}`, "mongodb");
     }
 
     await registerRoutes(httpServer, app);
