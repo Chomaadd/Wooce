@@ -195,11 +195,11 @@ export default function Privacy() {
         "Hak Backup Data: Sebagai penulis, kamu berhak mendapatkan backup karya-karyamu dalam format PDF saat menghapus novel atau akun.",
         "Hak Keberatan: Kamu berhak mengajukan keberatan atas cara kami memproses datamu dengan menghubungi kami melalui saluran kontak resmi.",
       ],
-      note: "Untuk menggunakan hak-hak di atas atau mengajukan permintaan terkait data pribadimu, hubungi kami di support.woocenovel@gmail.com. Kami akan merespons dalam waktu 7 hari kerja.",
+      note: "Untuk menggunakan hak-hak di atas atau mengajukan permintaan terkait data pribadimu, hubungi kami di support@woocenovel.my.id. Kami akan merespons dalam waktu 7 hari kerja.",
     },
     {
       title: "12. Batasan Usia",
-      content: "WOOCE Novel tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak secara sengaja mengumpulkan data pribadi dari anak-anak di bawah 13 tahun. Jika kamu adalah orang tua atau wali yang mengetahui bahwa anak di bawah asuhanmu telah membuat akun di platform kami, mohon hubungi kami segera di support.woocenovel@gmail.com agar kami dapat menghapus data tersebut.",
+      content: "WOOCE Novel tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak secara sengaja mengumpulkan data pribadi dari anak-anak di bawah 13 tahun. Jika kamu adalah orang tua atau wali yang mengetahui bahwa anak di bawah asuhanmu telah membuat akun di platform kami, mohon hubungi kami segera di support@woocenovel.my.id agar kami dapat menghapus data tersebut.",
     },
     {
       title: "13. Perubahan Kebijakan Privasi",
@@ -215,7 +215,7 @@ export default function Privacy() {
         "Jika kamu memiliki pertanyaan, kekhawatiran, atau permintaan terkait Kebijakan Privasi ini atau cara kami mengelola data pribadimu, silakan hubungi kami melalui:",
       ],
       items: [
-        "Email: support.woocenovel@gmail.com",
+        "Email: support@woocenovel.my.id",
         "Media Sosial: TikTok, Facebook, atau Instagram @woocenovel (tautan tersedia di footer platform)",
         "Formulir Kontak: Tersedia di halaman Hubungi Kami di platform",
       ],
@@ -401,11 +401,11 @@ export default function Privacy() {
         "Right to Data Backup: As a writer, you have the right to receive a PDF backup of your works when deleting a novel or account.",
         "Right to Object: You have the right to object to how we process your data by contacting us through official contact channels.",
       ],
-      note: "To exercise the above rights or submit requests regarding your personal data, contact us at support.woocenovel@gmail.com. We will respond within 7 business days.",
+      note: "To exercise the above rights or submit requests regarding your personal data, contact us at support@woocenovel.my.id. We will respond within 7 business days.",
     },
     {
       title: "12. Age Restrictions",
-      content: "WOOCE Novel is not intended for children under the age of 13. We do not knowingly collect personal data from children under 13. If you are a parent or guardian who becomes aware that a child in your care has created an account on our platform, please contact us immediately at support.woocenovel@gmail.com so we can delete that data.",
+      content: "WOOCE Novel is not intended for children under the age of 13. We do not knowingly collect personal data from children under 13. If you are a parent or guardian who becomes aware that a child in your care has created an account on our platform, please contact us immediately at support@woocenovel.my.id so we can delete that data.",
     },
     {
       title: "13. Changes to Privacy Policy",
@@ -421,7 +421,7 @@ export default function Privacy() {
         "If you have questions, concerns, or requests regarding this Privacy Policy or how we handle your personal data, please contact us through:",
       ],
       items: [
-        "Email: support.woocenovel@gmail.com",
+        "Email: support@woocenovel.my.id",
         "Social Media: TikTok, Facebook, or Instagram @woocenovel (links available in the platform footer)",
         "Contact Form: Available on the Contact Us page on the platform",
       ],

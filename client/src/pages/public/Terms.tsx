@@ -249,7 +249,7 @@ export default function Terms() {
         "Jika kamu memiliki pertanyaan, keberatan, atau laporan terkait Ketentuan Layanan ini atau penggunaan platform, silakan hubungi kami melalui:",
       ],
       items: [
-        "Email: support.woocenovel@gmail.com",
+        "Email: support@woocenovel.my.id",
         "Media Sosial: TikTok, Facebook, atau Instagram @woocenovel (cek tautan di footer platform)",
         "Formulir Kontak: Tersedia di halaman Hubungi Kami di platform",
       ],
@@ -489,7 +489,7 @@ export default function Terms() {
         "If you have questions, objections, or reports regarding these Terms of Service or platform usage, please contact us through:",
       ],
       items: [
-        "Email: support.woocenovel@gmail.com",
+        "Email: support@woocenovel.my.id",
         "Social Media: TikTok, Facebook, or Instagram @woocenovel (see links in the platform footer)",
         "Contact Form: Available on the Contact Us page on the platform",
       ],
