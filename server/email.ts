@@ -56,16 +56,24 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
 </html>`;
 };
 
+function createGmailTransport(user: string, pass: string) {
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,       // STARTTLS — lebih kompatibel dengan Railway/Render
+    family: 4,           // Force IPv4, hindari ENETUNREACH di Railway
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+  });
+}
+
 async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
   if (!config.gmailUser || !config.gmailAppPassword) {
     console.warn("[Email] Gmail belum dikonfigurasi, email dilewati.");
     return;
   }
-  const t = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: config.gmailUser, pass: config.gmailAppPassword },
-  });
+  const t = createGmailTransport(config.gmailUser, config.gmailAppPassword);
   const baseUrl = await getBaseUrl();
   await fn(t, config.gmailUser, baseUrl);
 }
@@ -75,10 +83,7 @@ async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>
   if (!config.gmailUser || !config.gmailAppPassword) {
     throw new Error("Gmail belum dikonfigurasi. Atur Gmail Address dan App Password terlebih dahulu.");
   }
-  const t = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: config.gmailUser, pass: config.gmailAppPassword },
-  });
+  const t = createGmailTransport(config.gmailUser, config.gmailAppPassword);
   const baseUrl = await getBaseUrl();
   await fn(t, config.gmailUser, baseUrl);
 }
