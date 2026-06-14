@@ -2558,9 +2558,13 @@ function ApprovalsView() {
   const unsuspendMutation = useMutation({
     mutationFn: (id: string) => apiRequest("PATCH", `/api/admin/users/${id}/unsuspend`),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       refetchSuspended();
       refetchActive();
-      toast({ title: "Akun berhasil dipulihkan." });
+      toast({ title: "Akun berhasil dipulihkan!", description: "Penulis sudah bisa mengakses platform kembali." });
+    },
+    onError: () => {
+      toast({ title: "Gagal memulihkan akun.", variant: "destructive" });
     },
   });
 

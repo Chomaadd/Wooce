@@ -627,7 +627,7 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "User not found" });
       await UserModel.updateOne({ _id: req.params.id }, { $unset: { suspendedAt: 1 } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { status: "active" });
-      storage.createNotification({ userId: user.id, type: "general", title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa mengakses platform kembali." }).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "unsuspended", title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa kembali mengakses WOOCE Novel seperti biasa." }).catch(console.error);
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
