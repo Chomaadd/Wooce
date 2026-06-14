@@ -389,9 +389,11 @@ export async function registerRoutes(
       res.json({
         oauthConfigured: !!(effective.googleClientId && effective.googleClientSecret),
         gmailConfigured: !!(effective.gmailUser && effective.gmailAppPassword),
+        resendConfigured: !!effective.resendApiKey,
+        emailConfigured: !!(effective.resendApiKey || (effective.gmailUser && effective.gmailAppPassword)),
       });
     } catch {
-      res.status(500).json({ oauthConfigured: false, gmailConfigured: false });
+      res.status(500).json({ oauthConfigured: false, gmailConfigured: false, resendConfigured: false, emailConfigured: false });
     }
   });
 
@@ -409,6 +411,8 @@ export async function registerRoutes(
         midtransServerKey:    { value: mask(effective.midtransServerKey), configured: !!effective.midtransServerKey, fromDb: !!(db as any).midtransServerKey },
         midtransClientKey:    { value: mask(effective.midtransClientKey), configured: !!effective.midtransClientKey, fromDb: !!(db as any).midtransClientKey },
         midtransIsProduction: { value: effective.midtransIsProduction || "false", configured: true, fromDb: !!(db as any).midtransIsProduction },
+        resendApiKey:         { value: mask(effective.resendApiKey), configured: !!effective.resendApiKey, fromDb: !!(db as any).resendApiKey },
+        resendFromEmail:      { value: effective.resendFromEmail, configured: !!effective.resendFromEmail, fromDb: !!(db as any).resendFromEmail },
       });
     } catch (err) {
       console.error("site-config GET error:", err);
@@ -427,6 +431,8 @@ export async function registerRoutes(
         midtransServerKey:    z.string().optional(),
         midtransClientKey:    z.string().optional(),
         midtransIsProduction: z.string().optional(),
+        resendApiKey:         z.string().optional(),
+        resendFromEmail:      z.string().optional(),
       });
       const data = schema.parse(req.body);
       await updateSiteConfig(data);

@@ -73,12 +73,10 @@ function createGmailTransport(user: string, pass: string) {
  * - Jika RESEND_API_KEY ada → pakai Resend HTTP API (tidak diblokir Railway)
  * - Jika tidak → fallback ke Gmail SMTP
  */
-function createUnifiedTransport(baseUrl: string, gmailUser?: string, gmailPass?: string): { sendMail: (opts: any) => Promise<any> } {
-  const resendKey = process.env.RESEND_API_KEY;
-
+function createUnifiedTransport(baseUrl: string, gmailUser?: string, gmailPass?: string, resendKey?: string, resendFrom?: string): { sendMail: (opts: any) => Promise<any> } {
   if (resendKey) {
     const resend = new Resend(resendKey);
-    const fromAddr = process.env.RESEND_FROM_EMAIL || "WOOCE Novel <onboarding@resend.dev>";
+    const fromAddr = resendFrom || process.env.RESEND_FROM_EMAIL || "WOOCE Novel <onboarding@resend.dev>";
 
     return {
       sendMail: async (opts: any) => {
@@ -120,7 +118,8 @@ function createUnifiedTransport(baseUrl: string, gmailUser?: string, gmailPass?:
 
 async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
-  const hasResend = !!process.env.RESEND_API_KEY;
+  const resendKey = config.resendApiKey;
+  const hasResend = !!resendKey;
   const hasGmail = !!(config.gmailUser && config.gmailAppPassword);
 
   if (!hasResend && !hasGmail) {
@@ -130,10 +129,8 @@ async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from
 
   try {
     const baseUrl = await getBaseUrl();
-    const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword) as any;
-    const fromLabel = hasResend
-      ? (process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev")
-      : config.gmailUser!;
+    const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword, resendKey, config.resendFromEmail) as any;
+    const fromLabel = hasResend ? (config.resendFromEmail || "onboarding@resend.dev") : config.gmailUser!;
     await fn(t, fromLabel, baseUrl);
   } catch (err) {
     console.error("[Email] guard error:", err);
@@ -142,18 +139,17 @@ async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from
 
 async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
-  const hasResend = !!process.env.RESEND_API_KEY;
+  const resendKey = config.resendApiKey;
+  const hasResend = !!resendKey;
   const hasGmail = !!(config.gmailUser && config.gmailAppPassword);
 
   if (!hasResend && !hasGmail) {
-    throw new Error("Tidak ada provider email aktif. Set RESEND_API_KEY di Railway, atau konfigurasi Gmail di admin panel.");
+    throw new Error("Tidak ada provider email aktif. Atur Resend API Key di halaman Credentials, atau konfigurasi Gmail.");
   }
 
   const baseUrl = await getBaseUrl();
-  const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword) as any;
-  const fromLabel = hasResend
-    ? (process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev")
-    : config.gmailUser!;
+  const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword, resendKey, config.resendFromEmail) as any;
+  const fromLabel = hasResend ? (config.resendFromEmail || "onboarding@resend.dev") : config.gmailUser!;
   await fn(t, fromLabel, baseUrl);
 }
 

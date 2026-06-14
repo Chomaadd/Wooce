@@ -3,7 +3,7 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Lock, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, Save, RefreshCw, Mail, Globe, Shield, ChevronRight, Loader2, ShieldCheck, Copy, Check, ExternalLink } from "lucide-react";
+import { Lock, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, Save, RefreshCw, Mail, Globe, Shield, ChevronRight, Loader2, ShieldCheck, Copy, Check, ExternalLink, Send } from "lucide-react";
 
 interface ConfigField {
   value: string;
@@ -20,25 +20,30 @@ interface SiteConfig {
   midtransServerKey: ConfigField;
   midtransClientKey: ConfigField;
   midtransIsProduction: ConfigField;
+  resendApiKey: ConfigField;
+  resendFromEmail: ConfigField;
 }
 
 type FieldKey = keyof SiteConfig;
 
 const FIELD_META: Record<FieldKey, { label: string; hint: string; placeholder: string; secret: boolean; group: string }> = {
   siteUrl:              { label: "Site URL",              hint: "URL publik platform, misal: https://wooce-novel.replit.app",               placeholder: "https://wooce-novel.replit.app",    secret: false, group: "general" },
-  gmailUser:            { label: "Gmail Address",         hint: "Alamat Gmail pengirim notifikasi email",                                    placeholder: "yourmail@gmail.com",               secret: false, group: "email" },
-  gmailAppPassword:     { label: "Gmail App Password",    hint: "App Password Gmail (bukan password biasa)",                                 placeholder: "xxxx xxxx xxxx xxxx",              secret: true,  group: "email" },
+  gmailUser:            { label: "Gmail Address",         hint: "Alamat Gmail pengirim notifikasi (opsional jika pakai Resend)",             placeholder: "yourmail@gmail.com",               secret: false, group: "email" },
+  gmailAppPassword:     { label: "Gmail App Password",    hint: "App Password Gmail — bukan password biasa (opsional jika pakai Resend)",    placeholder: "xxxx xxxx xxxx xxxx",              secret: true,  group: "email" },
   googleClientId:       { label: "Google Client ID",      hint: "Client ID dari Google Cloud Console untuk OAuth",                           placeholder: "xxxxxx.apps.googleusercontent.com",secret: false, group: "oauth" },
   googleClientSecret:   { label: "Google Client Secret",  hint: "Client Secret Google OAuth",                                               placeholder: "GOCSPX-xxxxxxxxxxxx",              secret: true,  group: "oauth" },
   midtransServerKey:    { label: "Midtrans Server Key",   hint: "Server Key dari dashboard Midtrans (mulai SB-Mid-server-... untuk sandbox)", placeholder: "SB-Mid-server-xxxxxxxxxxxx",        secret: true,  group: "payment" },
   midtransClientKey:    { label: "Midtrans Client Key",   hint: "Client Key dari dashboard Midtrans (mulai SB-Mid-client-... untuk sandbox)", placeholder: "SB-Mid-client-xxxxxxxxxxxx",        secret: true,  group: "payment" },
   midtransIsProduction: { label: "Mode Produksi",         hint: "Isi 'true' untuk mode produksi, kosongkan untuk sandbox (testing)",         placeholder: "true",                             secret: false, group: "payment" },
+  resendApiKey:         { label: "Resend API Key",        hint: "API Key dari dashboard Resend — direkomendasikan untuk Railway/Render",      placeholder: "re_xxxxxxxxxxxxxxxxxxxx",           secret: true,  group: "resend" },
+  resendFromEmail:      { label: "From Email (Resend)",   hint: "Alamat pengirim email, harus dari domain yang sudah diverifikasi di Resend", placeholder: "WOOCE Novel <noreply@domain.com>",  secret: false, group: "resend" },
 };
 
 const GROUP_META = {
-  general: { label: "Umum",         icon: Globe,  desc: "Konfigurasi dasar platform" },
-  email:   { label: "Email",        icon: Mail,   desc: "Notifikasi & pengiriman email via Gmail" },
-  oauth:   { label: "Google OAuth", icon: Shield, desc: "Login dengan Google untuk pembaca & penulis" },
+  general: { label: "Umum",         icon: Globe,    desc: "Konfigurasi dasar platform" },
+  resend:  { label: "Resend Email", icon: Send,     desc: "Provider email via HTTP API — wajib untuk Railway/Render (direkomendasikan)" },
+  email:   { label: "Gmail SMTP",   icon: Mail,     desc: "Alternatif email via Gmail — hanya bekerja di Replit, tidak di Railway" },
+  oauth:   { label: "Google OAuth", icon: Shield,   desc: "Login dengan Google untuk pembaca & penulis" },
   payment: { label: "Midtrans",     icon: KeyRound, desc: "Payment gateway untuk pembelian koin (GoPay, OVO, QRIS, Transfer Bank)" },
 };
 
@@ -240,7 +245,8 @@ export default function Credentials() {
   }
 
   const hasEdits = Object.keys(editing).length > 0;
-  const groups = (["general", "email", "oauth", "payment"] as const);
+  const groups = (["general", "resend", "email", "oauth", "payment"] as const);
+  const emailActive = !!(config?.resendApiKey?.configured || config?.gmailUser?.configured);
 
   return (
     <AdminLayout>
@@ -300,6 +306,32 @@ export default function Credentials() {
                         <p className="text-xs text-muted-foreground">{group.desc}</p>
                       </div>
                     </div>
+
+                    {groupKey === "resend" && (
+                      <div className="px-5 py-4 border-b border-border bg-violet-50 dark:bg-violet-950/20 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Send size={14} className="text-violet-600 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 mb-1.5">
+                              Cara setup Resend (wajib untuk Railway/Render)
+                            </p>
+                            <ol className="text-xs text-violet-700 dark:text-violet-500 space-y-0.5 list-decimal list-inside">
+                              <li>Daftar gratis di <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-0.5">resend.com <ExternalLink size={10} /></a> (gratis 3.000 email/bulan)</li>
+                              <li>Masuk ke dashboard → klik <strong>API Keys</strong> → <strong>Create API Key</strong></li>
+                              <li>Paste API Key di kolom <strong>Resend API Key</strong> di bawah</li>
+                              <li>Buka menu <strong>Domains</strong> → <strong>Add Domain</strong> → verifikasi domain kamu</li>
+                              <li>Setelah domain verified, isi <strong>From Email</strong> misal: <code className="bg-violet-100 dark:bg-violet-900/40 px-1 rounded">WOOCE Novel &lt;noreply@domain.com&gt;</code></li>
+                            </ol>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-violet-100 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800">
+                          <CheckCircle2 size={13} className="text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                          <p className="text-xs text-violet-700 dark:text-violet-400">
+                            Resend menggunakan <strong>HTTP API (port 443)</strong> — tidak diblokir Railway, Render, atau host manapun. Lebih andal dari Gmail SMTP.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {groupKey === "payment" && (
                       <div className="px-5 py-4 border-b border-border bg-amber-50 dark:bg-amber-950/20 space-y-3">
@@ -451,22 +483,27 @@ export default function Credentials() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">Test Notifikasi Email</p>
-                    <p className="text-xs text-muted-foreground">Kirim email percobaan untuk verifikasi konfigurasi Gmail</p>
+                    <p className="text-xs text-muted-foreground">
+                      Kirim email percobaan untuk memverifikasi konfigurasi email aktif
+                    </p>
                   </div>
                 </div>
                 <div className="px-5 py-4 space-y-3">
-                  {!config?.gmailUser?.configured ? (
+                  {!emailActive ? (
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                       <XCircle size={15} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                       <p className="text-xs text-amber-700 dark:text-amber-400">
-                        Atur <strong>Gmail Address</strong> dan <strong>Gmail App Password</strong> terlebih dahulu untuk mengaktifkan fitur ini.
+                        Atur <strong>Resend API Key</strong> (direkomendasikan) atau <strong>Gmail</strong> terlebih dahulu untuk mengaktifkan fitur ini.
                       </p>
                     </div>
                   ) : (
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
                       <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                       <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                        Gmail sudah dikonfigurasi. Kirim test email untuk memastikan semuanya berjalan.
+                        {config?.resendApiKey?.configured
+                          ? <>Provider aktif: <strong>Resend</strong> — siap digunakan di Railway & semua host.</>
+                          : <>Provider aktif: <strong>Gmail SMTP</strong> — hanya bekerja di Replit.</>
+                        }
                       </p>
                     </div>
                   )}
@@ -476,17 +513,17 @@ export default function Credentials() {
                       value={testEmailTo}
                       onChange={e => setTestEmailTo(e.target.value)}
                       placeholder="Kirim ke alamat email..."
-                      disabled={!config?.gmailUser?.configured}
+                      disabled={!emailActive}
                       className="flex-1 px-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       data-testid="input-test-email"
                     />
                     <button
                       type="submit"
-                      disabled={testingEmail || !testEmailTo || !config?.gmailUser?.configured}
+                      disabled={testingEmail || !testEmailTo || !emailActive}
                       className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
                       data-testid="button-send-test-email"
                     >
-                      {testingEmail ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                      {testingEmail ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                       {testingEmail ? "Mengirim..." : "Kirim Test"}
                     </button>
                   </form>
