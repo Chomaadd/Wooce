@@ -26,7 +26,7 @@ const SOCIAL_LINKS = [
     external: true,
   },
   {
-    href: "mailto:support.woocenovel@gmail.com",
+    href: "mailto:support@woocenovel.my.id",
     icon: <Mail size={15} strokeWidth={1.75} />,
     label: "Email",
     testId: "link-social-email",

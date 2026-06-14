@@ -411,8 +411,9 @@ export async function registerRoutes(
         midtransServerKey:    { value: mask(effective.midtransServerKey), configured: !!effective.midtransServerKey, fromDb: !!(db as any).midtransServerKey },
         midtransClientKey:    { value: mask(effective.midtransClientKey), configured: !!effective.midtransClientKey, fromDb: !!(db as any).midtransClientKey },
         midtransIsProduction: { value: effective.midtransIsProduction || "false", configured: true, fromDb: !!(db as any).midtransIsProduction },
-        resendApiKey:         { value: mask(effective.resendApiKey), configured: !!effective.resendApiKey, fromDb: !!(db as any).resendApiKey },
-        resendFromEmail:      { value: effective.resendFromEmail, configured: !!effective.resendFromEmail, fromDb: !!(db as any).resendFromEmail },
+        resendApiKey:          { value: mask(effective.resendApiKey), configured: !!effective.resendApiKey, fromDb: !!(db as any).resendApiKey },
+        resendFromEmail:       { value: effective.resendFromEmail, configured: !!effective.resendFromEmail, fromDb: !!(db as any).resendFromEmail },
+        resendSupportEmail:    { value: effective.resendSupportEmail, configured: !!effective.resendSupportEmail, fromDb: !!(db as any).resendSupportEmail },
       });
     } catch (err) {
       console.error("site-config GET error:", err);
@@ -431,8 +432,9 @@ export async function registerRoutes(
         midtransServerKey:    z.string().optional(),
         midtransClientKey:    z.string().optional(),
         midtransIsProduction: z.string().optional(),
-        resendApiKey:         z.string().optional(),
-        resendFromEmail:      z.string().optional(),
+        resendApiKey:          z.string().optional(),
+        resendFromEmail:       z.string().optional(),
+        resendSupportEmail:    z.string().optional(),
       });
       const data = schema.parse(req.body);
       await updateSiteConfig(data);

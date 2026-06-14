@@ -85,7 +85,7 @@ export default function Contact() {
               <div className="sm:col-span-2 flex flex-col gap-4">
                 <div className="rounded-2xl border border-border/60 bg-card/60 p-5 flex flex-col gap-4">
                   <a
-                    href="mailto:support.woocenovel@gmail.com"
+                    href="mailto:support@woocenovel.my.id"
                     className="flex items-start gap-3 group"
                     data-testid="link-contact-email"
                   >
@@ -94,8 +94,7 @@ export default function Contact() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground font-medium mb-0.5">{t("contact.email")}</p>
-                      <p className="text-sm text-foreground font-semibold">support.woocenovel</p>
-                      <p className="text-xs text-muted-foreground">@gmail.com</p>
+                      <p className="text-sm text-foreground font-semibold">support@woocenovel.my.id</p>
                     </div>
                   </a>
 

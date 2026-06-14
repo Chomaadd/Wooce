@@ -22,6 +22,7 @@ interface SiteConfig {
   midtransIsProduction: ConfigField;
   resendApiKey: ConfigField;
   resendFromEmail: ConfigField;
+  resendSupportEmail: ConfigField;
 }
 
 type FieldKey = keyof SiteConfig;
@@ -35,8 +36,9 @@ const FIELD_META: Record<FieldKey, { label: string; hint: string; placeholder: s
   midtransServerKey:    { label: "Midtrans Server Key",   hint: "Server Key dari dashboard Midtrans (mulai SB-Mid-server-... untuk sandbox)", placeholder: "SB-Mid-server-xxxxxxxxxxxx",        secret: true,  group: "payment" },
   midtransClientKey:    { label: "Midtrans Client Key",   hint: "Client Key dari dashboard Midtrans (mulai SB-Mid-client-... untuk sandbox)", placeholder: "SB-Mid-client-xxxxxxxxxxxx",        secret: true,  group: "payment" },
   midtransIsProduction: { label: "Mode Produksi",         hint: "Isi 'true' untuk mode produksi, kosongkan untuk sandbox (testing)",         placeholder: "true",                             secret: false, group: "payment" },
-  resendApiKey:         { label: "Resend API Key",        hint: "API Key dari dashboard Resend — direkomendasikan untuk Railway/Render",      placeholder: "re_xxxxxxxxxxxxxxxxxxxx",           secret: true,  group: "resend" },
-  resendFromEmail:      { label: "From Email (Resend)",   hint: "Alamat pengirim email, harus dari domain yang sudah diverifikasi di Resend", placeholder: "WOOCE Novel <noreply@domain.com>",  secret: false, group: "resend" },
+  resendApiKey:         { label: "Resend API Key",           hint: "API Key dari dashboard Resend — direkomendasikan untuk Railway/Render",                          placeholder: "re_xxxxxxxxxxxxxxxxxxxx",              secret: true,  group: "resend" },
+  resendFromEmail:      { label: "From Email (Notifikasi)",  hint: "Email pengirim untuk notifikasi transaksional (verifikasi, approval, OTP, dll). Contoh: noreply@domain.com", placeholder: "noreply@woocenovel.my.id",             secret: false, group: "resend" },
+  resendSupportEmail:   { label: "From Email (Support)",     hint: "Email pengirim khusus halaman Kontak & laporan konten. Jika kosong, pakai From Email Notifikasi.",        placeholder: "support@woocenovel.my.id",            secret: false, group: "resend" },
 };
 
 const GROUP_META = {

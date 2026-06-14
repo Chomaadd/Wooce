@@ -9,8 +9,9 @@ const siteConfigSchema = new mongoose.Schema({
   midtransServerKey:  { type: String, default: '' },
   midtransClientKey:  { type: String, default: '' },
   midtransIsProduction: { type: String, default: '' },
-  resendApiKey:       { type: String, default: '' },
-  resendFromEmail:    { type: String, default: '' },
+  resendApiKey:        { type: String, default: '' },
+  resendFromEmail:     { type: String, default: '' },
+  resendSupportEmail:  { type: String, default: '' },
 }, { timestamps: true });
 
 export const SiteConfigModel =
@@ -45,6 +46,7 @@ export async function updateSiteConfig(data: {
   midtransIsProduction?: string;
   resendApiKey?: string;
   resendFromEmail?: string;
+  resendSupportEmail?: string;
 }) {
   let doc = await SiteConfigModel.findOne();
   if (!doc) {
@@ -68,7 +70,8 @@ export async function getEffectiveConfig() {
     midtransServerKey:    (db.midtransServerKey  || process.env.MIDTRANS_SERVER_KEY || '').trim(),
     midtransClientKey:    (db.midtransClientKey  || process.env.MIDTRANS_CLIENT_KEY || '').trim(),
     midtransIsProduction: (db.midtransIsProduction || process.env.MIDTRANS_IS_PRODUCTION || '').trim(),
-    resendApiKey:         (db.resendApiKey       || process.env.RESEND_API_KEY       || '').trim(),
-    resendFromEmail:      (db.resendFromEmail    || process.env.RESEND_FROM_EMAIL    || '').trim(),
+    resendApiKey:         (db.resendApiKey        || process.env.RESEND_API_KEY        || '').trim(),
+    resendFromEmail:      (db.resendFromEmail     || process.env.RESEND_FROM_EMAIL     || '').trim(),
+    resendSupportEmail:   (db.resendSupportEmail  || process.env.RESEND_SUPPORT_EMAIL  || '').trim(),
   };
 }

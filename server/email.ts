@@ -137,6 +137,27 @@ async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from
   }
 }
 
+async function guardSupport(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
+  const config = await getEffectiveConfig();
+  const resendKey = config.resendApiKey;
+  const hasResend = !!resendKey;
+  const hasGmail = !!(config.gmailUser && config.gmailAppPassword);
+
+  if (!hasResend && !hasGmail) {
+    console.warn("[Email] Tidak ada provider email dikonfigurasi, email dilewati.");
+    return;
+  }
+
+  try {
+    const baseUrl = await getBaseUrl();
+    const supportFrom = config.resendSupportEmail || config.resendFromEmail || (hasGmail ? config.gmailUser! : "onboarding@resend.dev");
+    const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword, resendKey, supportFrom) as any;
+    await fn(t, supportFrom, baseUrl);
+  } catch (err) {
+    console.error("[Email] guard error:", err);
+  }
+}
+
 async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
   const resendKey = config.resendApiKey;
@@ -154,7 +175,7 @@ async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>
 }
 
 export async function sendContactNotification(data: { name: string; email: string; subject: string; message: string }) {
-  return guard((t, from, BASE_URL) => t.sendMail({
+  return guardSupport((t, from, BASE_URL) => t.sendMail({
     from: `"WOOCE Novel" <${from}>`,
     to: from,
     replyTo: data.email,
@@ -460,7 +481,7 @@ export async function sendStoryRemovedByReportEmail(
   pdfBuffer: Buffer
 ) {
   const safeFilename = storyTitle.replace(/[^a-z0-9\s]/gi, "_").replace(/\s+/g, "_") + "_backup.pdf";
-  return guard((t, from, BASE_URL) => t.sendMail({
+  return guardSupport((t, from, BASE_URL) => t.sendMail({
     from: `"WOOCE Novel" <${from}>`,
     to,
     subject: `Ceritamu "${storyTitle}" Telah Dihapus — WOOCE Novel`,
