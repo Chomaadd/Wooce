@@ -27,10 +27,10 @@ const TYPE_CONFIG = {
   },
 };
 
-const STATIC_DISPLAY_MS = 6000;
 const FADE_MS = 400;
-const SCROLL_PAUSE_MS = 1200;
-const CHARS_PER_SECOND = 8;
+const SCROLL_START_DELAY_MS = 300; // jeda singkat sebelum mulai — teks masih off-screen
+const CHARS_PER_SECOND = 5;        // makin kecil = makin lambat = makin lama terbaca
+const MIN_DURATION_S = 8;          // minimal 8 detik agar teks sempat terbaca
 
 export function AnnouncementBanner() {
   const { data: announcements } = useQuery<Announcement[]>({
@@ -71,8 +71,8 @@ export function AnnouncementBanner() {
       let cleanup = () => {};
 
       if (visible.length > 1) {
-        // Mode scroll: diam sebentar lalu geser teks ke kiri, lalu ganti
-        const pauseTimer = setTimeout(() => setIsScrolling(true), SCROLL_PAUSE_MS);
+        // Teks mulai off-screen kanan, delay singkat lalu mulai geser ke kiri
+        const pauseTimer = setTimeout(() => setIsScrolling(true), SCROLL_START_DELAY_MS);
         cleanup = () => clearTimeout(pauseTimer);
       }
       // Jika hanya 1 announcement, tidak perlu timer — teks tetap diam
@@ -97,13 +97,17 @@ export function AnnouncementBanner() {
 
   if (!visible.length) return null;
 
+  // Durasi berdasar panjang teks — makin panjang makin lama
+  // Travel: 100% (dari kanan) + 110% (keluar kiri) = 210% total
+  // Kalibrasi: panjang teks / CHARS_PER_SECOND, tapi minimal MIN_DURATION_S
   const scrollDuration = ann
-    ? Math.max(3, ann.message.length / CHARS_PER_SECOND)
-    : 5;
+    ? Math.max(MIN_DURATION_S, ann.message.length / CHARS_PER_SECOND)
+    : MIN_DURATION_S;
 
   const textStyle: React.CSSProperties = {
     display: "inline-block",
-    transform: isScrolling ? "translateX(-110%)" : "translateX(0%)",
+    // Idle: off-screen kanan | Scrolling: bergerak keluar ke kiri
+    transform: isScrolling ? "translateX(-110%)" : "translateX(100%)",
     transition: isScrolling ? `transform ${scrollDuration}s linear` : "none",
     willChange: "transform",
   };
