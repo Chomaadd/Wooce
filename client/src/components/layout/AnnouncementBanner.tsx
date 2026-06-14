@@ -66,27 +66,17 @@ export function AnnouncementBanner() {
 
     setIsScrolling(false);
 
-    // Tunggu render selesai, lalu ukur overflow
+    // Selalu pakai mode scroll di semua ukuran layar
     const measureTimer = setTimeout(() => {
-      const overflows =
-        !!textRef.current &&
-        !!containerRef.current &&
-        textRef.current.scrollWidth > containerRef.current.clientWidth;
-
       let cleanup = () => {};
 
-      if (overflows) {
-        // Mode scroll: diam sebentar lalu geser teks ke kiri
+      if (visible.length > 1) {
+        // Mode scroll: diam sebentar lalu geser teks ke kiri, lalu ganti
         const pauseTimer = setTimeout(() => setIsScrolling(true), SCROLL_PAUSE_MS);
         cleanup = () => clearTimeout(pauseTimer);
-      } else {
-        // Mode statis: ganti otomatis tiap STATIC_DISPLAY_MS
-        if (visible.length <= 1) return;
-        const interval = setInterval(goNext, STATIC_DISPLAY_MS);
-        cleanup = () => clearInterval(interval);
       }
+      // Jika hanya 1 announcement, tidak perlu timer — teks tetap diam
 
-      // Simpan cleanup ke ref agar bisa dipanggil dari return
       cleanupRef.current = cleanup;
     }, 80);
 
