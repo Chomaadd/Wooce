@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import path from "path";
+import { Resend } from "resend";
 import { getEffectiveConfig } from "./site-config";
 
 const LOGO_CID = "logo@wooce-novel";
@@ -60,32 +61,100 @@ function createGmailTransport(user: string, pass: string) {
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
-    secure: false,       // STARTTLS — lebih kompatibel dengan Railway/Render
-    family: 4,           // Force IPv4, hindari ENETUNREACH di Railway
+    secure: false,
+    family: 4,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
   });
 }
 
+/**
+ * Buat transport terpadu:
+ * - Jika RESEND_API_KEY ada → pakai Resend HTTP API (tidak diblokir Railway)
+ * - Jika tidak → fallback ke Gmail SMTP
+ */
+function createUnifiedTransport(baseUrl: string, gmailUser?: string, gmailPass?: string): { sendMail: (opts: any) => Promise<any> } {
+  const resendKey = process.env.RESEND_API_KEY;
+
+  if (resendKey) {
+    const resend = new Resend(resendKey);
+    const fromAddr = process.env.RESEND_FROM_EMAIL || "WOOCE Novel <onboarding@resend.dev>";
+
+    return {
+      sendMail: async (opts: any) => {
+        // Ganti CID logo dengan URL publik agar Resend bisa render gambar
+        const html = typeof opts.html === "string"
+          ? opts.html.replace(`cid:${LOGO_CID}`, `${baseUrl}/image/landscape-wooce.png`)
+          : opts.html || "";
+
+        // Ambil lampiran non-logo (misal: PDF backup)
+        const attachments = (opts.attachments as any[] || [])
+          .filter((a: any) => a.cid !== LOGO_CID && !a.cid)
+          .map((a: any) => ({
+            filename: a.filename,
+            content: a.content instanceof Buffer ? a.content.toString("base64") : a.content,
+          }));
+
+        const payload: any = {
+          from: fromAddr,
+          to: [opts.to as string],
+          subject: opts.subject as string,
+          html,
+        };
+        if (opts.replyTo) payload.reply_to = opts.replyTo;
+        if (attachments.length > 0) payload.attachments = attachments;
+
+        const { error } = await resend.emails.send(payload);
+        if (error) throw new Error(`Resend error: ${(error as any).message || JSON.stringify(error)}`);
+      },
+    };
+  }
+
+  // Fallback: Gmail SMTP (berfungsi di Replit, tidak berfungsi di Railway)
+  if (gmailUser && gmailPass) {
+    return createGmailTransport(gmailUser, gmailPass) as any;
+  }
+
+  throw new Error("Tidak ada provider email aktif. Set RESEND_API_KEY atau konfigurasi Gmail.");
+}
+
 async function guard(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
-  if (!config.gmailUser || !config.gmailAppPassword) {
-    console.warn("[Email] Gmail belum dikonfigurasi, email dilewati.");
+  const hasResend = !!process.env.RESEND_API_KEY;
+  const hasGmail = !!(config.gmailUser && config.gmailAppPassword);
+
+  if (!hasResend && !hasGmail) {
+    console.warn("[Email] Tidak ada provider email dikonfigurasi, email dilewati.");
     return;
   }
-  const t = createGmailTransport(config.gmailUser, config.gmailAppPassword);
-  const baseUrl = await getBaseUrl();
-  await fn(t, config.gmailUser, baseUrl);
+
+  try {
+    const baseUrl = await getBaseUrl();
+    const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword) as any;
+    const fromLabel = hasResend
+      ? (process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev")
+      : config.gmailUser!;
+    await fn(t, fromLabel, baseUrl);
+  } catch (err) {
+    console.error("[Email] guard error:", err);
+  }
 }
 
 async function guardStrict(fn: (t: ReturnType<typeof nodemailer.createTransport>, from: string, baseUrl: string) => Promise<any>): Promise<void> {
   const config = await getEffectiveConfig();
-  if (!config.gmailUser || !config.gmailAppPassword) {
-    throw new Error("Gmail belum dikonfigurasi. Atur Gmail Address dan App Password terlebih dahulu.");
+  const hasResend = !!process.env.RESEND_API_KEY;
+  const hasGmail = !!(config.gmailUser && config.gmailAppPassword);
+
+  if (!hasResend && !hasGmail) {
+    throw new Error("Tidak ada provider email aktif. Set RESEND_API_KEY di Railway, atau konfigurasi Gmail di admin panel.");
   }
-  const t = createGmailTransport(config.gmailUser, config.gmailAppPassword);
+
   const baseUrl = await getBaseUrl();
-  await fn(t, config.gmailUser, baseUrl);
+  const t = createUnifiedTransport(baseUrl, config.gmailUser, config.gmailAppPassword) as any;
+  const fromLabel = hasResend
+    ? (process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev")
+    : config.gmailUser!;
+  await fn(t, fromLabel, baseUrl);
 }
 
 export async function sendContactNotification(data: { name: string; email: string; subject: string; message: string }) {
