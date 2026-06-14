@@ -2,18 +2,6 @@ uploads = []
 generated = []
 
 [[outputs]]
-id = "Z6dhfkGyEW7lwSTsK8UBZ"
-uri = "file://sample-backup.pdf"
-type = "pdf"
-title = "PDF — Susunan teks novel rapi"
-
-[[outputs]]
-id = "X5D308c046u-4cFnuTWxN"
-uri = "file://sample-toc.pdf"
-type = "pdf"
-title = "Contoh Daftar Isi — sample-toc.pdf"
-
-[[outputs]]
 id = "HNXx9bFPZ3Ph7ZbBBjSab"
 uri = "file://test-real-output.pdf"
 type = "pdf"
