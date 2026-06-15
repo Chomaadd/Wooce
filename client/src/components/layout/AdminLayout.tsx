@@ -114,25 +114,28 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-8 bg-card/80 backdrop-blur-sm shrink-0 sticky top-0 z-30">
-          <div className="flex items-center gap-3">
+        <header className="h-14 border-b border-border flex items-center gap-2 px-3 md:px-8 bg-card/80 backdrop-blur-sm shrink-0 sticky top-0 z-30">
+          {/* Left: hamburger + breadcrumb */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden p-2 hover:bg-accent rounded-md transition-colors"
+              className="md:hidden shrink-0 p-1.5 hover:bg-accent rounded-md transition-colors"
               data-testid="button-toggle-sidebar"
             >
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Admin</span>
-              <span className="text-muted-foreground">/</span>
-              <span className="font-semibold">{currentPage}</span>
+            <div className="flex items-center gap-1.5 text-sm min-w-0">
+              <span className="text-muted-foreground shrink-0 hidden sm:inline">Admin</span>
+              <span className="text-muted-foreground shrink-0 hidden sm:inline">/</span>
+              <span className="font-semibold truncate">{currentPage}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Right: actions — compact on mobile */}
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => setCredentialsOpen(true)}
-              className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2.5 py-1.5 rounded-md border border-border transition-all"
+              className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
               data-testid="button-open-credentials"
               title={
                 configStatus === undefined ? "Memuat status..." :
@@ -142,7 +145,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               }
             >
               <KeyRound size={13} />
-              <span className="hidden sm:inline">Kredensial</span>
+              <span className="hidden md:inline">Kredensial</span>
               <span
                 className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-card transition-colors ${
                   configStatus === undefined
@@ -157,12 +160,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={() => setLanguage(language === "en" ? "id" : "en")}
-              className="text-xs font-bold px-2.5 py-1 rounded-md border border-border bg-background hover:bg-accent transition-colors uppercase tracking-wider"
+              className="text-xs font-bold px-2 py-1 rounded-md border border-border bg-background hover:bg-accent transition-colors uppercase tracking-wider"
               data-testid="button-toggle-language-admin"
             >
               {language === "en" ? "ID" : "EN"}
             </button>
-            <Link href="/" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider" data-testid="link-view-site">
+            <Link
+              href="/"
+              className="hidden sm:flex items-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider px-1"
+              data-testid="link-view-site"
+            >
               {t("admin.view_site")}
             </Link>
           </div>

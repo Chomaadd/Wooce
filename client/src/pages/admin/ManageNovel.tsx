@@ -1446,59 +1446,61 @@ export default function ManageNovel() {
   return (
     <div className="min-h-screen bg-background">
       <AdminHeader />
-      <div className="max-w-5xl mx-auto px-6 py-8">
-          {/* Tab Nav */}
-        <div className="flex gap-1 mb-5 p-1 bg-muted/50 rounded-xl w-fit">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
+          {/* Tab Nav — scrollable on mobile */}
+        <div className="overflow-x-auto mb-5 -mx-1 px-1">
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-max min-w-full sm:w-fit">
           <button
             onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (view as View) !== "reports" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (view as View) !== "reports" && (view as View) !== "coins" && (view as View) !== "messages" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Cerita
           </button>
           <button
             onClick={() => setView("stats")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "stats" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view === "stats" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <BarChart2 size={13} /> Statistik
           </button>
           <button
             onClick={() => setView("settings")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "settings" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view === "settings" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Settings size={13} /> Settings
           </button>
           <button
             onClick={() => setView("announcements")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "announcements" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view === "announcements" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Bell size={13} /> Pengumuman
           </button>
           <button
             onClick={() => setView("approvals")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <ShieldCheck size={13} /> Approval
           </button>
           <button
             onClick={() => setView("reports")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "reports" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "reports" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Flag size={13} /> Laporan
           </button>
           <button
             onClick={() => setView("coins")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "coins" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "coins" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
             data-testid="tab-coins"
           >
             <Coins size={13} /> Koin
           </button>
           <button
             onClick={() => setView("messages")}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${(view as View) === "messages" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "messages" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
             data-testid="tab-messages"
           >
             <Mail size={13} /> Pesan
           </button>
+          </div>
         </div>
 
       {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && <>
