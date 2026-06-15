@@ -1164,6 +1164,12 @@ export default function ManageNovel() {
   const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
   const [pdfDownloading, setPdfDownloading] = useState(false);
 
+  // ── Story search & filter state ────────────────────────────────────────────
+  const [storySearch, setStorySearch] = useState("");
+  const [storyFilterCategory, setStoryFilterCategory] = useState<string>("all");
+  const [storyFilterStatus, setStoryFilterStatus] = useState<string>("all");
+  const [storyFilterPublished, setStoryFilterPublished] = useState<string>("all");
+
   const [storyDialog, setStoryDialog] = useState<{ open: boolean; story?: NovelStory }>({ open: false });
   const [seasonDialog, setSeasonDialog] = useState<{ open: boolean; season?: NovelSeason }>({ open: false });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: string; id: string; name: string } | null>(null);
@@ -1197,6 +1203,23 @@ export default function ManageNovel() {
     queryKey: ["/api/novel/stories/all"],
     enabled: adminVerified === true,
   });
+
+  // ── Filtered stories (client-side, instant) ────────────────────────────────
+  const filteredStories = (stories ?? []).filter(story => {
+    const q = storySearch.toLowerCase().trim();
+    if (q) {
+      const matchTitle  = story.title.toLowerCase().includes(q);
+      const matchAuthor = ((story as any).authorName ?? "").toLowerCase().includes(q);
+      const matchGenre  = story.category.toLowerCase().includes(q);
+      if (!matchTitle && !matchAuthor && !matchGenre) return false;
+    }
+    if (storyFilterCategory !== "all" && story.category !== storyFilterCategory) return false;
+    if (storyFilterStatus   !== "all" && story.status   !== storyFilterStatus)   return false;
+    if (storyFilterPublished === "published" && !story.published)  return false;
+    if (storyFilterPublished === "draft"     && story.published)   return false;
+    return true;
+  });
+  const hasActiveFilter = storySearch || storyFilterCategory !== "all" || storyFilterStatus !== "all" || storyFilterPublished !== "all";
 
   const { data: seasons, isLoading: seasonsLoading } = useQuery<NovelSeason[]>({
     queryKey: ["/api/novel/stories", selectedStory?.id, "seasons"],
@@ -1633,7 +1656,7 @@ export default function ManageNovel() {
         {/* ── STORIES VIEW ── */}
         {view === "stories" && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                   <BookOpen size={22} /> {t("admin.novel.title")}
@@ -1645,6 +1668,71 @@ export default function ManageNovel() {
               </Button>
             </div>
 
+            {/* ── Search & Filter Bar ── */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-5 p-3 bg-muted/40 rounded-xl border border-border">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Cari judul, penulis, atau genre..."
+                  value={storySearch}
+                  onChange={e => setStorySearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  data-testid="input-story-search"
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <select
+                  value={storyFilterCategory}
+                  onChange={e => setStoryFilterCategory(e.target.value)}
+                  className="text-sm rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                  data-testid="select-filter-category"
+                >
+                  <option value="all">Semua Genre</option>
+                  <option value="novel">Novel</option>
+                  <option value="komik">Komik</option>
+                  <option value="cerpen">Cerpen</option>
+                </select>
+                <select
+                  value={storyFilterStatus}
+                  onChange={e => setStoryFilterStatus(e.target.value)}
+                  className="text-sm rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                  data-testid="select-filter-status"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="completed">Completed</option>
+                  <option value="hiatus">Hiatus</option>
+                </select>
+                <select
+                  value={storyFilterPublished}
+                  onChange={e => setStoryFilterPublished(e.target.value)}
+                  className="text-sm rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                  data-testid="select-filter-published"
+                >
+                  <option value="all">Publis & Draft</option>
+                  <option value="published">Publis saja</option>
+                  <option value="draft">Draft saja</option>
+                </select>
+                {hasActiveFilter && (
+                  <button
+                    onClick={() => { setStorySearch(""); setStoryFilterCategory("all"); setStoryFilterStatus("all"); setStoryFilterPublished("all"); }}
+                    className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors border border-border"
+                    data-testid="button-clear-story-filter"
+                  >
+                    <X size={12} /> Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Result count when filtering */}
+            {hasActiveFilter && !storiesLoading && (
+              <p className="text-xs text-muted-foreground mb-3">
+                Menampilkan <span className="font-semibold text-foreground">{filteredStories.length}</span> dari {stories?.length ?? 0} cerita
+              </p>
+            )}
+
             {storiesLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
@@ -1654,9 +1742,18 @@ export default function ManageNovel() {
                 <BookOpen size={36} className="mx-auto mb-3 text-muted-foreground opacity-40" />
                 <p className="text-muted-foreground">{t("admin.novel.empty.stories")}</p>
               </div>
+            ) : filteredStories.length === 0 ? (
+              <div className="text-center py-14 border border-dashed border-border rounded-xl">
+                <Search size={32} className="mx-auto mb-3 text-muted-foreground opacity-30" />
+                <p className="text-muted-foreground text-sm">Tidak ada cerita yang cocok dengan filter.</p>
+                <button
+                  onClick={() => { setStorySearch(""); setStoryFilterCategory("all"); setStoryFilterStatus("all"); setStoryFilterPublished("all"); }}
+                  className="mt-3 text-xs text-primary hover:underline"
+                >Reset filter</button>
+              </div>
             ) : (
               <div className="space-y-3">
-                {stories.map(story => (
+                {filteredStories.map(story => (
                   <div key={story.id} className="flex items-center gap-4 p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors" data-testid={`card-story-${story.id}`}>
                     <div className="w-12 aspect-[2/3] rounded-lg overflow-hidden bg-muted flex-shrink-0">
                       {story.coverUrl
