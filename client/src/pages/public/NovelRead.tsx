@@ -72,13 +72,25 @@ function estimateReadTime(content: string) {
 }
 
 // ── Settings Panel ────────────────────────────────────────────────────────────
-function SettingsPanel({ settings, update, onClose }: {
+function SettingsPanel({ settings, update, onClose, ttsVoices, ttsVoiceURI, onTtsVoiceChange }: {
   settings: ReadingSettings;
   update: (p: Partial<ReadingSettings>) => void;
   onClose: () => void;
+  ttsVoices: SpeechSynthesisVoice[];
+  ttsVoiceURI: string;
+  onTtsVoiceChange: (uri: string) => void;
 }) {
   const { t } = useLanguage();
   const modes: ReadingMode[] = ["light", "sepia", "night"];
+
+  const previewVoice = (voice: SpeechSynthesisVoice) => {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance("Halo, ini suara narator pilihan kamu.");
+    u.lang = "id-ID";
+    u.voice = voice;
+    window.speechSynthesis.speak(u);
+  };
   const modeMeta: Record<ReadingMode, { label: string; icon: string; preview: string }> = {
     light: { label: t("novel.read.modeLight"), icon: "☀", preview: "bg-white border-slate-200 text-slate-800" },
     sepia: { label: t("novel.read.modeSepia"), icon: "📖", preview: "bg-[#faf3e8] border-[#e8d9c0] text-[#5c3d1e]" },
@@ -194,6 +206,43 @@ function SettingsPanel({ settings, update, onClose }: {
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${settings.pageFlip ? "left-5" : "left-1"}`} />
           </button>
         </div>
+
+        {/* TTS Voice Picker */}
+        {"speechSynthesis" in window && (
+          <div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("novel.read.ttsVoice")}</span>
+            {ttsVoices.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">{t("novel.read.ttsVoiceNone")}</p>
+            ) : (
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
+                {ttsVoices.map(v => {
+                  const isSelected = ttsVoiceURI === v.voiceURI;
+                  return (
+                    <div
+                      key={v.voiceURI}
+                      onClick={() => onTtsVoiceChange(v.voiceURI)}
+                      className={`flex items-center gap-2 py-2 px-3 rounded-xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                      }`}
+                      data-testid={`button-tts-voice-${v.voiceURI}`}
+                    >
+                      <span className={`flex-1 text-xs truncate ${isSelected ? "font-semibold" : ""}`}>{v.name}</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); previewVoice(v); }}
+                        className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded-lg border border-current opacity-60 hover:opacity-100 transition-opacity"
+                        data-testid={`button-tts-preview-${v.voiceURI}`}
+                      >
+                        {t("novel.read.ttsVoicePreview")}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -429,7 +478,22 @@ function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, set
 }
 
 // ── Text-to-Speech Hook ────────────────────────────────────────────────────────
-function useTTS() {
+function useAvailableVoices() {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const update = () => {
+      const all = window.speechSynthesis.getVoices();
+      setVoices(all.filter(v => v.lang.startsWith("id")));
+    };
+    update();
+    window.speechSynthesis.addEventListener("voiceschanged", update);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
+  }, []);
+  return voices;
+}
+
+function useTTS(preferredVoiceURI = "") {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [rate, setRate] = useState(1.0);
@@ -467,6 +531,11 @@ function useTTS() {
     utterance.rate = Math.max(0.5, Math.min(2.0, speechRate));
 
     const pickVoice = (voices: SpeechSynthesisVoice[]) => {
+      // If user manually selected a voice, use it first
+      if (preferredVoiceURI) {
+        const preferred = voices.find(v => v.voiceURI === preferredVoiceURI);
+        if (preferred) return preferred;
+      }
       const idVoices = voices.filter(v => v.lang.startsWith("id"));
       if (idVoices.length === 0) return null;
       // Prefer male voice: avoid known female names/keywords
@@ -599,8 +668,15 @@ export default function NovelRead() {
   const [translateLang, setTranslateLang] = useState("en");
   const [unlockError, setUnlockError] = useState("");
   const [showTopup, setShowTopup] = useState(false);
-  const tts = useTTS();
+  const [ttsVoiceURI, setTtsVoiceURI] = useState(() => localStorage.getItem("tts-voice") || "");
+  const availableVoices = useAvailableVoices();
+  const tts = useTTS(ttsVoiceURI);
   const [ttsText, setTtsText] = useState("");
+
+  const handleTtsVoiceChange = (uri: string) => {
+    setTtsVoiceURI(uri);
+    localStorage.setItem("tts-voice", uri);
+  };
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -1642,12 +1718,13 @@ export default function NovelRead() {
       {/* TTS Control Bar */}
       <AnimatePresence>
         {tts.isPlaying && (
+          <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-4 left-0 right-0 mx-auto w-fit z-50 flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
+            className="pointer-events-auto flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
             data-testid="bar-tts-controls"
           >
             <button
@@ -1684,6 +1761,7 @@ export default function NovelRead() {
               {tts.rate.toFixed(2)}x
             </span>
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -1950,7 +2028,14 @@ export default function NovelRead() {
       {/* Settings Panel */}
       <AnimatePresence>
         {settingsOpen && (
-          <SettingsPanel settings={settings} update={update} onClose={() => setSettingsOpen(false)} />
+          <SettingsPanel
+            settings={settings}
+            update={update}
+            onClose={() => setSettingsOpen(false)}
+            ttsVoices={availableVoices}
+            ttsVoiceURI={ttsVoiceURI}
+            onTtsVoiceChange={handleTtsVoiceChange}
+          />
         )}
       </AnimatePresence>
 
