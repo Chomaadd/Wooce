@@ -466,9 +466,34 @@ function useTTS() {
     utterance.lang = "id-ID";
     utterance.rate = Math.max(0.5, Math.min(2.0, speechRate));
 
+    const pickVoice = (voices: SpeechSynthesisVoice[]) => {
+      const idVoices = voices.filter(v => v.lang.startsWith("id"));
+      if (idVoices.length === 0) return null;
+      // Prefer male voice: avoid known female names/keywords
+      const femaleKeywords = ["damayanti", "female", "wanita", "perempuan", "woman", "girl", "siti", "sri"];
+      const maleKeywords = ["male", "laki", "pria", "man", "boy"];
+      const maleVoice = idVoices.find(v => {
+        const name = v.name.toLowerCase();
+        const hasFemaleMark = femaleKeywords.some(k => name.includes(k));
+        const hasMaleMark   = maleKeywords.some(k => name.includes(k));
+        return hasMaleMark || !hasFemaleMark;
+      });
+      return maleVoice || idVoices[0];
+    };
+
     const voices = window.speechSynthesis.getVoices();
-    const idVoice = voices.find(v => v.lang.startsWith("id"));
-    if (idVoice) utterance.voice = idVoice;
+    if (voices.length > 0) {
+      const picked = pickVoice(voices);
+      if (picked) utterance.voice = picked;
+    } else {
+      // Mobile: voices load async — attach after voiceschanged
+      const onVoicesChanged = () => {
+        const picked = pickVoice(window.speechSynthesis.getVoices());
+        if (picked) utterance.voice = picked;
+        window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
+      };
+      window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
+    }
 
     utterance.onstart = () => {
       intentionalCancelRef.current = false;
@@ -1622,7 +1647,7 @@ export default function NovelRead() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
+            className="fixed bottom-4 left-0 right-0 mx-auto w-fit z-50 flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
             data-testid="bar-tts-controls"
           >
             <button
