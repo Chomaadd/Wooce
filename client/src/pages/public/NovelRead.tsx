@@ -434,11 +434,12 @@ function useTTS() {
   const [isPaused, setIsPaused] = useState(false);
   const [rate, setRate] = useState(1.0);
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intentionalCancelRef = useRef(false);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
 
   const stop = useCallback(() => {
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
-    if (supported) window.speechSynthesis.cancel();
+    if (supported) { intentionalCancelRef.current = false; window.speechSynthesis.cancel(); }
     setIsPlaying(false);
     setIsPaused(false);
   }, [supported]);
@@ -446,6 +447,7 @@ function useTTS() {
   const speak = useCallback((text: string, speechRate: number) => {
     if (!supported || !text.trim()) return;
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+    intentionalCancelRef.current = true;
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -462,11 +464,13 @@ function useTTS() {
       setIsPaused(false);
     };
     utterance.onerror = () => {
+      if (intentionalCancelRef.current) return;
       if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
       setIsPlaying(false);
       setIsPaused(false);
     };
 
+    intentionalCancelRef.current = false;
     window.speechSynthesis.speak(utterance);
     setIsPlaying(true);
     setIsPaused(false);
