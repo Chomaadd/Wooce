@@ -205,16 +205,18 @@ export function generateStoryBackupPdf(data: StoryBackupData): Promise<Buffer> {
     drawLogo(doc, logoX, logoY);
     const textX = logoX + LOGO_W + 16;
     doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Backup Cerita / Novel", textX, logoY + 6);
-    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
-    doc.opacity(1);
+    doc.save();
+    doc.opacity(0.8).fill("#ffffff").fontSize(9).font("Helvetica").text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
+    doc.restore();
 
     // ── Story title box ──────────────────────────────────────────────────────
     doc.rect(50, 108, pageW - 100, 52).fill(PRIMARY);
     doc.fill("#ffffff").fontSize(14).font("Helvetica-Bold")
       .text(data.storyTitle, 62, 116, { width: pageW - 124 });
-    doc.fontSize(9).font("Helvetica").opacity(0.75)
+    doc.save();
+    doc.opacity(0.85).fontSize(9).font("Helvetica").fill("#ffffff")
       .text(`${data.category}  ·  ${data.status}`, 62, 136);
-    doc.opacity(1);
+    doc.restore();
 
     // ── Writer info ──────────────────────────────────────────────────────────
     doc.rect(50, 160, pageW - 100, 44).fill(LIGHT_GRAY);
@@ -331,16 +333,18 @@ export function generateChaptersPdf(data: ChaptersPdfData): Promise<Buffer> {
     drawLogo(doc, logoX, logoY);
     const textX = logoX + LOGO_W + 16;
     doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Download Chapter", textX, logoY + 6);
-    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
-    doc.opacity(1);
+    doc.save();
+    doc.opacity(0.8).fill("#ffffff").fontSize(9).font("Helvetica").text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
+    doc.restore();
 
     // ── Story title box ──────────────────────────────────────────────────────
     doc.rect(50, 108, pageW - 100, 52).fill(PRIMARY);
     doc.fill("#ffffff").fontSize(14).font("Helvetica-Bold")
       .text(data.storyTitle, 62, 116, { width: pageW - 124 });
-    doc.fontSize(9).font("Helvetica").opacity(0.75)
+    doc.save();
+    doc.opacity(0.85).fontSize(9).font("Helvetica").fill("#ffffff")
       .text(`Penulis: ${data.writerName}  ·  ${data.chapters.length} chapter`, 62, 136);
-    doc.opacity(1);
+    doc.restore();
 
     let y = 178;
 
@@ -455,11 +459,14 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
     const logoY = Math.round((HEADER_H - LOGO_H) / 2);
     drawLogo(doc, logoX, logoY);
     const textX = logoX + LOGO_W + 16;
+    doc.save();
     doc.fill("#ffffff").fontSize(10).font("Helvetica")
       .text("Ekspor Data Pengguna", textX, logoY + 6, { lineBreak: false });
-    doc.fill("#ffffff").opacity(0.65).fontSize(9).font("Helvetica")
+    doc.restore();
+    doc.save();
+    doc.opacity(0.8).fill("#ffffff").fontSize(9).font("Helvetica")
       .text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22, { lineBreak: false });
-    doc.opacity(1);
+    doc.restore();
 
     // ── User info block ───────────────────────────────────────────────────────
     doc.rect(50, 108, pageW - 100, 60).fill(LIGHT_GRAY);
@@ -651,8 +658,9 @@ export function generateWriterBackupPdf(data: WriterBackupData): Promise<Buffer>
     drawLogo(doc, logoX, logoY);
     const textX = logoX + LOGO_W + 16;
     doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Backup Data Penulis", textX, logoY + 6);
-    doc.fill("#ffffff").opacity(0.7).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
-    doc.opacity(1);
+    doc.save();
+    doc.opacity(0.8).fill("#ffffff").fontSize(9).font("Helvetica").text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
+    doc.restore();
 
     // ── Penulis info ─────────────────────────────────────────────────────────
     doc.rect(50, 110, pageW - 100, 60).fill(LIGHT_GRAY);
