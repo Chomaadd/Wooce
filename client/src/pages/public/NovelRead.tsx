@@ -435,22 +435,34 @@ function useTTS() {
   const [rate, setRate] = useState(1.0);
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const intentionalCancelRef = useRef(false);
+  const charIndexRef = useRef(0);
+  const textOffsetRef = useRef(0);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const getAbsoluteCharIndex = useCallback(() => {
+    return textOffsetRef.current + charIndexRef.current;
+  }, []);
 
   const stop = useCallback(() => {
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
     if (supported) { intentionalCancelRef.current = false; window.speechSynthesis.cancel(); }
+    charIndexRef.current = 0;
+    textOffsetRef.current = 0;
     setIsPlaying(false);
     setIsPaused(false);
   }, [supported]);
 
-  const speak = useCallback((text: string, speechRate: number) => {
+  const speak = useCallback((text: string, speechRate: number, startOffset = 0) => {
     if (!supported || !text.trim()) return;
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
     intentionalCancelRef.current = true;
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    charIndexRef.current = 0;
+    textOffsetRef.current = startOffset;
+    const utteranceText = startOffset > 0 ? text.slice(startOffset) : text;
+
+    const utterance = new SpeechSynthesisUtterance(utteranceText);
     utterance.lang = "id-ID";
     utterance.rate = Math.max(0.5, Math.min(2.0, speechRate));
 
@@ -461,8 +473,13 @@ function useTTS() {
     utterance.onstart = () => {
       intentionalCancelRef.current = false;
     };
+    utterance.onboundary = (e) => {
+      if (e.name === "word") charIndexRef.current = e.charIndex;
+    };
     utterance.onend = () => {
       if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+      charIndexRef.current = 0;
+      textOffsetRef.current = 0;
       setIsPlaying(false);
       setIsPaused(false);
     };
@@ -507,7 +524,7 @@ function useTTS() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
-  return { isPlaying, isPaused, supported, rate, setRate, speak, pause, resume, stop };
+  return { isPlaying, isPaused, supported, rate, setRate, speak, pause, resume, stop, getAbsoluteCharIndex };
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -813,7 +830,10 @@ export default function NovelRead() {
   const handleTTSRate = (delta: number) => {
     const newRate = Math.max(0.5, Math.min(2.0, parseFloat((tts.rate + delta).toFixed(2))));
     tts.setRate(newRate);
-    if (tts.isPlaying) tts.speak(ttsText, newRate);
+    if (tts.isPlaying) {
+      const offset = tts.getAbsoluteCharIndex();
+      tts.speak(ttsText, newRate, offset);
+    }
   };
 
   // Double-tap (mobile) + double-click (desktop) to exit focus mode
