@@ -14,3 +14,4 @@ Never draw text or lines past Y=791 on an A4 page (841.89pt height - 50pt margin
 - `drawLastPageFooter(doc, y, pageW, pageNum)` clamps with `Math.min(y, FOOTER_Y)` so it never exceeds the safe zone
 - NEVER use `bufferPages: true` — causes extra empty pages when combined with `switchToPage` + text rendering
 - `heightOfString` does NOT accept `fontSize` in options — set `doc.fontSize(n)` before calling it instead
+- ALWAYS wrap `doc.opacity(n)` calls in `doc.save()` / `doc.restore()` — opacity leaks to all subsequent content causing blank/invisible PDF pages
