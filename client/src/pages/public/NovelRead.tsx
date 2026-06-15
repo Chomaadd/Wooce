@@ -192,6 +192,41 @@ function SettingsPanel({ settings, update, onClose, ttsVoices, ttsVoiceURI, onTt
             ))}
           </div>
         </div>
+        {/* TTS Voice Picker */}
+        <div>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("novel.read.ttsVoice")}</span>
+          {ttsVoices.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">{t("novel.read.ttsVoiceNone")}</p>
+          ) : (
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+              {ttsVoices.map(v => {
+                const isSelected = ttsVoiceURI === v.voiceURI;
+                return (
+                  <div
+                    key={v.voiceURI}
+                    onClick={() => onTtsVoiceChange(v.voiceURI)}
+                    className={`flex items-center gap-2 py-2 px-3 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                    }`}
+                    data-testid={`button-tts-voice-${v.voiceURI}`}
+                  >
+                    <span className={`flex-1 text-xs truncate ${isSelected ? "font-semibold" : ""}`}>{v.name}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); previewVoice(v); }}
+                      className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded-lg border border-current opacity-60 hover:opacity-100 transition-opacity"
+                      data-testid={`button-tts-preview-${v.voiceURI}`}
+                    >
+                      {t("novel.read.ttsVoicePreview")}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Page Flip toggle */}
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -206,43 +241,6 @@ function SettingsPanel({ settings, update, onClose, ttsVoices, ttsVoiceURI, onTt
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${settings.pageFlip ? "left-5" : "left-1"}`} />
           </button>
         </div>
-
-        {/* TTS Voice Picker */}
-        {"speechSynthesis" in window && (
-          <div>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("novel.read.ttsVoice")}</span>
-            {ttsVoices.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">{t("novel.read.ttsVoiceNone")}</p>
-            ) : (
-              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
-                {ttsVoices.map(v => {
-                  const isSelected = ttsVoiceURI === v.voiceURI;
-                  return (
-                    <div
-                      key={v.voiceURI}
-                      onClick={() => onTtsVoiceChange(v.voiceURI)}
-                      className={`flex items-center gap-2 py-2 px-3 rounded-xl border cursor-pointer transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
-                      }`}
-                      data-testid={`button-tts-voice-${v.voiceURI}`}
-                    >
-                      <span className={`flex-1 text-xs truncate ${isSelected ? "font-semibold" : ""}`}>{v.name}</span>
-                      <button
-                        onClick={e => { e.stopPropagation(); previewVoice(v); }}
-                        className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded-lg border border-current opacity-60 hover:opacity-100 transition-opacity"
-                        data-testid={`button-tts-preview-${v.voiceURI}`}
-                      >
-                        {t("novel.read.ttsVoicePreview")}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -484,7 +482,9 @@ function useAvailableVoices() {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const update = () => {
       const all = window.speechSynthesis.getVoices();
-      setVoices(all.filter(v => v.lang.startsWith("id")));
+      // Show Indonesian voices first, fall back to ALL voices so the list is never empty
+      const idVoices = all.filter(v => v.lang.startsWith("id"));
+      setVoices(idVoices.length > 0 ? idVoices : all);
     };
     update();
     window.speechSynthesis.addEventListener("voiceschanged", update);
