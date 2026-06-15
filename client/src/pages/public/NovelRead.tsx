@@ -458,19 +458,22 @@ function useTTS() {
     const idVoice = voices.find(v => v.lang.startsWith("id"));
     if (idVoice) utterance.voice = idVoice;
 
+    utterance.onstart = () => {
+      intentionalCancelRef.current = false;
+    };
     utterance.onend = () => {
       if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
       setIsPlaying(false);
       setIsPaused(false);
     };
-    utterance.onerror = () => {
+    utterance.onerror = (e) => {
       if (intentionalCancelRef.current) return;
+      if ((e as SpeechSynthesisErrorEvent).error === "interrupted") return;
       if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
       setIsPlaying(false);
       setIsPaused(false);
     };
 
-    intentionalCancelRef.current = false;
     window.speechSynthesis.speak(utterance);
     setIsPlaying(true);
     setIsPaused(false);
