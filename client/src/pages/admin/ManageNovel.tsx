@@ -2718,7 +2718,10 @@ function ApprovalsView() {
     onSuccess: () => {
       refetchVerif();
       refetchActive();
-      toast({ title: "Penulis berhasil diverifikasi!" });
+      toast({ title: "✅ Penulis berhasil diverifikasi!", description: "Semua cerita penulis otomatis mendapat centang biru." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Gagal memverifikasi penulis", description: err?.message ?? "Terjadi kesalahan.", variant: "destructive" });
     },
   });
 
@@ -2727,7 +2730,10 @@ function ApprovalsView() {
     onSuccess: () => {
       refetchVerif();
       refetchActive();
-      toast({ title: "Verifikasi ditolak." });
+      toast({ title: "Verifikasi ditolak.", description: "Penulis bisa mengajukan kembali setelah 30 hari." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Gagal menolak verifikasi", description: err?.message ?? "Terjadi kesalahan.", variant: "destructive" });
     },
   });
 

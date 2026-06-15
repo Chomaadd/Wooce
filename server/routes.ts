@@ -657,8 +657,14 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id/verify", requireAuth, async (req, res) => {
     try {
+      const user = await UserModel.findById(req.params.id).lean() as any;
+      if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
       await UserModel.updateOne({ _id: req.params.id }, { $set: { verificationStatus: "verified" } });
       await VerificationRequestModel.updateOne({ userId: req.params.id, status: "pending" }, { $set: { status: "approved" } });
+      // Otomatis set verified: true di semua cerita milik penulis ini
+      if (user.authorId) {
+        await NovelStoryModel.updateMany({ authorId: user.authorId }, { $set: { verified: true } });
+      }
       storage.createNotification({
         userId: req.params.id,
         type: "approved",
@@ -666,16 +672,25 @@ export async function registerRoutes(
         message: "Selamat! Pengajuan verifikasi penulismu telah disetujui. Centang biru kini tampil di profilmu.",
       }).catch(console.error);
       res.json({ success: true });
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+    } catch (err) {
+      console.error("[verify-writer]", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.patch("/api/admin/users/:id/reject-verification", requireAuth, async (req, res) => {
     try {
+      const user = await UserModel.findById(req.params.id).lean() as any;
+      if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
       await UserModel.updateOne(
         { _id: req.params.id },
         { $set: { verificationStatus: "none", verificationRejectedAt: new Date() } }
       );
       await VerificationRequestModel.updateOne({ userId: req.params.id, status: "pending" }, { $set: { status: "rejected" } });
+      // Cabut verified dari semua cerita milik penulis ini
+      if (user.authorId) {
+        await NovelStoryModel.updateMany({ authorId: user.authorId }, { $set: { verified: false } });
+      }
       storage.createNotification({
         userId: req.params.id,
         type: "rejected",
@@ -683,7 +698,10 @@ export async function registerRoutes(
         message: "Pengajuan verifikasi penulismu belum memenuhi syarat saat ini. Kamu bisa mengajukan kembali setelah 30 hari.",
       }).catch(console.error);
       res.json({ success: true });
-    } catch { res.status(500).json({ message: "Internal server error" }); }
+    } catch (err) {
+      console.error("[reject-verification]", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.delete("/api/admin/users/:id/delete", requireAuth, async (req, res) => {
@@ -1829,9 +1847,21 @@ export async function registerRoutes(
       // Validate story coin eligibility
       const story = await NovelStoryModel.findById(storyObjId).lean() as any;
       if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+
+      // Cek apakah penulis sudah pernah mengajukan verifikasi
+      if (story.authorId) {
+        const authorUser = await UserModel.findOne({ authorId: story.authorId }).lean() as any;
+        if (authorUser && authorUser.verificationStatus === "none") {
+          return res.status(403).json({
+            message: "Penulis harus mengajukan verifikasi terlebih dahulu sebelum bisa mengaktifkan chapter premium.",
+            code: "VERIFICATION_REQUIRED",
+          });
+        }
+      }
+
       if (!story.verified && !story.coinEligible) {
         return res.status(403).json({
-          message: "Cerita ini belum layak untuk sistem koin. Aktifkan centang biru (verified) atau tandai sebagai layak koin di admin panel.",
+          message: "Cerita ini belum layak untuk sistem koin. Penulis harus diverifikasi atau admin menandai cerita ini sebagai layak koin.",
           code: "NOT_ELIGIBLE",
         });
       }
