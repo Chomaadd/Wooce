@@ -391,6 +391,195 @@ export function generateChaptersPdf(data: ChaptersPdfData): Promise<Buffer> {
   });
 }
 
+// ── User Data Export PDF ──────────────────────────────────────────────────────
+
+export interface UserDataExportInput {
+  name: string;
+  email: string;
+  role: string;
+  exportedAt: string;
+  coinTransactions: {
+    type: string;
+    amount: number;
+    description: string;
+    createdAt: string;
+  }[];
+  unlockedChapters: {
+    novelTitle: string;
+    chapterTitle: string;
+    chapterNumber: number;
+    seasonNumber: number;
+    unlockedAt: string;
+  }[];
+}
+
+export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const chunks: Buffer[] = [];
+    doc.on("data", chunk => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const pageW = doc.page.width;
+    let pageNum = 1;
+
+    function nextPage(): number {
+      drawBottomFooter(doc, pageW, pageNum);
+      doc.addPage();
+      pageNum++;
+      return 50;
+    }
+
+    // ── Header ───────────────────────────────────────────────────────────────
+    const HEADER_H = 90;
+    doc.rect(0, 0, pageW, HEADER_H).fill(PRIMARY);
+    const logoX = 50;
+    const logoY = Math.round((HEADER_H - LOGO_H) / 2);
+    drawLogo(doc, logoX, logoY);
+    const textX = logoX + LOGO_W + 16;
+    doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Ekspor Data Pengguna", textX, logoY + 6);
+    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
+    doc.opacity(1);
+
+    // ── User info block ───────────────────────────────────────────────────────
+    doc.rect(50, 108, pageW - 100, 60).fill(LIGHT_GRAY);
+    doc.fill(DARK).fontSize(13).font("Helvetica-Bold").text("Informasi Akun", 65, 118);
+    const roleLabel = data.role === "writer" ? "Penulis" : "Pembaca";
+    doc.fontSize(9).font("Helvetica")
+      .text(`Nama: ${data.name}`, 65, 136)
+      .text(`Email: ${data.email}    ·    Role: ${roleLabel}`, 65, 150);
+
+    doc.moveTo(50, 180).lineTo(pageW - 50, 180).strokeColor(PRIMARY).lineWidth(1).stroke();
+
+    // Privacy note
+    doc.fill(GRAY).fontSize(8).font("Helvetica")
+      .text(
+        "Dokumen ini bersifat rahasia dan hanya boleh digunakan oleh pemilik akun. WOOCE Novel menghormati privasi pengguna sesuai Kebijakan Privasi yang berlaku.",
+        50, 188, { width: pageW - 100, align: "center" }
+      );
+
+    let y = 215;
+
+    // ── Section: Riwayat Koin ─────────────────────────────────────────────────
+    if (y > PAGE_BOTTOM - 60) { y = nextPage(); }
+
+    doc.rect(50, y, pageW - 100, 28).fill(PRIMARY);
+    doc.fill("#ffffff").fontSize(11).font("Helvetica-Bold")
+      .text(`Riwayat Koin  (${data.coinTransactions.length} transaksi)`, 60, y + 9, { width: pageW - 120 });
+    y += 36;
+
+    if (data.coinTransactions.length === 0) {
+      if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
+      doc.fill(GRAY).fontSize(9).font("Helvetica").text("Belum ada transaksi koin.", 60, y);
+      y += 20;
+    } else {
+      // Column headers
+      if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
+      doc.rect(50, y, pageW - 100, 18).fill("#e8eaf7");
+      doc.fill(PRIMARY).fontSize(7.5).font("Helvetica-Bold")
+        .text("TANGGAL", 60, y + 5, { width: 95, lineBreak: false })
+        .text("TIPE", 158, y + 5, { width: 55, lineBreak: false })
+        .text("KOIN", 216, y + 5, { width: 50, align: "right", lineBreak: false })
+        .text("KETERANGAN", 275, y + 5, { width: pageW - 330, lineBreak: false });
+      y += 20;
+
+      const TYPE_LABELS: Record<string, string> = {
+        topup: "Top-up", unlock: "Buka Chapter", bonus: "Bonus", refund: "Refund",
+      };
+
+      for (const tx of data.coinTransactions) {
+        if (y > PAGE_BOTTOM - 14) { y = nextPage(); }
+
+        const isCredit = tx.amount > 0;
+        const rowBg = y % 24 < 12 ? "#fafafa" : "#ffffff";
+        doc.rect(50, y, pageW - 100, 16).fill(rowBg);
+
+        const dateStr = new Date(tx.createdAt).toLocaleDateString("id-ID", {
+          day: "2-digit", month: "short", year: "numeric",
+        });
+        const typeLabel = TYPE_LABELS[tx.type] ?? tx.type;
+        const amountStr = `${isCredit ? "+" : ""}${tx.amount}`;
+        const amountColor = isCredit ? "#16a34a" : "#d97706";
+
+        doc.fill(DARK).fontSize(8).font("Helvetica")
+          .text(dateStr, 60, y + 4, { width: 95, lineBreak: false });
+        doc.fill(GRAY).fontSize(8).font("Helvetica")
+          .text(typeLabel, 158, y + 4, { width: 55, lineBreak: false });
+        doc.fill(amountColor).fontSize(8).font("Helvetica-Bold")
+          .text(amountStr, 216, y + 4, { width: 50, align: "right", lineBreak: false });
+        doc.fill(DARK).fontSize(7.5).font("Helvetica")
+          .text(tx.description || "-", 275, y + 4, { width: pageW - 330, lineBreak: false });
+
+        y += 16;
+      }
+    }
+
+    y += 14;
+
+    // ── Section: Chapter Terbuka ──────────────────────────────────────────────
+    if (y > PAGE_BOTTOM - 60) { y = nextPage(); }
+
+    doc.rect(50, y, pageW - 100, 28).fill(PRIMARY);
+    doc.fill("#ffffff").fontSize(11).font("Helvetica-Bold")
+      .text(`Chapter Terbuka  (${data.unlockedChapters.length} chapter)`, 60, y + 9, { width: pageW - 120 });
+    y += 36;
+
+    if (data.unlockedChapters.length === 0) {
+      if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
+      doc.fill(GRAY).fontSize(9).font("Helvetica").text("Belum ada chapter yang dibuka.", 60, y);
+      y += 20;
+    } else {
+      // Column headers
+      if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
+      doc.rect(50, y, pageW - 100, 18).fill("#e8eaf7");
+      doc.fill(PRIMARY).fontSize(7.5).font("Helvetica-Bold")
+        .text("TANGGAL", 60, y + 5, { width: 95, lineBreak: false })
+        .text("NOVEL", 158, y + 5, { width: 150, lineBreak: false })
+        .text("CHAPTER", 312, y + 5, { width: pageW - 370, lineBreak: false });
+      y += 20;
+
+      for (const ch of data.unlockedChapters) {
+        if (y > PAGE_BOTTOM - 14) { y = nextPage(); }
+
+        const rowBg = y % 24 < 12 ? "#fafafa" : "#ffffff";
+        doc.rect(50, y, pageW - 100, 16).fill(rowBg);
+
+        const dateStr = new Date(ch.unlockedAt).toLocaleDateString("id-ID", {
+          day: "2-digit", month: "short", year: "numeric",
+        });
+        const seasonPrefix = ch.seasonNumber > 1 ? `S${ch.seasonNumber} ` : "";
+        const chapLabel = `${seasonPrefix}Bab ${ch.chapterNumber}${ch.chapterTitle ? ` — ${ch.chapterTitle}` : ""}`;
+
+        doc.fill(DARK).fontSize(8).font("Helvetica")
+          .text(dateStr, 60, y + 4, { width: 95, lineBreak: false });
+        doc.fill(DARK).fontSize(8).font("Helvetica")
+          .text(ch.novelTitle, 158, y + 4, { width: 150, lineBreak: false });
+        doc.fill(GRAY).fontSize(8).font("Helvetica")
+          .text(chapLabel, 312, y + 4, { width: pageW - 370, lineBreak: false });
+
+        y += 16;
+      }
+    }
+
+    y += 14;
+
+    // ── Summary footer note ───────────────────────────────────────────────────
+    if (y + 30 > PAGE_BOTTOM) { y = nextPage(); }
+    doc.moveTo(50, y).lineTo(pageW - 50, y).strokeColor("#d1d5db").lineWidth(0.5).stroke();
+    y += 8;
+    doc.fill(GRAY).fontSize(8).font("Helvetica")
+      .text(
+        `Dokumen ini berisi ${data.coinTransactions.length} transaksi koin dan ${data.unlockedChapters.length} chapter terbuka milik ${data.name}.`,
+        50, y, { width: pageW - 100, align: "center" }
+      );
+    y += 20;
+
+    drawLastPageFooter(doc, y, pageW, pageNum);
+    doc.end();
+  });
+}
+
 // ── Writer Backup PDF ─────────────────────────────────────────────────────────
 
 interface ChapterData {

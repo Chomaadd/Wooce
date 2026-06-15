@@ -12,7 +12,7 @@ import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
   Loader2, Copy, Upload, RotateCcw, Camera, AlertTriangle, Trash2,
-  LayoutGrid, Settings, Activity,
+  LayoutGrid, Settings, Activity, Download, FileText, Coins,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -194,6 +194,32 @@ export default function UserProfile() {
   // Delete account OTP flow
   const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "otp" | "deleting">("idle");
   const [otpInput, setOtpInput] = useState("");
+
+  // Data export
+  const [exportingData, setExportingData] = useState(false);
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      const res = await fetch("/api/user/export-data", { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal mengekspor data");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") || "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? "wooce-data-saya.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Data berhasil diunduh!", description: "File PDF sudah tersimpan di perangkatmu." });
+    } catch {
+      toast({ title: "Gagal mengunduh data", variant: "destructive" });
+    } finally {
+      setExportingData(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && (!user || user.isAdmin)) navigate("/");
@@ -1038,6 +1064,46 @@ export default function UserProfile() {
                     <p className="text-sm font-semibold text-foreground capitalize">
                       {user.role === "writer" ? (user.status === "active" ? "Penulis Aktif" : "Penulis (Pending)") : "Pembaca"}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Saya export */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border bg-muted/20 flex items-center gap-2">
+                  <FileText size={13} className="text-primary" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Data Saya</h3>
+                </div>
+                <div className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground mb-1">Download Data Akun</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Unduh semua data akunmu dalam format PDF — termasuk informasi profil, riwayat transaksi koin, dan daftar chapter yang pernah kamu buka.
+                      </p>
+                      <div className="flex items-center gap-3 mt-2.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                          <User size={9} /> Profil
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                          <Coins size={9} /> Riwayat Koin
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                          <BookOpen size={9} /> Chapter Terbuka
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleExportData}
+                      disabled={exportingData}
+                      data-testid="button-export-my-data"
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/15 border border-primary/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {exportingData
+                        ? <><Loader2 size={12} className="animate-spin" /> Membuat PDF...</>
+                        : <><Download size={12} /> Download PDF</>
+                      }
+                    </button>
                   </div>
                 </div>
               </div>

@@ -36,7 +36,7 @@ import { LoginBonusModel, DAY_REWARDS, QUEST_MILESTONES, todayStr, yesterdayStr 
 import { NotificationModel } from "./notificationModel";
 import MidtransClient from "midtrans-client";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
-import { generateWriterBackupPdf, generateStoryBackupPdf } from "./pdf";
+import { generateWriterBackupPdf, generateStoryBackupPdf, generateUserDataPdf } from "./pdf";
 import { ContactMessageModel } from "./contactMessageModel";
 
 declare module "express-session" {
@@ -1367,6 +1367,84 @@ export async function registerRoutes(
     ]);
     return result[0]?.total ?? 0;
   }
+
+  // ── User Data Export ────────────────────────────────────────────────────────
+  app.get("/api/user/export-data", requireUser, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await storage.getUserById(userId);
+      if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+
+      const userObjId = new mongoose.Types.ObjectId(userId);
+
+      // Fetch coin transactions
+      const txns = await CoinTransactionModel.find({ userId: userObjId })
+        .sort({ createdAt: -1 }).limit(500).lean() as any[];
+
+      // Fetch unlocked chapters + enrich with chapter/story info
+      const unlocked = await UnlockedChapterModel.find({ userId: userObjId })
+        .sort({ createdAt: -1 }).lean() as any[];
+
+      const chapterIds = unlocked.map((u: any) => u.chapterId);
+      const chapterDocs = chapterIds.length > 0
+        ? await NovelChapterModel.find({ _id: { $in: chapterIds } })
+            .select("_id title chapterNumber storyId seasonId").lean() as any[]
+        : [];
+      const storyIds = [...new Set(chapterDocs.map((c: any) => c.storyId.toString()))];
+      const storyDocs = storyIds.length > 0
+        ? await NovelStoryModel.find({ _id: { $in: storyIds } }).select("_id title").lean() as any[]
+        : [];
+      const seasonIds = [...new Set(chapterDocs.map((c: any) => c.seasonId?.toString()).filter(Boolean))];
+      const seasonDocs = seasonIds.length > 0
+        ? await NovelSeasonModel.find({ _id: { $in: seasonIds } }).select("_id seasonNumber").lean() as any[]
+        : [];
+
+      const chapterMap = new Map(chapterDocs.map((c: any) => [c._id.toString(), c]));
+      const storyMap   = new Map(storyDocs.map((s: any) => [s._id.toString(), s]));
+      const seasonMap  = new Map(seasonDocs.map((s: any) => [s._id.toString(), s]));
+
+      const exportedAt = new Date().toLocaleString("id-ID", {
+        day: "2-digit", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta",
+      }) + " WIB";
+
+      const pdfBuffer = await generateUserDataPdf({
+        name: (user as any).name || (user as any).username || "Pengguna",
+        email: (user as any).email || "-",
+        role: (user as any).role || "reader",
+        exportedAt,
+        coinTransactions: txns.map((t: any) => ({
+          type: t.type,
+          amount: t.amount,
+          description: t.description || "",
+          createdAt: t.createdAt?.toISOString?.() ?? new Date(t.createdAt).toISOString(),
+        })),
+        unlockedChapters: unlocked.map((u: any) => {
+          const ch = chapterMap.get(u.chapterId?.toString());
+          const story = ch ? storyMap.get(ch.storyId?.toString()) : null;
+          const season = ch ? seasonMap.get(ch.seasonId?.toString()) : null;
+          return {
+            novelTitle: story?.title ?? "Unknown",
+            chapterTitle: ch?.title ?? "",
+            chapterNumber: ch?.chapterNumber ?? 0,
+            seasonNumber: season?.seasonNumber ?? 1,
+            unlockedAt: u.createdAt?.toISOString?.() ?? new Date(u.createdAt).toISOString(),
+          };
+        }),
+      });
+
+      const safeName = ((user as any).name || "user").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      const filename = `wooce-data-${safeName}-${Date.now()}.pdf`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Length", pdfBuffer.length);
+      res.end(pdfBuffer);
+    } catch (err) {
+      console.error("[user-export-data]", err);
+      res.status(500).json({ message: "Gagal mengekspor data" });
+    }
+  });
 
   app.get("/api/coins/balance", requireUser, async (req: any, res) => {
     try {
