@@ -431,6 +431,23 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
       return 50;
     }
 
+    // helper: draw a single cell of text without chaining (fixes x,y ignored bug)
+    function cell(
+      text: string,
+      x: number,
+      y: number,
+      w: number,
+      color: string,
+      fontSize: number,
+      font: string,
+      align: "left" | "right" | "center" = "left"
+    ) {
+      doc.save();
+      doc.fill(color).fontSize(fontSize).font(font)
+        .text(text, x, y, { width: w, lineBreak: false, align });
+      doc.restore();
+    }
+
     // ── Header ───────────────────────────────────────────────────────────────
     const HEADER_H = 90;
     doc.rect(0, 0, pageW, HEADER_H).fill(PRIMARY);
@@ -438,78 +455,79 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
     const logoY = Math.round((HEADER_H - LOGO_H) / 2);
     drawLogo(doc, logoX, logoY);
     const textX = logoX + LOGO_W + 16;
-    doc.fill("#ffffff").fontSize(10).font("Helvetica").text("Ekspor Data Pengguna", textX, logoY + 6);
-    doc.fill("#ffffff").opacity(0.65).fontSize(9).text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22);
+    doc.fill("#ffffff").fontSize(10).font("Helvetica")
+      .text("Ekspor Data Pengguna", textX, logoY + 6, { lineBreak: false });
+    doc.fill("#ffffff").opacity(0.65).fontSize(9).font("Helvetica")
+      .text(`Diekspor pada: ${data.exportedAt}`, textX, logoY + 22, { lineBreak: false });
     doc.opacity(1);
 
     // ── User info block ───────────────────────────────────────────────────────
     doc.rect(50, 108, pageW - 100, 60).fill(LIGHT_GRAY);
-    doc.fill(DARK).fontSize(13).font("Helvetica-Bold").text("Informasi Akun", 65, 118);
     const roleLabel = data.role === "writer" ? "Penulis" : "Pembaca";
-    doc.fontSize(9).font("Helvetica")
-      .text(`Nama: ${data.name}`, 65, 136)
-      .text(`Email: ${data.email}    ·    Role: ${roleLabel}`, 65, 150);
+    doc.fill(DARK).fontSize(13).font("Helvetica-Bold")
+      .text("Informasi Akun", 65, 118, { lineBreak: false });
+    doc.fill(DARK).fontSize(9).font("Helvetica")
+      .text(`Nama: ${data.name}`, 65, 136, { lineBreak: false });
+    doc.fill(DARK).fontSize(9).font("Helvetica")
+      .text(`Email: ${data.email}   ·   Role: ${roleLabel}`, 65, 150, { lineBreak: false });
 
+    doc.save();
     doc.moveTo(50, 180).lineTo(pageW - 50, 180).strokeColor(PRIMARY).lineWidth(1).stroke();
+    doc.restore();
 
     // Privacy note
     doc.fill(GRAY).fontSize(8).font("Helvetica")
       .text(
         "Dokumen ini bersifat rahasia dan hanya boleh digunakan oleh pemilik akun. WOOCE Novel menghormati privasi pengguna sesuai Kebijakan Privasi yang berlaku.",
-        50, 188, { width: pageW - 100, align: "center" }
+        50, 190, { width: pageW - 100, align: "center", lineBreak: false }
       );
 
-    let y = 215;
+    let y = 218;
 
     // ── Section: Riwayat Koin ─────────────────────────────────────────────────
     if (y > PAGE_BOTTOM - 60) { y = nextPage(); }
 
     doc.rect(50, y, pageW - 100, 28).fill(PRIMARY);
     doc.fill("#ffffff").fontSize(11).font("Helvetica-Bold")
-      .text(`Riwayat Koin  (${data.coinTransactions.length} transaksi)`, 60, y + 9, { width: pageW - 120 });
+      .text(`Riwayat Koin  (${data.coinTransactions.length} transaksi)`, 60, y + 9, { lineBreak: false });
     y += 36;
 
     if (data.coinTransactions.length === 0) {
       if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
-      doc.fill(GRAY).fontSize(9).font("Helvetica").text("Belum ada transaksi koin.", 60, y);
+      doc.fill(GRAY).fontSize(9).font("Helvetica").text("Belum ada transaksi koin.", 60, y, { lineBreak: false });
       y += 20;
     } else {
-      // Column headers
+      // Column headers row
       if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
       doc.rect(50, y, pageW - 100, 18).fill("#e8eaf7");
-      doc.fill(PRIMARY).fontSize(7.5).font("Helvetica-Bold")
-        .text("TANGGAL", 60, y + 5, { width: 95, lineBreak: false })
-        .text("TIPE", 158, y + 5, { width: 55, lineBreak: false })
-        .text("KOIN", 216, y + 5, { width: 50, align: "right", lineBreak: false })
-        .text("KETERANGAN", 275, y + 5, { width: pageW - 330, lineBreak: false });
+      cell("TANGGAL",    60,  y + 5, 90,          PRIMARY, 7.5, "Helvetica-Bold");
+      cell("TIPE",       153, y + 5, 58,          PRIMARY, 7.5, "Helvetica-Bold");
+      cell("KOIN",       214, y + 5, 52,          PRIMARY, 7.5, "Helvetica-Bold", "right");
+      cell("KETERANGAN", 272, y + 5, pageW - 325, PRIMARY, 7.5, "Helvetica-Bold");
       y += 20;
 
       const TYPE_LABELS: Record<string, string> = {
-        topup: "Top-up", unlock: "Buka Chapter", bonus: "Bonus", refund: "Refund",
+        topup: "Top-up", unlock: "Buka Bab", bonus: "Bonus", refund: "Refund",
       };
 
       for (const tx of data.coinTransactions) {
         if (y > PAGE_BOTTOM - 14) { y = nextPage(); }
 
         const isCredit = tx.amount > 0;
-        const rowBg = y % 24 < 12 ? "#fafafa" : "#ffffff";
+        const rowBg = y % 28 < 14 ? "#f8f9ff" : "#ffffff";
         doc.rect(50, y, pageW - 100, 16).fill(rowBg);
 
         const dateStr = new Date(tx.createdAt).toLocaleDateString("id-ID", {
-          day: "2-digit", month: "short", year: "numeric",
+          day: "2-digit", month: "short", year: "2-digit",
         });
         const typeLabel = TYPE_LABELS[tx.type] ?? tx.type;
         const amountStr = `${isCredit ? "+" : ""}${tx.amount}`;
         const amountColor = isCredit ? "#16a34a" : "#d97706";
 
-        doc.fill(DARK).fontSize(8).font("Helvetica")
-          .text(dateStr, 60, y + 4, { width: 95, lineBreak: false });
-        doc.fill(GRAY).fontSize(8).font("Helvetica")
-          .text(typeLabel, 158, y + 4, { width: 55, lineBreak: false });
-        doc.fill(amountColor).fontSize(8).font("Helvetica-Bold")
-          .text(amountStr, 216, y + 4, { width: 50, align: "right", lineBreak: false });
-        doc.fill(DARK).fontSize(7.5).font("Helvetica")
-          .text(tx.description || "-", 275, y + 4, { width: pageW - 330, lineBreak: false });
+        cell(dateStr,                 60,  y + 4, 90,          DARK,        7.5, "Helvetica");
+        cell(typeLabel,               153, y + 4, 58,          GRAY,        7.5, "Helvetica");
+        cell(amountStr,               214, y + 4, 52,          amountColor, 7.5, "Helvetica-Bold", "right");
+        cell(tx.description || "-",   272, y + 4, pageW - 325, DARK,        7.5, "Helvetica");
 
         y += 16;
       }
@@ -522,41 +540,37 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
 
     doc.rect(50, y, pageW - 100, 28).fill(PRIMARY);
     doc.fill("#ffffff").fontSize(11).font("Helvetica-Bold")
-      .text(`Chapter Terbuka  (${data.unlockedChapters.length} chapter)`, 60, y + 9, { width: pageW - 120 });
+      .text(`Chapter Terbuka  (${data.unlockedChapters.length} chapter)`, 60, y + 9, { lineBreak: false });
     y += 36;
 
     if (data.unlockedChapters.length === 0) {
       if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
-      doc.fill(GRAY).fontSize(9).font("Helvetica").text("Belum ada chapter yang dibuka.", 60, y);
+      doc.fill(GRAY).fontSize(9).font("Helvetica").text("Belum ada chapter yang dibuka.", 60, y, { lineBreak: false });
       y += 20;
     } else {
-      // Column headers
+      // Column headers row
       if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
       doc.rect(50, y, pageW - 100, 18).fill("#e8eaf7");
-      doc.fill(PRIMARY).fontSize(7.5).font("Helvetica-Bold")
-        .text("TANGGAL", 60, y + 5, { width: 95, lineBreak: false })
-        .text("NOVEL", 158, y + 5, { width: 150, lineBreak: false })
-        .text("CHAPTER", 312, y + 5, { width: pageW - 370, lineBreak: false });
+      cell("TANGGAL", 60,  y + 5, 90,          PRIMARY, 7.5, "Helvetica-Bold");
+      cell("NOVEL",   153, y + 5, 145,         PRIMARY, 7.5, "Helvetica-Bold");
+      cell("CHAPTER", 302, y + 5, pageW - 355, PRIMARY, 7.5, "Helvetica-Bold");
       y += 20;
 
       for (const ch of data.unlockedChapters) {
         if (y > PAGE_BOTTOM - 14) { y = nextPage(); }
 
-        const rowBg = y % 24 < 12 ? "#fafafa" : "#ffffff";
+        const rowBg = y % 28 < 14 ? "#f8f9ff" : "#ffffff";
         doc.rect(50, y, pageW - 100, 16).fill(rowBg);
 
         const dateStr = new Date(ch.unlockedAt).toLocaleDateString("id-ID", {
-          day: "2-digit", month: "short", year: "numeric",
+          day: "2-digit", month: "short", year: "2-digit",
         });
         const seasonPrefix = ch.seasonNumber > 1 ? `S${ch.seasonNumber} ` : "";
         const chapLabel = `${seasonPrefix}Bab ${ch.chapterNumber}${ch.chapterTitle ? ` — ${ch.chapterTitle}` : ""}`;
 
-        doc.fill(DARK).fontSize(8).font("Helvetica")
-          .text(dateStr, 60, y + 4, { width: 95, lineBreak: false });
-        doc.fill(DARK).fontSize(8).font("Helvetica")
-          .text(ch.novelTitle, 158, y + 4, { width: 150, lineBreak: false });
-        doc.fill(GRAY).fontSize(8).font("Helvetica")
-          .text(chapLabel, 312, y + 4, { width: pageW - 370, lineBreak: false });
+        cell(dateStr,       60,  y + 4, 90,          DARK, 7.5, "Helvetica");
+        cell(ch.novelTitle, 153, y + 4, 145,         DARK, 7.5, "Helvetica");
+        cell(chapLabel,     302, y + 4, pageW - 355, GRAY, 7.5, "Helvetica");
 
         y += 16;
       }
@@ -566,12 +580,14 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
 
     // ── Summary footer note ───────────────────────────────────────────────────
     if (y + 30 > PAGE_BOTTOM) { y = nextPage(); }
+    doc.save();
     doc.moveTo(50, y).lineTo(pageW - 50, y).strokeColor("#d1d5db").lineWidth(0.5).stroke();
-    y += 8;
+    doc.restore();
+    y += 10;
     doc.fill(GRAY).fontSize(8).font("Helvetica")
       .text(
         `Dokumen ini berisi ${data.coinTransactions.length} transaksi koin dan ${data.unlockedChapters.length} chapter terbuka milik ${data.name}.`,
-        50, y, { width: pageW - 100, align: "center" }
+        50, y, { width: pageW - 100, align: "center", lineBreak: false }
       );
     y += 20;
 

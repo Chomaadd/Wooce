@@ -1771,6 +1771,19 @@ export async function registerRoutes(
       const description = note ? note : "Top-up oleh admin";
       await CoinTransactionModel.create({ userId, amount, type: "topup", description });
       const newBalance = await getUserCoinBalance(userId);
+
+      // Kirim notifikasi in-app ke user
+      const notifMessage = note
+        ? `Admin menambahkan ${amount} koin ke akunmu. Catatan: ${note}`
+        : `Admin menambahkan ${amount} koin ke akunmu.`;
+      storage.createNotification({
+        userId: user.id,
+        type: "topup_success",
+        title: `+${amount} Koin Ditambahkan`,
+        message: notifMessage,
+        link: "/koin/riwayat",
+      }).catch(console.error);
+
       res.json({ success: true, coins: newBalance });
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
