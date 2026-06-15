@@ -790,10 +790,12 @@ function ChapterPreviewModal({ title, chapterNumber, content, onClose }: {
   );
 }
 
-function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
+function ChapterWrite({ chapter, storyId, seasonId, storyVerified, storyCoinEligible, onBack }: {
   chapter?: NovelChapter;
   storyId: string;
   seasonId: string;
+  storyVerified: boolean;
+  storyCoinEligible: boolean;
   onBack: () => void;
 }) {
   const { toast } = useToast();
@@ -944,7 +946,7 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
 
       {/* Premium Chapter Setting — only for existing chapters */}
       {chapter && (
-        <PremiumChapterToggle chapterId={chapter.id} />
+        <PremiumChapterToggle chapterId={chapter.id} storyVerified={storyVerified} storyCoinEligible={storyCoinEligible} />
       )}
 
       <div className="flex gap-2 pt-2">
@@ -958,7 +960,11 @@ function ChapterWrite({ chapter, storyId, seasonId, onBack }: {
   );
 }
 
-function PremiumChapterToggle({ chapterId }: { chapterId: string }) {
+function PremiumChapterToggle({ chapterId, storyVerified, storyCoinEligible }: {
+  chapterId: string;
+  storyVerified: boolean;
+  storyCoinEligible: boolean;
+}) {
   const { toast } = useToast();
   const { data, isLoading, refetch } = useQuery<{ isPremium: boolean; coinPrice: number | null }>({
     queryKey: ["/api/admin/chapters", chapterId, "premium"],
@@ -966,6 +972,7 @@ function PremiumChapterToggle({ chapterId }: { chapterId: string }) {
   });
   const [priceInput, setPriceInput] = useState("");
   const [enabled, setEnabled] = useState(false);
+  const storyEligible = storyVerified || storyCoinEligible;
 
   useEffect(() => {
     if (data) {
@@ -978,13 +985,19 @@ function PremiumChapterToggle({ chapterId }: { chapterId: string }) {
     mutationFn: (coinPrice: number | null) =>
       apiRequest("PATCH", `/api/admin/chapters/${chapterId}/premium`, { coinPrice }),
     onSuccess: () => { toast({ title: "Pengaturan premium disimpan" }); refetch(); },
-    onError: () => toast({ title: "Gagal simpan", variant: "destructive" }),
+    onError: (err: any) => {
+      const msg = err?.message || "Gagal simpan";
+      toast({ title: msg, variant: "destructive" });
+    },
   });
 
   const handleSavePremium = () => {
     if (!enabled) { saveMut.mutate(null); return; }
     const price = parseInt(priceInput);
-    if (isNaN(price) || price < 1) { toast({ title: "Harga harus angka >= 1", variant: "destructive" }); return; }
+    if (isNaN(price) || price < 5 || price > 50) {
+      toast({ title: "Harga harus antara 5–50 koin", variant: "destructive" });
+      return;
+    }
     saveMut.mutate(price);
   };
 
@@ -1004,23 +1017,43 @@ function PremiumChapterToggle({ chapterId }: { chapterId: string }) {
         </div>
         <button
           type="button"
-          onClick={() => setEnabled(v => !v)}
-          className={`w-10 h-5 rounded-full transition-colors relative ${enabled ? "bg-amber-500" : "bg-muted-foreground/30"}`}
+          onClick={() => storyEligible && setEnabled(v => !v)}
+          disabled={!storyEligible}
+          className={`w-10 h-5 rounded-full transition-colors relative ${enabled ? "bg-amber-500" : "bg-muted-foreground/30"} disabled:opacity-40 disabled:cursor-not-allowed`}
           data-testid="toggle-chapter-premium"
         >
           <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${enabled ? "left-5.5" : "left-0.5"}`} />
         </button>
       </div>
-      {enabled && (
+
+      {!storyEligible && (
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/60 border border-border">
+          <AlertCircle size={13} className="text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            Novel ini belum layak sistem koin. Beri <strong>centang biru</strong> (<BadgeCheck size={10} className="inline text-blue-500" />) atau aktifkan <strong>layak koin</strong> (<Coins size={10} className="inline text-amber-500" />) di daftar novel.
+          </p>
+        </div>
+      )}
+
+      {storyEligible && (
+        <div className="flex items-center gap-1.5">
+          {storyVerified && <span className="text-[10px] flex items-center gap-0.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-full"><BadgeCheck size={9} /> Verified</span>}
+          {storyCoinEligible && <span className="text-[10px] flex items-center gap-0.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-full"><Coins size={9} /> Layak Koin</span>}
+          <span className="text-[10px] text-muted-foreground ml-1">Harga: 5–50 koin · Min. 500 kata · Chapter 1 gratis</span>
+        </div>
+      )}
+
+      {enabled && storyEligible && (
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground mb-1 block">Harga (koin) *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Harga (koin) — min 5, maks 50</label>
             <Input
               type="number"
-              min={1}
+              min={5}
+              max={50}
               value={priceInput}
               onChange={e => setPriceInput(e.target.value)}
-              placeholder="Contoh: 5"
+              placeholder="Contoh: 10"
               className="h-8 text-sm"
               data-testid="input-chapter-coin-price"
             />
@@ -1032,7 +1065,7 @@ function PremiumChapterToggle({ chapterId }: { chapterId: string }) {
           </div>
         </div>
       )}
-      {!enabled && data?.isPremium && (
+      {!enabled && data?.isPremium && storyEligible && (
         <div className="flex justify-end">
           <Button size="sm" variant="outline" onClick={handleSavePremium} disabled={saveMut.isPending} data-testid="button-remove-premium">
             {saveMut.isPending ? "Hapus..." : "Hapus Premium"}
@@ -1169,6 +1202,7 @@ export default function ManageNovel() {
   const [storyFilterCategory, setStoryFilterCategory] = useState<string>("all");
   const [storyFilterStatus, setStoryFilterStatus] = useState<string>("all");
   const [storyFilterPublished, setStoryFilterPublished] = useState<string>("all");
+  const [storyFilterCoin, setStoryFilterCoin] = useState<string>("all");
 
   const [storyDialog, setStoryDialog] = useState<{ open: boolean; story?: NovelStory }>({ open: false });
   const [seasonDialog, setSeasonDialog] = useState<{ open: boolean; season?: NovelSeason }>({ open: false });
@@ -1217,9 +1251,12 @@ export default function ManageNovel() {
     if (storyFilterStatus   !== "all" && story.status   !== storyFilterStatus)   return false;
     if (storyFilterPublished === "published" && !story.published)  return false;
     if (storyFilterPublished === "draft"     && story.published)   return false;
+    if (storyFilterCoin === "verified"    && !(story as any).verified)    return false;
+    if (storyFilterCoin === "eligible"    && !(story as any).coinEligible) return false;
+    if (storyFilterCoin === "not_eligible" && ((story as any).verified || (story as any).coinEligible)) return false;
     return true;
   });
-  const hasActiveFilter = storySearch || storyFilterCategory !== "all" || storyFilterStatus !== "all" || storyFilterPublished !== "all";
+  const hasActiveFilter = storySearch || storyFilterCategory !== "all" || storyFilterStatus !== "all" || storyFilterPublished !== "all" || storyFilterCoin !== "all";
 
   const { data: seasons, isLoading: seasonsLoading } = useQuery<NovelSeason[]>({
     queryKey: ["/api/novel/stories", selectedStory?.id, "seasons"],
@@ -1328,6 +1365,28 @@ export default function ManageNovel() {
       toast({ title: featured ? "⭐ Ditandai sebagai Novel Unggulan!" : "Dihapus dari Novel Unggulan" });
     },
     onError: () => toast({ title: "Gagal mengubah status unggulan", variant: "destructive" }),
+  });
+
+  const toggleVerified = useMutation({
+    mutationFn: ({ id, verified }: { id: string; verified: boolean }) =>
+      apiRequest("PUT", `/api/novel/stories/${id}`, { verified }),
+    onSuccess: (_, { verified }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories"] });
+      toast({ title: verified ? "✅ Centang biru diberikan ke penulis!" : "Centang biru dicabut" });
+    },
+    onError: () => toast({ title: "Gagal mengubah status verified", variant: "destructive" }),
+  });
+
+  const toggleCoinEligible = useMutation({
+    mutationFn: ({ id, coinEligible }: { id: string; coinEligible: boolean }) =>
+      apiRequest("PUT", `/api/novel/stories/${id}`, { coinEligible }),
+    onSuccess: (_, { coinEligible }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/novel/stories"] });
+      toast({ title: coinEligible ? "🪙 Novel ditandai layak koin!" : "Status layak koin dicabut" });
+    },
+    onError: () => toast({ title: "Gagal mengubah status koin", variant: "destructive" }),
   });
 
   const createBanner = useMutation({
@@ -1459,6 +1518,8 @@ export default function ManageNovel() {
             chapter={editingChapter}
             storyId={selectedStory!.id}
             seasonId={selectedSeason.id}
+            storyVerified={!!(selectedStory as any)?.verified}
+            storyCoinEligible={!!(selectedStory as any)?.coinEligible}
             onBack={() => { setEditingChapter(undefined); setView("chapters"); }}
           />
         </div>
@@ -1714,9 +1775,20 @@ export default function ManageNovel() {
                   <option value="published">Publis saja</option>
                   <option value="draft">Draft saja</option>
                 </select>
+                <select
+                  value={storyFilterCoin}
+                  onChange={e => setStoryFilterCoin(e.target.value)}
+                  className="text-sm rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                  data-testid="select-filter-coin"
+                >
+                  <option value="all">Semua Koin</option>
+                  <option value="verified">Centang Biru ✅</option>
+                  <option value="eligible">Layak Koin 🪙</option>
+                  <option value="not_eligible">Belum Layak</option>
+                </select>
                 {hasActiveFilter && (
                   <button
-                    onClick={() => { setStorySearch(""); setStoryFilterCategory("all"); setStoryFilterStatus("all"); setStoryFilterPublished("all"); }}
+                    onClick={() => { setStorySearch(""); setStoryFilterCategory("all"); setStoryFilterStatus("all"); setStoryFilterPublished("all"); setStoryFilterCoin("all"); }}
                     className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors border border-border"
                     data-testid="button-clear-story-filter"
                   >
@@ -1747,7 +1819,7 @@ export default function ManageNovel() {
                 <Search size={32} className="mx-auto mb-3 text-muted-foreground opacity-30" />
                 <p className="text-muted-foreground text-sm">Tidak ada cerita yang cocok dengan filter.</p>
                 <button
-                  onClick={() => { setStorySearch(""); setStoryFilterCategory("all"); setStoryFilterStatus("all"); setStoryFilterPublished("all"); }}
+                  onClick={() => { setStorySearch(""); setStoryFilterCategory("all"); setStoryFilterStatus("all"); setStoryFilterPublished("all"); setStoryFilterCoin("all"); }}
                   className="mt-3 text-xs text-primary hover:underline"
                 >Reset filter</button>
               </div>
@@ -1765,6 +1837,8 @@ export default function ManageNovel() {
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="font-semibold text-foreground truncate">{story.title}</span>
                         {story.featured && <Star size={12} className="text-yellow-500 flex-shrink-0" fill="currentColor" />}
+                        {(story as any).verified && <BadgeCheck size={13} className="text-blue-500 flex-shrink-0" title="Penulis Terverifikasi" />}
+                        {(story as any).coinEligible && <Coins size={12} className="text-amber-500 flex-shrink-0" title="Layak Sistem Koin" />}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="capitalize">{story.category}</span>
@@ -1783,6 +1857,28 @@ export default function ManageNovel() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title={(story as any).verified ? "Cabut centang biru" : "Beri centang biru (penulis verified)"}
+                        disabled={toggleVerified.isPending}
+                        onClick={() => toggleVerified.mutate({ id: story.id, verified: !(story as any).verified })}
+                        className={(story as any).verified ? "text-blue-500 hover:text-blue-600" : "text-muted-foreground hover:text-blue-500"}
+                        data-testid={`button-toggle-verified-${story.id}`}
+                      >
+                        <BadgeCheck size={15} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title={(story as any).coinEligible ? "Cabut status layak koin" : "Tandai layak koin (admin override)"}
+                        disabled={toggleCoinEligible.isPending}
+                        onClick={() => toggleCoinEligible.mutate({ id: story.id, coinEligible: !(story as any).coinEligible })}
+                        className={(story as any).coinEligible ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-amber-500"}
+                        data-testid={`button-toggle-coin-eligible-${story.id}`}
+                      >
+                        <Coins size={15} />
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"

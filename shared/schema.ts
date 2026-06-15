@@ -49,6 +49,8 @@ export const novelStorySchema = z.object({
   ratingCount: z.number().default(0),
   donationUrl: z.string().nullable().optional(),
   authorId: z.string().nullable().optional(),
+  verified: z.boolean().default(false),
+  coinEligible: z.boolean().default(false),
   createdAt: z.union([z.date(), z.string()]).optional(),
   updatedAt: z.union([z.date(), z.string()]).optional(),
 });

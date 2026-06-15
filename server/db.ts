@@ -53,6 +53,8 @@ const novelStorySchema = new mongoose.Schema({
   ratingCount: { type: Number, default: 0 },
   donationUrl: { type: String, default: null },
   authorId: { type: mongoose.Schema.Types.ObjectId, default: null, ref: 'Author' },
+  verified: { type: Boolean, default: false },
+  coinEligible: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const novelSeasonSchema = new mongoose.Schema({

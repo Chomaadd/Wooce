@@ -1812,7 +1812,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/chapters/:id/premium", requireAuth, async (req, res) => {
     try {
-      const { coinPrice } = z.object({ coinPrice: z.number().int().min(1).nullable() }).parse(req.body);
+      const { coinPrice } = z.object({ coinPrice: z.number().int().min(5).max(50).nullable() }).parse(req.body);
       const chapterId = req.params.id;
 
       const chapter = await storage.getNovelChapter(chapterId);
@@ -1824,6 +1824,37 @@ export async function registerRoutes(
       if (coinPrice === null) {
         await ChapterPremiumModel.deleteOne({ chapterId: chapterObjId });
         return res.json({ isPremium: false, coinPrice: null });
+      }
+
+      // Validate story coin eligibility
+      const story = await NovelStoryModel.findById(storyObjId).lean() as any;
+      if (!story) return res.status(404).json({ message: "Cerita tidak ditemukan" });
+      if (!story.verified && !story.coinEligible) {
+        return res.status(403).json({
+          message: "Cerita ini belum layak untuk sistem koin. Aktifkan centang biru (verified) atau tandai sebagai layak koin di admin panel.",
+          code: "NOT_ELIGIBLE",
+        });
+      }
+
+      // Validate chapter word count (min 500 words)
+      const plainText = (chapter.content ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const wordCount = plainText.split(" ").filter(Boolean).length;
+      if (wordCount < 500) {
+        return res.status(400).json({
+          message: `Chapter terlalu pendek untuk dijual (${wordCount} kata). Minimum 500 kata.`,
+          code: "TOO_SHORT",
+          wordCount,
+        });
+      }
+
+      // Validate first chapter of season must be free
+      const seasonChapters = await NovelChapterModel.find({ seasonId: new mongoose.Types.ObjectId(chapter.seasonId) })
+        .sort({ chapterNumber: 1 }).limit(1).lean() as any[];
+      if (seasonChapters.length > 0 && seasonChapters[0]._id.toString() === chapterId) {
+        return res.status(400).json({
+          message: "Chapter pertama setiap season harus gratis untuk menarik pembaca.",
+          code: "FIRST_CHAPTER",
+        });
       }
 
       await ChapterPremiumModel.findOneAndUpdate(
