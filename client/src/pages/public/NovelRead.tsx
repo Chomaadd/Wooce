@@ -103,18 +103,18 @@ function SettingsPanel({ settings, update, onClose, ttsVoices, ttsVoiceURI, onTt
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.96 }}
       transition={{ duration: 0.15 }}
-      className="fixed bottom-20 right-4 z-50 w-72 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden"
+      className="fixed bottom-20 right-4 z-50 w-72 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden max-h-[80vh] flex flex-col"
       data-testid="panel-reading-settings"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30 flex-shrink-0">
         <span className="font-semibold text-sm text-foreground">{t("novel.read.settings")}</span>
         <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground" data-testid="button-close-settings">
           <X size={15} />
         </button>
       </div>
 
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-5 overflow-y-auto flex-1">
         {/* Font Size */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -1718,13 +1718,13 @@ export default function NovelRead() {
       {/* TTS Control Bar */}
       <AnimatePresence>
         {tts.isPlaying && (
-          <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 16, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 16, x: "-50%" }}
             transition={{ duration: 0.2 }}
-            className="pointer-events-auto flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
+            style={{ position: "fixed", bottom: 16, left: "50%", zIndex: 50 }}
+            className="flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
             data-testid="bar-tts-controls"
           >
             <button
@@ -1761,7 +1761,6 @@ export default function NovelRead() {
               {tts.rate.toFixed(2)}x
             </span>
           </motion.div>
-          </div>
         )}
       </AnimatePresence>
 
