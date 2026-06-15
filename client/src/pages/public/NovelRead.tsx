@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowRight, BookOpen, Clock,
   Settings2, X, Share2, Check, List, Quote, Download, Link2, Maximize2, Languages, Loader2, RotateCcw, Flag, ChevronLeft, ChevronRight, EllipsisVertical, Lock, LockOpen, Coins, ShoppingBag,
+  Volume2, VolumeX, Pause, Play,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -427,6 +428,81 @@ function ReaderHeader({ story, chapter, chapterNum, slug, onTOC, onSettings, set
   );
 }
 
+// ── Text-to-Speech Hook ────────────────────────────────────────────────────────
+function useTTS() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [rate, setRate] = useState(1.0);
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const supported = typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const stop = useCallback(() => {
+    if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+    if (supported) window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
+  }, [supported]);
+
+  const speak = useCallback((text: string, speechRate: number) => {
+    if (!supported || !text.trim()) return;
+    if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "id-ID";
+    utterance.rate = Math.max(0.5, Math.min(2.0, speechRate));
+
+    const voices = window.speechSynthesis.getVoices();
+    const idVoice = voices.find(v => v.lang.startsWith("id"));
+    if (idVoice) utterance.voice = idVoice;
+
+    utterance.onend = () => {
+      if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+    utterance.onerror = () => {
+      if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
+    setIsPaused(false);
+
+    // Chrome fix: pause+resume every 14s to prevent auto-stop bug
+    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg|OPR/.test(navigator.userAgent);
+    if (isChrome) {
+      keepAliveRef.current = setInterval(() => {
+        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 14000);
+    }
+  }, [supported]);
+
+  const pause = useCallback(() => {
+    if (!supported) return;
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  }, [supported]);
+
+  const resume = useCallback(() => {
+    if (!supported) return;
+    window.speechSynthesis.resume();
+    setIsPaused(false);
+  }, [supported]);
+
+  useEffect(() => () => {
+    if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  }, []);
+
+  return { isPlaying, isPaused, supported, rate, setRate, speak, pause, resume, stop };
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function NovelRead() {
   const { t } = useLanguage();
@@ -474,6 +550,8 @@ export default function NovelRead() {
   const [translateLang, setTranslateLang] = useState("en");
   const [unlockError, setUnlockError] = useState("");
   const [showTopup, setShowTopup] = useState(false);
+  const tts = useTTS();
+  const [ttsText, setTtsText] = useState("");
 
   const { data: chapter, isLoading } = useQuery<NovelChapter>({
     queryKey: ["/api/novel/read", slug, seasonNum, chapterNum],
@@ -704,6 +782,32 @@ export default function NovelRead() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [prevChapter, nextChapter, slug, seasonNum, navigate, focusMode]);
+
+  // TTS: rebuild plain text when chapter or translation changes
+  useEffect(() => {
+    if (!chapter?.content) { setTtsText(""); return; }
+    const div = document.createElement("div");
+    div.innerHTML = translatedContent ?? renderRichContent(chapter.content);
+    const text = (div.textContent || div.innerText || "").replace(/\s+/g, " ").trim();
+    setTtsText((chapter.title ? chapter.title + ". " : "") + text);
+  }, [chapter?.content, chapter?.title, translatedContent]);
+
+  // TTS: stop when navigating to a different chapter
+  useEffect(() => {
+    return () => { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); };
+  }, [slug, seasonNum, chapterNum]);
+
+  const handleTTSToggle = () => {
+    if (!tts.isPlaying) tts.speak(ttsText, tts.rate);
+    else if (tts.isPaused) tts.resume();
+    else tts.pause();
+  };
+
+  const handleTTSRate = (delta: number) => {
+    const newRate = Math.max(0.5, Math.min(2.0, parseFloat((tts.rate + delta).toFixed(2))));
+    tts.setRate(newRate);
+    if (tts.isPlaying) tts.speak(ttsText, newRate);
+  };
 
   // Double-tap (mobile) + double-click (desktop) to exit focus mode
   useEffect(() => {
@@ -1483,6 +1587,54 @@ export default function NovelRead() {
         </>}
       </main>
 
+      {/* TTS Control Bar */}
+      <AnimatePresence>
+        {tts.isPlaying && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 bg-background border border-border rounded-full shadow-xl px-3 py-2"
+            data-testid="bar-tts-controls"
+          >
+            <button
+              onClick={tts.stop}
+              className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
+              data-testid="button-tts-stop"
+              title={t("novel.read.ttsStop")}
+            >
+              <VolumeX size={14} />
+            </button>
+            <div className="w-px h-4 bg-border" />
+            <button
+              onClick={() => handleTTSRate(-0.25)}
+              className="w-6 h-6 rounded-full hover:bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold transition-colors"
+              data-testid="button-tts-slower"
+              title="-0.25x"
+            >−</button>
+            <button
+              onClick={handleTTSToggle}
+              className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+              data-testid="button-tts-playpause"
+              title={tts.isPaused ? t("novel.read.ttsResume") : t("novel.read.ttsPause")}
+            >
+              {tts.isPaused ? <Play size={13} /> : <Pause size={13} />}
+            </button>
+            <button
+              onClick={() => handleTTSRate(0.25)}
+              className="w-6 h-6 rounded-full hover:bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold transition-colors"
+              data-testid="button-tts-faster"
+              title="+0.25x"
+            >+</button>
+            <div className="w-px h-4 bg-border" />
+            <span className="text-xs text-muted-foreground font-mono min-w-[34px] text-center select-none">
+              {tts.rate.toFixed(2)}x
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Focus mode hint */}
       <AnimatePresence>
         {focusHint && (
@@ -1515,6 +1667,21 @@ export default function NovelRead() {
                   title="Buat kartu kutipan"
                 >
                   <Quote size={15} />
+                </motion.button>
+              )}
+              {tts.supported && (
+                <motion.button
+                  key="tts"
+                  initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.85 }}
+                  transition={{ duration: 0.15, delay: 0.015 }}
+                  onClick={() => { handleTTSToggle(); setFabOpen(false); }}
+                  className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${tts.isPlaying ? "bg-primary text-primary-foreground border border-primary" : "bg-background border border-border text-muted-foreground hover:text-foreground"}`}
+                  data-testid="button-tts-toggle"
+                  title={t("novel.read.tts")}
+                >
+                  {tts.isPlaying && !tts.isPaused ? <Pause size={15} /> : <Volume2 size={15} />}
                 </motion.button>
               )}
               <motion.button
