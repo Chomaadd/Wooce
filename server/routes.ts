@@ -540,6 +540,26 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── Unified photo update — works for all logged-in users ──────────────────
+  app.patch("/api/user/photo", requireUser, async (req: any, res) => {
+    try {
+      const { photoUrl } = z.object({ photoUrl: z.string().url().nullable() }).parse(req.body);
+      const user = await storage.getUserById(req.session.userId);
+      if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+      // Update user account photo
+      await storage.updateUser(req.session.userId, { photoUrl });
+      // If writer, also sync author profile photo
+      if (user.authorId) {
+        await AuthorModel.updateOne({ _id: user.authorId }, { $set: { photoUrl } });
+      }
+      res.json({ success: true, photoUrl });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: "URL foto tidak valid" });
+      console.error("[user/photo]", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/auth/request-writer", requireUser, async (req: any, res) => {
     try {
       const user = await storage.getUserById(req.session.userId);

@@ -287,28 +287,17 @@ export default function UserProfile() {
 
   const savePhotoMutation = useMutation({
     mutationFn: async (photoUrl: string) => {
-      if (isWriter) {
-        const r = await fetch("/api/writer/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photoUrl: photoUrl || null }),
-          credentials: "include",
-        });
-        if (!r.ok) throw new Error("Gagal menyimpan foto");
-        return r.json();
-      } else {
-        const r = await fetch("/api/auth/me", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photoUrl: photoUrl || null }),
-          credentials: "include",
-        });
-        if (!r.ok) throw new Error("Gagal menyimpan foto");
-        return r.json();
-      }
+      const r = await fetch("/api/user/photo", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoUrl: photoUrl || null }),
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error("Gagal menyimpan foto");
+      return r.json();
     },
     onSuccess: async () => {
-      if (isWriter) await queryClient.refetchQueries({ queryKey: ["/api/writer/me"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/writer/me"] });
       await refetchAuth();
       toast({ title: "✅ Foto profil berhasil diperbarui!" });
     },
