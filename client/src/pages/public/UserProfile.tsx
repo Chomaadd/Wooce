@@ -191,6 +191,9 @@ export default function UserProfile() {
   const [donationVals, setDonationVals] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ProfileTab>("cerita");
 
+  // Photo in Pengaturan tab
+  const [settingsPhotoVal, setSettingsPhotoVal] = useState("");
+
   // Delete account OTP flow
   const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "otp" | "deleting">("idle");
   const [otpInput, setOtpInput] = useState("");
@@ -224,6 +227,12 @@ export default function UserProfile() {
   useEffect(() => {
     if (!authLoading && (!user || user.isAdmin)) navigate("/");
   }, [user, authLoading, navigate]);
+
+  // Init settingsPhotoVal dari foto yang sedang aktif (author photo > google photo)
+  useEffect(() => {
+    const current = (user as any)?.authorPhotoUrl || user?.photoUrl || "";
+    setSettingsPhotoVal(current);
+  }, [(user as any)?.authorPhotoUrl, user?.photoUrl]);
 
   useEffect(() => {
     try {
@@ -275,6 +284,41 @@ export default function UserProfile() {
     },
     onError: (err: any) => toast({ title: err?.message || "Gagal menyimpan profil", variant: "destructive" }),
   });
+
+  const savePhotoMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      if (isWriter) {
+        const r = await fetch("/api/writer/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photoUrl: photoUrl || null }),
+          credentials: "include",
+        });
+        if (!r.ok) throw new Error("Gagal menyimpan foto");
+        return r.json();
+      } else {
+        const r = await fetch("/api/auth/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photoUrl: photoUrl || null }),
+          credentials: "include",
+        });
+        if (!r.ok) throw new Error("Gagal menyimpan foto");
+        return r.json();
+      }
+    },
+    onSuccess: async () => {
+      if (isWriter) await queryClient.refetchQueries({ queryKey: ["/api/writer/me"] });
+      await refetchAuth();
+      toast({ title: "✅ Foto profil berhasil diperbarui!" });
+    },
+    onError: (err: any) => toast({ title: err?.message || "Gagal menyimpan foto", variant: "destructive" }),
+  });
+
+  const handleSettingsPhotoChange = (url: string) => {
+    setSettingsPhotoVal(url);
+    savePhotoMutation.mutate(url);
+  };
 
   const requestOtpMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/auth/request-delete-otp"),
@@ -1041,6 +1085,26 @@ export default function UserProfile() {
                   <Settings size={13} className="text-primary" />
                 </div>
                 <h2 className="font-bold text-sm text-foreground">Pengaturan Akun</h2>
+              </div>
+
+              {/* Foto Profil */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border bg-muted/20 flex items-center gap-2">
+                  <Camera size={13} className="text-primary" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Foto Profil</h3>
+                </div>
+                <div className="px-5 py-4 space-y-3">
+                  <ProfilePhotoUpload value={settingsPhotoVal} onChange={handleSettingsPhotoChange} />
+                  {savePhotoMutation.isPending && (
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 size={10} className="animate-spin" /> Menyimpan foto...
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Foto ini tampil di navbar dan halaman profilmu.
+                    {isWriter && " Sebagai penulis, foto ini juga otomatis tampil di halaman publik penulismu."}
+                  </p>
+                </div>
               </div>
 
               {/* Account info */}
