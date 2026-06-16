@@ -503,7 +503,14 @@ export async function registerRoutes(
     if (req.session.userId) {
       try {
         const user = await storage.getUserById(req.session.userId);
-        if (user) return res.json({ ...user, isAdmin: false });
+        if (user) {
+          let authorPhotoUrl: string | null = null;
+          if (user.authorId) {
+            const author = await AuthorModel.findById(user.authorId).select("photoUrl").lean() as any;
+            if (author?.photoUrl) authorPhotoUrl = author.photoUrl;
+          }
+          return res.json({ ...user, isAdmin: false, authorPhotoUrl });
+        }
       } catch {}
     }
     res.json(null);

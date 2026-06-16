@@ -714,9 +714,9 @@ export function Navbar() {
                   data-testid="button-user-avatar"
                   aria-expanded={userMenuOpen}
                 >
-                  {user.photoUrl ? (
+                  {((user as any).authorPhotoUrl || user.photoUrl) ? (
                     <img
-                      src={user.photoUrl}
+                      src={(user as any).authorPhotoUrl || user.photoUrl!}
                       alt={user.name ?? ""}
                       className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/20"
                       data-testid="img-user-avatar"
@@ -742,8 +742,8 @@ export function Navbar() {
                     >
                       <div className="px-3 py-2.5 border-b border-border">
                         <div className="flex items-center gap-2 mb-1">
-                          {user.photoUrl && (
-                            <img src={user.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                          {((user as any).authorPhotoUrl || user.photoUrl) && (
+                            <img src={(user as any).authorPhotoUrl || user.photoUrl!} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                           )}
                           <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
                         </div>
