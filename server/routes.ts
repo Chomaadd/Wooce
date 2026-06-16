@@ -543,7 +543,7 @@ export async function registerRoutes(
   // ── Unified photo update — works for all logged-in users ──────────────────
   app.patch("/api/user/photo", requireUser, async (req: any, res) => {
     try {
-      const { photoUrl } = z.object({ photoUrl: z.string().url().nullable() }).parse(req.body);
+      const { photoUrl } = z.object({ photoUrl: z.string().min(1).nullable() }).parse(req.body);
       const user = await storage.getUserById(req.session.userId);
       if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
       // Update user account photo
