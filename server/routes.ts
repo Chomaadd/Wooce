@@ -27,7 +27,7 @@ import {
   sendStoryDeletedByWriterEmail,
   sendStoryRemovedByReportEmail,
 } from "./email";
-import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel, FollowModel } from "./db";
+import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel, FollowModel, ReadHistoryModel } from "./db";
 import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
 import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
@@ -537,6 +537,55 @@ export async function registerRoutes(
     try {
       const user = await storage.updateUser(req.session.userId, req.body);
       res.json(user);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Read History ───────────────────────────────────────────────────────────
+  app.patch("/api/user/read-history", requireUser, async (req: any, res) => {
+    try {
+      const body = z.object({
+        storyId:      z.string(),
+        storySlug:    z.string(),
+        storyTitle:   z.string(),
+        coverUrl:     z.string().nullable().optional(),
+        seasonNum:    z.number().int().min(1),
+        chapterNum:   z.number().int().min(1),
+        chapterSlug:  z.string(),
+        chapterTitle: z.string(),
+      }).parse(req.body);
+      const userObjId  = new mongoose.Types.ObjectId(req.session.userId);
+      const storyObjId = new mongoose.Types.ObjectId(body.storyId);
+      await ReadHistoryModel.findOneAndUpdate(
+        { userId: userObjId, storyId: storyObjId },
+        { $set: { ...body, storyId: storyObjId, userId: userObjId, readAt: new Date() } },
+        { upsert: true },
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/user/read-history", requireUser, async (req: any, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit ?? 20), 50);
+      const userObjId = new mongoose.Types.ObjectId(req.session.userId);
+      const history = await ReadHistoryModel.find({ userId: userObjId })
+        .sort({ readAt: -1 })
+        .limit(limit)
+        .lean();
+      res.json(history.map((h: any) => ({
+        storyId:      h.storyId.toString(),
+        storySlug:    h.storySlug,
+        storyTitle:   h.storyTitle,
+        coverUrl:     h.coverUrl ?? null,
+        seasonNum:    h.seasonNum,
+        chapterNum:   h.chapterNum,
+        chapterSlug:  h.chapterSlug,
+        chapterTitle: h.chapterTitle,
+        readAt:       h.readAt,
+      })));
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 

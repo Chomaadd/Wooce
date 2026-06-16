@@ -124,6 +124,23 @@ const followSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 followSchema.index({ userId: 1, storyId: 1 }, { unique: true });
 
+const readHistorySchema = new mongoose.Schema({
+  userId:       { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+  storyId:      { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'NovelStory' },
+  storySlug:    { type: String, required: true },
+  storyTitle:   { type: String, required: true },
+  coverUrl:     { type: String, default: null },
+  seasonNum:    { type: Number, required: true },
+  chapterNum:   { type: Number, required: true },
+  chapterSlug:  { type: String, required: true },
+  chapterTitle: { type: String, required: true },
+  readAt:       { type: Date, default: Date.now },
+}, { timestamps: false });
+readHistorySchema.index({ userId: 1, storyId: 1 }, { unique: true });
+readHistorySchema.index({ userId: 1, readAt: -1 });
+
+export const ReadHistoryModel = mongoose.models.ReadHistory || mongoose.model('ReadHistory', readHistorySchema);
+
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 export const UserModel = mongoose.models.User || mongoose.model('User', userMongoSchema);
 export const AuthorModel = mongoose.models.Author || mongoose.model('Author', authorMongoSchema);

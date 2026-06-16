@@ -1495,8 +1495,43 @@ const translations: Record<Language, Record<string, string>> = {
     "dailyBonus.coinsReceived": "Koin Diterima!",
     "dailyBonus.questBonus": "Termasuk bonus quest +{{coins}} koin 🎉",
     "dailyBonus.close": "Tutup",
+
+    "profile.activity.novelsRead": "Novel Dibaca",
+    "profile.activity.novelsSynced": "Tersinkron di semua perangkat",
+    "profile.activity.bookmarks": "Bookmark",
+    "profile.activity.bookmarksDesc": "Total cerita disimpan",
+    "profile.activity.chaptersRead": "Bab Dibaca",
+    "profile.activity.chaptersDesc": "Total bab terbaca",
+    "profile.activity.historyTitle": "Riwayat Baca",
+    "profile.activity.historySynced": "Tersimpan di server · lintas perangkat",
+    "profile.activity.historyEmpty": "Belum ada riwayat baca",
+    "profile.activity.historyEmptyDesc": "Buka chapter apapun untuk mulai merekam riwayat",
+    "profile.activity.justNow": "Baru saja",
+    "profile.activity.minutesAgo": "menit lalu",
+    "profile.activity.hoursAgo": "jam lalu",
+    "profile.activity.daysAgo": "hari lalu",
+    "profile.activity.continue": "Lanjut →",
   },
 };
+
+// ── English additions ──
+Object.assign((translations as any).en, {
+  "profile.activity.novelsRead": "Novels Read",
+  "profile.activity.novelsSynced": "Synced across all devices",
+  "profile.activity.bookmarks": "Bookmarks",
+  "profile.activity.bookmarksDesc": "Total saved stories",
+  "profile.activity.chaptersRead": "Chapters Read",
+  "profile.activity.chaptersDesc": "Total chapters read",
+  "profile.activity.historyTitle": "Reading History",
+  "profile.activity.historySynced": "Saved on server · cross-device",
+  "profile.activity.historyEmpty": "No reading history yet",
+  "profile.activity.historyEmptyDesc": "Open any chapter to start recording history",
+  "profile.activity.justNow": "Just now",
+  "profile.activity.minutesAgo": "minutes ago",
+  "profile.activity.hoursAgo": "hours ago",
+  "profile.activity.daysAgo": "days ago",
+  "profile.activity.continue": "Continue →",
+});
 
 export function getTranslation(lang: Language, key: string): string {
   return translations[lang]?.[key] ?? translations.en[key] ?? key;

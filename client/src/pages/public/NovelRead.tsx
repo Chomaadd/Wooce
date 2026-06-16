@@ -739,6 +739,29 @@ export default function NovelRead() {
     fetch(`/api/novel/chapters/${chapter.id}/view`, { method: "PATCH" }).catch(() => {});
   }, [chapter?.id]);
 
+  // Track server-side read history (upsert — 1 record per story, no DB bloat)
+  useEffect(() => {
+    if (!chapter?.id || !story?.id || !user) return;
+    const key = `novel-history-synced-${story.id}-${chapter.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    fetch("/api/user/read-history", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        storyId:      story.id,
+        storySlug:    slug,
+        storyTitle:   story.title,
+        coverUrl:     story.coverUrl ?? null,
+        seasonNum,
+        chapterNum,
+        chapterSlug:  `bab-${chapterNum}`,
+        chapterTitle: chapter.title,
+      }),
+    }).catch(() => {});
+  }, [chapter?.id, story?.id, user]);
+
   // Scroll progress
   useEffect(() => {
     const handler = () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient as useQC } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/Navbar";
@@ -12,7 +12,7 @@ import {
   BookOpen, Bookmark, BookmarkX, Eye, BookMarked,
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
   Loader2, Copy, Upload, RotateCcw, Camera, AlertTriangle, Trash2,
-  LayoutGrid, Settings, Activity, Download, FileText, Coins,
+  LayoutGrid, Settings, Activity, Download, FileText, Coins, History, Clock,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -257,6 +257,18 @@ export default function UserProfile() {
     queryKey: ["/api/writer/me"],
     queryFn: () => fetch("/api/writer/me", { credentials: "include" }).then(r => r.json()),
     enabled: !!user && user.role === "writer" && user.status === "active",
+  });
+
+  type ReadHistoryItem = {
+    storyId: string; storySlug: string; storyTitle: string; coverUrl: string | null;
+    seasonNum: number; chapterNum: number; chapterSlug: string; chapterTitle: string;
+    readAt: string;
+  };
+  const { data: readHistory = [], isLoading: historyLoading } = useQuery<ReadHistoryItem[]>({
+    queryKey: ["/api/user/read-history"],
+    queryFn: () => fetch("/api/user/read-history?limit=20", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user && !user.isAdmin,
+    staleTime: 30_000,
   });
 
   const authorData = writerMe?.author ?? null;
@@ -983,32 +995,25 @@ export default function UserProfile() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 {[
                   {
-                    label: "Novel Disimpan",
-                    value: bookmarked.length,
-                    icon: <Bookmark size={18} className="text-primary" />,
+                    label: "Novel Dibaca",
+                    value: readHistory.length,
+                    icon: <History size={18} className="text-primary" />,
                     bg: "bg-primary/8",
-                    desc: "Total bookmark aktif",
+                    desc: "Tersinkron di semua perangkat",
                   },
                   {
-                    label: "Sedang Dibaca",
-                    value: bookmarkSlugs.filter(s => {
-                      try { return !!localStorage.getItem(`novel-progress-${s}`); } catch { return false; }
-                    }).length,
-                    icon: <BookOpen size={18} className="text-emerald-500" />,
+                    label: "Bookmark",
+                    value: bookmarked.length,
+                    icon: <Bookmark size={18} className="text-emerald-500" />,
                     bg: "bg-emerald-500/8",
-                    desc: "Ada progres baca",
+                    desc: "Total cerita disimpan",
                   },
                   {
-                    label: "Bab Terbaca",
-                    value: bookmarkSlugs.reduce((acc, s) => {
-                      try {
-                        const p = JSON.parse(localStorage.getItem(`novel-progress-${s}`) || "{}");
-                        return acc + (p.chapterNum || 0);
-                      } catch { return acc; }
-                    }, 0),
+                    label: "Bab Dibaca",
+                    value: readHistory.reduce((acc, h) => acc + h.chapterNum, 0),
                     icon: <BookMarked size={18} className="text-blue-500" />,
                     bg: "bg-blue-500/8",
-                    desc: "Total bab dibaca",
+                    desc: "Total bab terbaca",
                   },
                 ].map(stat => (
                   <div key={stat.label} className={`${stat.bg} border border-border rounded-2xl p-4 flex items-center gap-4`}>
@@ -1024,45 +1029,63 @@ export default function UserProfile() {
                 ))}
               </div>
 
-              {/* Recent progress */}
-              {bookmarked.filter(s => {
-                try { return !!localStorage.getItem(`novel-progress-${s.slug}`); } catch { return false; }
-              }).length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Progres Terakhir</h3>
-                  <div className="space-y-2">
-                    {bookmarked
-                      .filter(s => {
-                        try { return !!localStorage.getItem(`novel-progress-${s.slug}`); } catch { return false; }
-                      })
-                      .slice(0, 5)
-                      .map(story => {
-                        const progress = (() => {
-                          try { return JSON.parse(localStorage.getItem(`novel-progress-${story.slug}`) || "{}"); } catch { return {}; }
-                        })();
-                        return (
-                          <Link key={story.id} href={`/${story.slug}/season-${progress.seasonNum}/bab-${progress.chapterNum}`}>
-                            <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group">
-                              <div className="w-10 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                                {story.coverUrl
-                                  ? <img src={story.coverUrl} alt="" className="w-full h-full object-cover" />
-                                  : <div className="w-full h-full flex items-center justify-center"><BookOpen size={14} className="text-muted-foreground/40" /></div>
-                                }
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{story.title}</p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">
-                                  Season {progress.seasonNum} · Bab {progress.chapterNum}
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0 text-[11px] text-primary font-semibold">Lanjut →</div>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                  </div>
+              {/* Riwayat Baca dari server */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <History size={13} className="text-muted-foreground" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Riwayat Baca</h3>
+                  <span className="text-[10px] text-muted-foreground/50 ml-auto">Tersimpan di server · lintas perangkat</span>
                 </div>
-              )}
+
+                {historyLoading ? (
+                  <div className="space-y-2">
+                    {[1,2,3].map(i => <div key={i} className="h-16 rounded-xl bg-muted/50 animate-pulse" />)}
+                  </div>
+                ) : readHistory.length === 0 ? (
+                  <div className="text-center py-10 border border-dashed border-border rounded-2xl">
+                    <BookOpen size={28} className="mx-auto mb-2 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">Belum ada riwayat baca</p>
+                    <p className="text-[11px] text-muted-foreground/50 mt-0.5">Buka chapter apapun untuk mulai merekam riwayat</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {readHistory.map(h => {
+                      const timeAgo = (() => {
+                        const diff = Date.now() - new Date(h.readAt).getTime();
+                        const mins  = Math.floor(diff / 60000);
+                        const hours = Math.floor(diff / 3600000);
+                        const days  = Math.floor(diff / 86400000);
+                        if (mins < 1)   return "Baru saja";
+                        if (mins < 60)  return `${mins} menit lalu`;
+                        if (hours < 24) return `${hours} jam lalu`;
+                        return `${days} hari lalu`;
+                      })();
+                      return (
+                        <Link key={h.storyId} href={`/${h.storySlug}/season-${h.seasonNum}/${h.chapterSlug}`}>
+                          <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group">
+                            <div className="w-10 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                              {h.coverUrl
+                                ? <img src={h.coverUrl} alt="" className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center"><BookOpen size={14} className="text-muted-foreground/40" /></div>
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{h.storyTitle}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Season {h.seasonNum} · Bab {h.chapterNum} — {h.chapterTitle}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground/50 mt-0.5 flex items-center gap-1">
+                                <Clock size={9} /> {timeAgo}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 text-[11px] text-primary font-semibold">Lanjut →</div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
 
