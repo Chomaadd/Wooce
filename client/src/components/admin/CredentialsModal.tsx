@@ -416,6 +416,38 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
                           const isSecret = meta.secret;
                           const showRaw = visibleSecrets.has(key);
 
+                          // Special case: midtransIsProduction as toggle switch
+                          if (key === "midtransIsProduction") {
+                            const isProduction = (key in editing)
+                              ? editing[key] === "true"
+                              : field?.value === "true";
+                            return (
+                              <div key={key} className="px-4 py-3">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-medium">Mode Midtrans</span>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                      Beralih antara Sandbox (testing) dan Produksi (live). Pastikan kunci sesuai mode.
+                                    </p>
+                                    <p className={`text-[11px] font-semibold mt-1 ${isProduction ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                      {isProduction
+                                        ? "Produksi aktif — gunakan key Mid-server-... (tanpa SB-)"
+                                        : "Sandbox aktif — gunakan key SB-Mid-server-..."}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleEdit(key, isProduction ? "" : "true")}
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${isProduction ? "bg-emerald-500" : "bg-border"}`}
+                                    data-testid="toggle-midtrans-production"
+                                    title={isProduction ? "Klik untuk beralih ke Sandbox" : "Klik untuk beralih ke Produksi"}
+                                  >
+                                    <span className={`mt-0.5 ml-0.5 inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${isProduction ? "translate-x-5" : "translate-x-0"}`} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           return (
                             <div key={key} className="px-4 py-3 space-y-2">
                               <div className="flex items-center justify-between gap-4">
