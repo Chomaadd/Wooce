@@ -9,9 +9,10 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Save, ArrowLeft, ExternalLink, Camera, Check, X, Loader2 } from "lucide-react";
+import { User, Save, ArrowLeft, ExternalLink, Check, X, Loader2, AlertCircle, Info } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook, SiX } from "react-icons/si";
 import { Link } from "wouter";
+import { isBannedNickname } from "@shared/bannedWords";
 
 type WriterMe = {
   id: string; name: string; email: string; photoUrl?: string | null;
@@ -56,6 +57,8 @@ function InputField({ label, value, onChange, placeholder, hint, prefix }: {
   );
 }
 
+type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "banned";
+
 export default function WriterProfileSettings() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -75,13 +78,15 @@ export default function WriterProfileSettings() {
   });
 
   const [form, setForm] = useState({
-    name: "", bio: "", photoUrl: "", slug: "",
+    name: "", bio: "", slug: "",
     tiktok: "", instagram: "", facebook: "", twitter: "",
     website: "", saweria: "", trakteer: "",
   });
   const [dirty, setDirty] = useState(false);
-  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
+  const [slugHint, setSlugHint] = useState("");
   const slugTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const isFirstTime = !!writerData && !writerData.author?.slug;
 
   useEffect(() => {
     if (writerData?.author) {
@@ -89,7 +94,6 @@ export default function WriterProfileSettings() {
       setForm({
         name: a.name ?? writerData.name ?? "",
         bio: a.bio ?? "",
-        photoUrl: a.photoUrl ?? writerData.photoUrl ?? "",
         slug: a.slug ?? "",
         tiktok: a.tiktok ?? "",
         instagram: a.instagram ?? "",
@@ -100,10 +104,11 @@ export default function WriterProfileSettings() {
         trakteer: a.trakteer ?? "",
       });
     } else if (writerData) {
-      setForm(f => ({ ...f, name: writerData.name ?? "", photoUrl: writerData.photoUrl ?? "" }));
+      setForm(f => ({ ...f, name: writerData.name ?? "" }));
     }
     setDirty(false);
     setSlugStatus("idle");
+    setSlugHint("");
   }, [writerData]);
 
   const handleSlugChange = (val: string) => {
@@ -111,15 +116,41 @@ export default function WriterProfileSettings() {
     setForm(f => ({ ...f, slug: clean }));
     setDirty(true);
     if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
-    if (!clean || clean.length < 3) { setSlugStatus("invalid"); return; }
-    if (clean === writerData?.author?.slug) { setSlugStatus("idle"); return; }
+
+    if (!clean || clean.length < 4) {
+      setSlugStatus("invalid");
+      setSlugHint("Minimal 4 karakter, hanya huruf kecil, angka, dan tanda hubung");
+      return;
+    }
+    if (isBannedNickname(clean)) {
+      setSlugStatus("banned");
+      setSlugHint("Username mengandung kata yang tidak diperbolehkan");
+      return;
+    }
+    if (clean === writerData?.author?.slug) {
+      setSlugStatus("idle");
+      setSlugHint("");
+      return;
+    }
     setSlugStatus("checking");
+    setSlugHint("");
     slugTimerRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/writer/check-slug?slug=${clean}`, { credentials: "include" });
         const data = await res.json();
-        setSlugStatus(data.available ? "available" : "taken");
-      } catch { setSlugStatus("idle"); }
+        if (data.available) {
+          setSlugStatus("available");
+          setSlugHint("Username tersedia");
+        } else {
+          if (data.reason?.includes("diperbolehkan")) {
+            setSlugStatus("banned");
+            setSlugHint("Username mengandung kata yang tidak diperbolehkan");
+          } else {
+            setSlugStatus("taken");
+            setSlugHint("Username sudah dipakai, coba yang lain");
+          }
+        }
+      } catch { setSlugStatus("idle"); setSlugHint(""); }
     }, 600);
   };
 
@@ -138,8 +169,17 @@ export default function WriterProfileSettings() {
       toast({ title: "Profil berhasil disimpan!" });
       setDirty(false);
     },
-    onError: () => toast({ title: "Gagal menyimpan profil", variant: "destructive" }),
+    onError: (err: any) => {
+      toast({ title: "Gagal menyimpan profil", description: err?.message || "Terjadi kesalahan.", variant: "destructive" });
+    },
   });
+
+  const canSave =
+    dirty &&
+    slugStatus !== "taken" &&
+    slugStatus !== "checking" &&
+    slugStatus !== "banned" &&
+    !(isFirstTime && (!form.slug || slugStatus === "invalid"));
 
   if (authLoading || isLoading) {
     return (
@@ -157,6 +197,20 @@ export default function WriterProfileSettings() {
   if (!user || user.isAdmin || user.role !== "writer" || user.status !== "active") return null;
 
   const slug = writerData?.author?.slug;
+  const displayPhoto = writerData?.author?.photoUrl || writerData?.photoUrl;
+
+  const slugBorderClass =
+    slugStatus === "available" ? "border-emerald-500 bg-emerald-500/5" :
+    slugStatus === "taken" ? "border-destructive bg-destructive/5" :
+    slugStatus === "invalid" ? "border-amber-500/60 bg-amber-500/5" :
+    slugStatus === "banned" ? "border-destructive bg-destructive/5" :
+    "border-border bg-muted/30";
+
+  const slugHintClass =
+    slugStatus === "available" ? "text-emerald-600 dark:text-emerald-400" :
+    slugStatus === "taken" || slugStatus === "banned" ? "text-destructive" :
+    slugStatus === "invalid" ? "text-amber-600 dark:text-amber-500" :
+    "text-muted-foreground";
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,8 +228,8 @@ export default function WriterProfileSettings() {
               </button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Profil Penulis</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Informasi ini ditampilkan ke pembaca di halaman penulis kamu</p>
+              <h1 className="text-xl font-bold text-foreground">Profil Publik Penulis</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Yang dilihat pembaca di halaman profilmu</p>
             </div>
           </div>
           {slug && (
@@ -186,45 +240,68 @@ export default function WriterProfileSettings() {
           )}
         </motion.div>
 
+        {/* First-time notice */}
+        {isFirstTime && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Atur username terlebih dahulu</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                Sebelum profilmu bisa disimpan, kamu wajib mengisi <strong>Username / URL Profil</strong> di bawah. Username tidak bisa diubah sembarangan setelah disimpan.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Photo & Identity */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="bg-card border border-border rounded-2xl p-5 space-y-5">
-          <h2 className="text-sm font-bold text-foreground flex items-center gap-2"><User size={14} /> Identitas</h2>
 
-          <div className="flex items-center gap-4">
-            <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-muted border border-border">
-                {form.photoUrl ? (
-                  <img src={form.photoUrl} alt="preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User size={22} className="text-muted-foreground/40" />
-                  </div>
-                )}
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary/10 border border-border flex items-center justify-center">
-                <Camera size={10} className="text-primary" />
-              </div>
+          <div className="flex items-center gap-2">
+            <User size={14} className="text-foreground" />
+            <h2 className="text-sm font-bold text-foreground">Identitas</h2>
+          </div>
+
+          {/* Photo preview — read only, managed from profile photo system */}
+          <div className="flex items-center gap-4 p-3.5 rounded-xl bg-muted/40 border border-border">
+            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted border border-border flex-shrink-0">
+              {displayPhoto ? (
+                <img src={displayPhoto} alt="foto profil" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User size={20} className="text-muted-foreground/40" />
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-2">Foto diambil otomatis dari akun Google-mu. Kamu juga bisa ganti dengan URL foto lain.</p>
-              <InputField
-                label="" value={form.photoUrl} onChange={v => set("photoUrl", v)}
-                placeholder="https://example.com/foto.jpg"
-              />
+              <p className="text-xs font-medium text-foreground">Foto Profil</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Foto diambil otomatis dari akun Google-mu. Untuk menggantinya, gunakan menu <strong>Ganti Foto</strong> di halaman profil akun.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Info size={11} />
+                <span>Read-only</span>
+              </div>
             </div>
           </div>
 
-          <InputField label="Nama Penulis" value={form.name} onChange={v => set("name", v)} placeholder="Nama yang ditampilkan ke pembaca" />
+          <InputField
+            label="Nama Penulis"
+            value={form.name}
+            onChange={v => set("name", v)}
+            placeholder="Nama yang ditampilkan ke pembaca"
+          />
 
+          {/* Slug / username */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">Username / URL Profil</label>
-            <div className={`flex items-center border rounded-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
-              slugStatus === "available" ? "border-emerald-500 bg-emerald-500/5" :
-              slugStatus === "taken" ? "border-destructive bg-destructive/5" :
-              slugStatus === "invalid" ? "border-amber-500/60 bg-amber-500/5" :
-              "border-border bg-muted/30"
-            }`}>
+            <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">
+              Username / URL Profil
+              {isFirstTime && <span className="ml-1.5 text-amber-600 dark:text-amber-400">*</span>}
+            </label>
+            <div className={`flex items-center border rounded-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/30 ${slugBorderClass}`}>
               <span className="px-3 text-xs text-muted-foreground bg-muted/50 border-r border-border py-2.5 shrink-0">/penulis/</span>
               <input
                 type="text"
@@ -237,14 +314,11 @@ export default function WriterProfileSettings() {
               <div className="px-3 flex-shrink-0">
                 {slugStatus === "checking" && <Loader2 size={13} className="animate-spin text-muted-foreground" />}
                 {slugStatus === "available" && <Check size={13} className="text-emerald-500" />}
-                {slugStatus === "taken" && <X size={13} className="text-destructive" />}
+                {(slugStatus === "taken" || slugStatus === "banned") && <X size={13} className="text-destructive" />}
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {slugStatus === "available" && <span className="text-emerald-600">✓ Username tersedia</span>}
-              {slugStatus === "taken" && <span className="text-destructive">✗ Username sudah dipakai, coba yang lain</span>}
-              {slugStatus === "invalid" && <span className="text-amber-600">Minimal 3 karakter, hanya huruf kecil, angka, dan tanda hubung</span>}
-              {(slugStatus === "idle" || slugStatus === "checking") && "Hanya huruf kecil (a-z), angka (0-9), dan tanda hubung (-)"}
+            <p className={`text-[11px] ${slugHintClass}`}>
+              {slugHint || "Hanya huruf kecil (a-z), angka (0-9), dan tanda hubung (–). Minimal 4 karakter."}
             </p>
           </div>
 
@@ -252,7 +326,7 @@ export default function WriterProfileSettings() {
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground block">Bio</label>
             <textarea
               value={form.bio}
-              onChange={e => { set("bio", e.target.value); }}
+              onChange={e => set("bio", e.target.value)}
               rows={3}
               placeholder="Ceritakan sedikit tentang dirimu sebagai penulis..."
               className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/30 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none placeholder:text-muted-foreground/40"
@@ -289,9 +363,14 @@ export default function WriterProfileSettings() {
 
         {/* Save button */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          {isFirstTime && !form.slug && (
+            <p className="text-xs text-center text-amber-600 dark:text-amber-400 mb-3 flex items-center justify-center gap-1.5">
+              <AlertCircle size={12} /> Isi username terlebih dahulu untuk bisa menyimpan profil
+            </p>
+          )}
           <button
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !dirty || slugStatus === "taken" || slugStatus === "checking"}
+            disabled={saveMutation.isPending || !canSave}
             className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             data-testid="button-save-writer-profile"
           >

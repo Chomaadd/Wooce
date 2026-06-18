@@ -38,6 +38,7 @@ import MidtransClient from "midtrans-client";
 import { generateOtp, verifyOtp, checkRateLimit } from "./otp";
 import { generateWriterBackupPdf, generateStoryBackupPdf, generateUserDataPdf } from "./pdf";
 import { ContactMessageModel } from "./contactMessageModel";
+import { isBannedNickname } from "../shared/bannedWords";
 
 declare module "express-session" {
   interface SessionData {
@@ -2390,9 +2391,10 @@ export async function registerRoutes(
         const existing = await storage.getAuthorById(user.authorId);
         if (existing) return res.status(400).json({ message: "Username sudah diset sebelumnya" });
       }
-      const { username } = z.object({ username: z.string().min(3).max(30) }).parse(req.body);
+      const { username } = z.object({ username: z.string().min(4).max(30) }).parse(req.body);
       const slug = username.toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
-      if (slug.length < 3) return res.status(400).json({ message: "Username minimal 3 karakter" });
+      if (slug.length < 4) return res.status(400).json({ message: "Username minimal 4 karakter" });
+      if (isBannedNickname(slug)) return res.status(400).json({ message: "Username mengandung kata yang tidak diperbolehkan" });
       const taken = await storage.getAuthorBySlug(slug);
       if (taken) return res.status(409).json({ message: "Username sudah dipakai, coba yang lain" });
       const author = await storage.createAuthor({
@@ -2442,7 +2444,8 @@ export async function registerRoutes(
   app.get("/api/writer/check-slug", requireWriter, async (req: any, res) => {
     try {
       const slug = String(req.query.slug || "").toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
-      if (!slug || slug.length < 3) return res.json({ available: false, reason: "Minimal 3 karakter" });
+      if (!slug || slug.length < 4) return res.json({ available: false, reason: "Minimal 4 karakter" });
+      if (isBannedNickname(slug)) return res.json({ available: false, reason: "Mengandung kata yang tidak diperbolehkan" });
       const user = req.writerUser;
       const authorId = await ensureAuthorId(user);
       const existing = await storage.getAuthorBySlug(slug);
@@ -2463,13 +2466,17 @@ export async function registerRoutes(
       }
       if (req.body.slug) {
         const newSlug = String(req.body.slug).toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "");
-        if (newSlug.length >= 3) {
-          const existing = await storage.getAuthorBySlug(newSlug);
-          if (existing && existing.id !== authorId) {
-            return res.status(409).json({ message: "Username sudah dipakai" });
-          }
-          updateData.slug = newSlug;
+        if (newSlug.length < 4) {
+          return res.status(400).json({ message: "Username minimal 4 karakter" });
         }
+        if (isBannedNickname(newSlug)) {
+          return res.status(400).json({ message: "Username mengandung kata yang tidak diperbolehkan" });
+        }
+        const existing = await storage.getAuthorBySlug(newSlug);
+        if (existing && existing.id !== authorId) {
+          return res.status(409).json({ message: "Username sudah dipakai" });
+        }
+        updateData.slug = newSlug;
       }
       const updated = await storage.updateAuthor(authorId, updateData);
       if (updateData.name && typeof updateData.name === "string" && updateData.name.trim()) {
