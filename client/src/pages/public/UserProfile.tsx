@@ -399,7 +399,6 @@ export default function UserProfile() {
     const payload: Record<string, any> = {
       name: nameVal.trim(),
       bio: bioVal,
-      photoUrl: photoVal.trim() || null,
       ...socialVals,
       ...donationVals,
     };
@@ -705,7 +704,21 @@ export default function UserProfile() {
 
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Foto Profil</label>
-                        <ProfilePhotoUpload value={photoVal} onChange={setPhotoVal} />
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted border border-border flex-shrink-0">
+                            {photoVal
+                              ? <img src={photoVal} alt="foto profil" className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><User size={18} className="text-muted-foreground/40" /></div>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground">Foto diambil dari akun Google</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                              Untuk mengganti foto, gunakan menu <strong>Ganti Foto</strong> di pengaturan akun utama.
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground/60 shrink-0">Read-only</span>
+                        </div>
                       </div>
 
                       <div className="space-y-1.5">
