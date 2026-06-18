@@ -107,19 +107,25 @@ export async function registerRoutes(
 
     let callbackURL: string;
     if (process.env.GOOGLE_CALLBACK_URL) {
+      // 1. Explicit override — highest priority
       callbackURL = process.env.GOOGLE_CALLBACK_URL;
     } else if (config.siteUrl) {
+      // 2. siteUrl configured in admin panel
       try {
         callbackURL = `${new URL(config.siteUrl).origin}/auth/google/callback`;
       } catch {
         callbackURL = `${config.siteUrl.replace(/\/+$/, "")}/auth/google/callback`;
       }
+    } else if (process.env.REPLIT_DEV_DOMAIN) {
+      // 3. Replit dev domain (stable per-repl URL) — preferred over request headers
+      callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`;
     } else if (req) {
+      // 4. Last resort: derive from request headers (may vary per session)
       const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
       const host = (req.headers["x-forwarded-host"] as string) || req.get("host");
       callbackURL = `${proto}://${host}/auth/google/callback`;
     } else {
-      callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN || "localhost:5000"}/auth/google/callback`;
+      callbackURL = "http://localhost:5000/auth/google/callback";
     }
 
     passport.use("google", new GoogleStrategy(
