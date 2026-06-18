@@ -66,7 +66,7 @@ export async function getEffectiveConfig() {
     googleClientSecret:   (db.googleClientSecret || process.env.GOOGLE_CLIENT_SECRET || '').trim(),
     gmailUser:            (db.gmailUser          || process.env.GMAIL_USER          || '').trim(),
     gmailAppPassword:     (db.gmailAppPassword   || process.env.GMAIL_APP_PASSWORD  || '').trim(),
-    siteUrl:              (db.siteUrl            || process.env.SITE_URL            || '').trim(),
+    siteUrl:              (process.env.SITE_URL            || db.siteUrl            || '').trim(),
     midtransServerKey:    (db.midtransServerKey  || process.env.MIDTRANS_SERVER_KEY || '').trim(),
     midtransClientKey:    (db.midtransClientKey  || process.env.MIDTRANS_CLIENT_KEY || '').trim(),
     midtransIsProduction: (db.midtransIsProduction || process.env.MIDTRANS_IS_PRODUCTION || '').trim(),

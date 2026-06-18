@@ -356,12 +356,18 @@ export default function Credentials() {
                           <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1.5">
                             Notification URL — daftarkan ke dashboard Midtrans:
                           </p>
-                          <div className="flex items-center gap-1.5 bg-white dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
-                            <code className="flex-1 text-xs font-mono text-amber-800 dark:text-amber-300 break-all select-all">
-                              {typeof window !== "undefined" ? `${window.location.origin}/api/payment/topup/notification` : "/api/payment/topup/notification"}
-                            </code>
-                            <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/api/payment/topup/notification` : "/api/payment/topup/notification"} />
-                          </div>
+                          {(() => {
+                            const siteUrlVal = config?.siteUrl?.value ? config.siteUrl.value.replace(/\/+$/, "") : "";
+                            const origin = typeof window !== "undefined" ? window.location.origin : "";
+                            const baseUrl = siteUrlVal || origin;
+                            const notifUrl = `${baseUrl}/api/payment/topup/notification`;
+                            return (
+                              <div className="flex items-center gap-1.5 bg-white dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                                <code className="flex-1 text-xs font-mono text-amber-800 dark:text-amber-300 break-all select-all">{notifUrl}</code>
+                                <CopyButton text={notifUrl} />
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
@@ -386,12 +392,32 @@ export default function Credentials() {
                           <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1.5">
                             Callback URL — salin & tempel ke Google Cloud Console:
                           </p>
-                          <div className="flex items-center gap-1.5 bg-white dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
-                            <code className="flex-1 text-xs font-mono text-blue-800 dark:text-blue-300 break-all select-all">
-                              {typeof window !== "undefined" ? `${window.location.origin}/auth/google/callback` : "/auth/google/callback"}
-                            </code>
-                            <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/auth/google/callback` : "/auth/google/callback"} />
-                          </div>
+                          {(() => {
+                            const siteUrlVal = config?.siteUrl?.value ? config.siteUrl.value.replace(/\/+$/, "") : "";
+                            const origin = typeof window !== "undefined" ? window.location.origin : "";
+                            const baseUrl = siteUrlVal || origin;
+                            const callbackUrl = `${baseUrl}/auth/google/callback`;
+                            const showMultiHint = siteUrlVal && siteUrlVal !== origin;
+                            return (
+                              <>
+                                <div className="flex items-center gap-1.5 bg-white dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                                  <code className="flex-1 text-xs font-mono text-blue-800 dark:text-blue-300 break-all select-all">{callbackUrl}</code>
+                                  <CopyButton text={callbackUrl} />
+                                </div>
+                                {showMultiHint && (
+                                  <div className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mt-1.5">
+                                    <ExternalLink size={11} className="mt-0.5 shrink-0" />
+                                    <span>
+                                      Jika kamu juga login dari URL lain (misal Replit staging{" "}
+                                      <code className="font-mono font-semibold">{origin}</code>), tambahkan{" "}
+                                      <code className="font-mono font-semibold">{origin}/auth/google/callback</code>{" "}
+                                      sebagai redirect URI tambahan di Google Cloud Console.
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
@@ -399,6 +425,39 @@ export default function Credentials() {
                     <div className="divide-y divide-border">
                       {fields.map(([key, meta]) => {
                         const field = config?.[key];
+
+                        // Special case: midtransIsProduction as toggle switch
+                        if (key === "midtransIsProduction") {
+                          const isProduction = ("midtransIsProduction" in editing)
+                            ? editing["midtransIsProduction"] === "true"
+                            : field?.value === "true";
+                          return (
+                            <div key={key} className="px-5 py-4">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium">Mode Midtrans</span>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Beralih antara Sandbox (testing) dan Produksi (live). Pastikan kunci yang diisi sesuai mode.
+                                  </p>
+                                  <p className={`text-xs font-semibold mt-1 ${isProduction ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                    {isProduction
+                                      ? "Produksi aktif — gunakan key yang diawali Mid-server-... (tanpa SB-)"
+                                      : "Sandbox aktif — gunakan key yang diawali SB-Mid-server-..."}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleEdit("midtransIsProduction", isProduction ? "" : "true")}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${isProduction ? "bg-emerald-500" : "bg-border"}`}
+                                  data-testid="toggle-midtrans-production"
+                                  title={isProduction ? "Klik untuk beralih ke Sandbox" : "Klik untuk beralih ke Produksi"}
+                                >
+                                  <span className={`mt-0.5 ml-0.5 inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${isProduction ? "translate-x-5" : "translate-x-0"}`} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         const isEditing = key in editing;
                         const isSecret = meta.secret;
                         const showRaw = visibleSecrets.has(key);
