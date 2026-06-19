@@ -31,6 +31,8 @@ import ManageNovel from "./pages/admin/ManageNovel";
 import CoinHistory from "./pages/public/CoinHistory";
 import LoginBonusPage from "./pages/public/LoginBonusPage";
 import PaymentFinish from "./pages/public/PaymentFinish";
+import Blog from "./pages/public/Blog";
+import BlogDetail from "./pages/public/BlogDetail";
 import NotFound from "@/pages/public/Not-Found";
 import { DailyLoginBonus } from "@/components/daily-login/DailyLoginBonus";
 
@@ -96,6 +98,8 @@ function Router() {
       <Route path="/koin/riwayat" component={CoinHistory} />
       <Route path="/login-bonus" component={LoginBonusPage} />
       <Route path="/payment/finish" component={PaymentFinish} />
+      <Route path="/blog/:slug" component={BlogDetail} />
+      <Route path="/blog" component={Blog} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />
       <Route path="/:slug" component={NovelDetail} />
       <Route component={NotFound} />

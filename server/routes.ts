@@ -3146,6 +3146,121 @@ export async function registerRoutes(
     }
   });
 
+  // ── Blog / Article Routes ─────────────────────────────────────────────────
+  const { ArticleModel } = await import("./blog-db");
+
+  // Public: list published articles
+  app.get("/api/blog", async (req, res) => {
+    try {
+      const articles = await ArticleModel.find({ status: "published" })
+        .sort({ publishedAt: -1 })
+        .select("title slug excerpt coverUrl tags publishedAt views authorName")
+        .limit(50)
+        .lean();
+      res.json(articles);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // Public: get article by slug
+  app.get("/api/blog/:slug", async (req, res) => {
+    try {
+      const article = await ArticleModel.findOne({ slug: req.params.slug, status: "published" }).lean();
+      if (!article) return res.status(404).json({ message: "Artikel tidak ditemukan" });
+      res.json(article);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // Public: increment view
+  app.patch("/api/blog/:slug/view", async (req, res) => {
+    try {
+      await ArticleModel.findOneAndUpdate({ slug: req.params.slug }, { $inc: { views: 1 } });
+      res.json({ ok: true });
+    } catch { res.json({ ok: false }); }
+  });
+
+  // Admin: list all articles (draft + published)
+  app.get("/api/admin/blog", requireAuth, async (req, res) => {
+    try {
+      const articles = await ArticleModel.find()
+        .sort({ createdAt: -1 })
+        .select("title slug excerpt status publishedAt views authorName createdAt")
+        .lean();
+      res.json(articles);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // Admin: check slug availability
+  app.get("/api/admin/blog/check-slug", requireAuth, async (req, res) => {
+    try {
+      const { slug, excludeId } = req.query as { slug: string; excludeId?: string };
+      if (!slug) return res.json({ available: false });
+      const query: any = { slug };
+      if (excludeId) query._id = { $ne: excludeId };
+      const existing = await ArticleModel.findOne(query).lean();
+      res.json({ available: !existing });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // Admin: create article
+  app.post("/api/admin/blog", requireAuth, async (req, res) => {
+    try {
+      const { title, slug, content, excerpt, coverUrl, tags, status, authorName } = req.body;
+      if (!title || !slug) return res.status(400).json({ message: "Judul dan slug wajib diisi" });
+      const existing = await ArticleModel.findOne({ slug }).lean();
+      if (existing) return res.status(409).json({ message: "Slug sudah digunakan" });
+      const article = await ArticleModel.create({
+        title, slug, content: content ?? "", excerpt: excerpt ?? "",
+        coverUrl: coverUrl || null, tags: Array.isArray(tags) ? tags : [],
+        status: status ?? "draft", authorName: authorName || "Admin",
+        publishedAt: status === "published" ? new Date() : null,
+      });
+      res.json(article);
+    } catch (err: any) {
+      if (err.code === 11000) return res.status(409).json({ message: "Slug sudah digunakan" });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Admin: update article
+  app.patch("/api/admin/blog/:id", requireAuth, async (req, res) => {
+    try {
+      const { title, slug, content, excerpt, coverUrl, tags, status, authorName } = req.body;
+      const article = await ArticleModel.findById(req.params.id);
+      if (!article) return res.status(404).json({ message: "Artikel tidak ditemukan" });
+      if (slug && slug !== (article as any).slug) {
+        const taken = await ArticleModel.findOne({ slug, _id: { $ne: req.params.id } }).lean();
+        if (taken) return res.status(409).json({ message: "Slug sudah digunakan" });
+      }
+      const wasPublished = (article as any).status === "published";
+      const isNowPublished = (status ?? (article as any).status) === "published";
+      const publishedAt = isNowPublished && !wasPublished ? new Date() : (article as any).publishedAt;
+      Object.assign(article, {
+        ...(title !== undefined && { title }),
+        ...(slug !== undefined && { slug }),
+        ...(content !== undefined && { content }),
+        ...(excerpt !== undefined && { excerpt }),
+        ...(coverUrl !== undefined && { coverUrl: coverUrl || null }),
+        ...(tags !== undefined && { tags: Array.isArray(tags) ? tags : [] }),
+        ...(status !== undefined && { status }),
+        ...(authorName !== undefined && { authorName }),
+        publishedAt,
+      });
+      await (article as any).save();
+      res.json(article);
+    } catch (err: any) {
+      if (err.code === 11000) return res.status(409).json({ message: "Slug sudah digunakan" });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Admin: delete article
+  app.delete("/api/admin/blog/:id", requireAuth, async (req, res) => {
+    try {
+      await ArticleModel.findByIdAndDelete(req.params.id);
+      res.json({ ok: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // ── Social Bot OG Middleware ──────────────────────────────────────────────
   const SITE_NAME = "WOOCE Novel";
   const SITE_DESC = "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.";

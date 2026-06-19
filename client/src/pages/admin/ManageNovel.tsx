@@ -17,7 +17,7 @@ import {
 import {
   BookOpen, Plus, Pencil, Trash2, ChevronRight, ChevronUp, ChevronDown,
   Eye, EyeOff, Star, ArrowLeft, Layers, FileText,
-  Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X,
+  Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X, Check, Loader2,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
   Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash,
@@ -27,7 +27,7 @@ import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1584,10 +1584,17 @@ export default function ManageNovel() {
           >
             <Mail size={13} /> Pesan
           </button>
+          <button
+            onClick={() => setView("blog")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "blog" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            data-testid="tab-blog"
+          >
+            <FileText size={13} /> Blog
+          </button>
           </div>
         </div>
 
-      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2364,10 +2371,272 @@ export default function ManageNovel() {
       {(view as View) === "reports" && <ReportsView />}
       {(view as View) === "coins" && <CoinAdminView />}
       {(view as View) === "messages" && <MessagesView />}
+      {(view as View) === "blog" && <BlogAdminView />}
 
       </div>
 
       {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
+    </div>
+  );
+}
+
+// ── BlogAdminView ─────────────────────────────────────────────────────────────
+interface BlogArticle {
+  _id: string; title: string; slug: string; excerpt: string;
+  status: "draft" | "published"; publishedAt: string | null;
+  views: number; authorName: string; createdAt: string;
+}
+
+function slugifyBlog(text: string) {
+  return text.toLowerCase()
+    .replace(/[àáâãäå]/g, "a").replace(/[èéêë]/g, "e")
+    .replace(/[ìíîï]/g, "i").replace(/[òóôõö]/g, "o")
+    .replace(/[ùúûü]/g, "u").replace(/[ñ]/g, "n")
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function BlogAdminView() {
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<BlogArticle | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    title: "", slug: "", excerpt: "", content: "", coverUrl: "",
+    tags: "", status: "draft" as "draft" | "published", authorName: "Admin",
+  });
+  const [slugManual, setSlugManual] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "ok" | "taken">("idle");
+  const slugTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const { data: articles, isLoading, refetch } = useQuery<BlogArticle[]>({
+    queryKey: ["/api/admin/blog"],
+    queryFn: () => fetch("/api/admin/blog", { credentials: "include" }).then(r => r.json()),
+  });
+
+  function openCreate() {
+    setEditing(null);
+    setForm({ title: "", slug: "", excerpt: "", content: "", coverUrl: "", tags: "", status: "draft", authorName: "Admin" });
+    setSlugManual(false);
+    setSlugStatus("idle");
+    setDialogOpen(true);
+  }
+
+  function openEdit(a: BlogArticle) {
+    setEditing(a);
+    setForm({
+      title: a.title, slug: a.slug, excerpt: a.excerpt ?? "",
+      content: "", coverUrl: "", tags: "", status: a.status, authorName: a.authorName ?? "Admin",
+    });
+    setSlugManual(true);
+    setSlugStatus("idle");
+    setDialogOpen(true);
+  }
+
+  function setTitle(v: string) {
+    setForm(f => ({ ...f, title: v, ...(!slugManual ? { slug: slugifyBlog(v) } : {}) }));
+    if (!slugManual) checkSlug(slugifyBlog(v), editing?._id);
+  }
+
+  function setSlug(v: string) {
+    setSlugManual(true);
+    setForm(f => ({ ...f, slug: v }));
+    checkSlug(v, editing?._id);
+  }
+
+  function checkSlug(slug: string, excludeId?: string) {
+    clearTimeout(slugTimer.current);
+    if (slug.length < 2) { setSlugStatus("idle"); return; }
+    setSlugStatus("checking");
+    slugTimer.current = setTimeout(async () => {
+      const url = `/api/admin/blog/check-slug?slug=${encodeURIComponent(slug)}${excludeId ? `&excludeId=${excludeId}` : ""}`;
+      const res = await fetch(url, { credentials: "include" }).then(r => r.json()).catch(() => ({ available: false }));
+      setSlugStatus(res.available ? "ok" : "taken");
+    }, 500);
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        title: form.title.trim(), slug: form.slug.trim(),
+        excerpt: form.excerpt.trim(), content: form.content,
+        coverUrl: form.coverUrl.trim() || null,
+        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+        status: form.status, authorName: form.authorName.trim() || "Admin",
+      };
+      const url = editing ? `/api/admin/blog/${editing._id}` : "/api/admin/blog";
+      const method = editing ? "PATCH" : "POST";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), credentials: "include" });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Gagal menyimpan"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: editing ? "Artikel diperbarui!" : "Artikel dibuat!" });
+      setDialogOpen(false);
+      refetch();
+    },
+    onError: (e: any) => toast({ title: e.message || "Gagal", variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => fetch(`/api/admin/blog/${id}`, { method: "DELETE", credentials: "include" }).then(r => r.json()),
+    onSuccess: () => { toast({ title: "Artikel dihapus" }); setDeleting(null); refetch(); },
+    onError: () => toast({ title: "Gagal menghapus", variant: "destructive" }),
+  });
+
+  function formatDate(d: string | null) {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  const canSave = form.title.trim() && form.slug.trim() && slugStatus !== "taken" && slugStatus !== "checking";
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-foreground">Manajemen Blog</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Buat dan kelola artikel yang tampil di halaman /blog</p>
+        </div>
+        <Button size="sm" onClick={openCreate} data-testid="button-blog-create">
+          <Plus size={14} className="mr-1.5" /> Artikel Baru
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
+      ) : !articles || articles.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
+          <FileText size={32} className="mb-3 opacity-30" />
+          <p className="font-medium text-sm">Belum ada artikel</p>
+          <p className="text-xs mt-1">Klik "Artikel Baru" untuk mulai menulis</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {articles.map(a => (
+            <div key={a._id} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors" data-testid={`row-article-${a._id}`}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.status === "published" ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                    {a.status === "published" ? "Terbit" : "Draft"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{formatDate(a.publishedAt)}</span>
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Eye size={10} />{a.views}</span>
+                </div>
+                <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
+                <p className="text-[11px] text-muted-foreground font-mono">/blog/{a.slug}</p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <a href={`/blog/${a.slug}`} target="_blank" rel="noreferrer">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" title="Lihat" data-testid={`button-blog-view-${a._id}`}><ExternalLink size={13} /></Button>
+                </a>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(a)} data-testid={`button-blog-edit-${a._id}`}><Pencil size={13} /></Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(a._id)} data-testid={`button-blog-delete-${a._id}`}><Trash2 size={13} /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Artikel" : "Artikel Baru"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Title */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Judul *</label>
+              <Input value={form.title} onChange={e => setTitle(e.target.value)} placeholder="Judul artikel..." data-testid="input-blog-title" />
+            </div>
+
+            {/* Slug */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Slug URL *</label>
+              <div className={`flex items-center border rounded-xl overflow-hidden transition-all ${slugStatus === "ok" ? "border-emerald-500" : slugStatus === "taken" ? "border-destructive" : "border-border"}`}>
+                <span className="px-3 text-xs text-muted-foreground bg-muted/50 border-r border-border py-2.5 shrink-0">/blog/</span>
+                <input
+                  value={form.slug}
+                  onChange={e => setSlug(e.target.value)}
+                  placeholder="slug-artikel"
+                  className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none font-mono"
+                  data-testid="input-blog-slug"
+                />
+                <div className="px-3">
+                  {slugStatus === "checking" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+                  {slugStatus === "ok" && <Check size={12} className="text-emerald-500" />}
+                  {slugStatus === "taken" && <X size={12} className="text-destructive" />}
+                </div>
+              </div>
+              {slugStatus === "taken" && <p className="text-[11px] text-destructive">Slug sudah dipakai, coba yang lain</p>}
+              {slugStatus === "ok" && <p className="text-[11px] text-emerald-600">Slug tersedia</p>}
+            </div>
+
+            {/* Excerpt */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Ringkasan</label>
+              <Textarea value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} placeholder="Deskripsi singkat artikel (tampil di kartu blog)..." rows={2} data-testid="input-blog-excerpt" />
+            </div>
+
+            {/* Content */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Konten</label>
+              <RichTextEditor value={form.content} onChange={v => setForm(f => ({ ...f, content: v }))} placeholder="Tulis isi artikel di sini..." />
+            </div>
+
+            {/* Cover URL */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">URL Cover (opsional)</label>
+              <Input value={form.coverUrl} onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))} placeholder="https://..." data-testid="input-blog-cover" />
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tags (pisah dengan koma)</label>
+              <Input value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} placeholder="Tips Menulis, Update, Platform..." data-testid="input-blog-tags" />
+            </div>
+
+            {/* Author & Status */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Nama Penulis</label>
+                <Input value={form.authorName} onChange={e => setForm(f => ({ ...f, authorName: e.target.value }))} placeholder="Admin" data-testid="input-blog-author" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Status</label>
+                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "draft" | "published" }))}>
+                  <SelectTrigger data-testid="select-blog-status"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">Terbit</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={!canSave || saveMutation.isPending} data-testid="button-blog-save">
+              {saveMutation.isPending ? <><Loader2 size={13} className="animate-spin mr-1.5" /> Menyimpan...</> : <><Check size={13} className="mr-1.5" /> Simpan</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog open={!!deleting} onOpenChange={v => !v && setDeleting(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Hapus Artikel?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Artikel ini akan dihapus permanen dan tidak bisa dikembalikan.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="destructive" onClick={() => deleting && deleteMutation.mutate(deleting)} disabled={deleteMutation.isPending} data-testid="button-blog-delete-confirm">
+              {deleteMutation.isPending ? "Menghapus..." : "Ya, Hapus"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1533,6 +1533,38 @@ Object.assign((translations as any).en, {
   "profile.activity.continue": "Continue →",
 });
 
+// ── Blog translations ──
+Object.assign((translations as any).id, {
+  "blog.title": "Blog",
+  "blog.heading": "Artikel & Update",
+  "blog.desc": "Tips menulis, update platform, dan cerita di balik WOOCE Novel.",
+  "blog.empty": "Belum ada artikel",
+  "blog.emptyDesc": "Artikel akan muncul di sini setelah dipublikasikan.",
+  "blog.read": "Baca",
+  "blog.backAll": "Lihat Semua Artikel",
+  "blog.backBlog": "Kembali ke Blog",
+  "blog.by": "Oleh",
+  "blog.views": "kali dibaca",
+  "blog.notFound": "Artikel tidak ditemukan",
+  "blog.notFoundDesc": "Artikel ini mungkin sudah dihapus atau URL salah.",
+  "blog.seoDesc": "Tips menulis, update platform, dan artikel seputar dunia novel di WOOCE Novel.",
+});
+Object.assign((translations as any).en, {
+  "blog.title": "Blog",
+  "blog.heading": "Articles & Updates",
+  "blog.desc": "Writing tips, platform updates, and stories behind WOOCE Novel.",
+  "blog.empty": "No articles yet",
+  "blog.emptyDesc": "Articles will appear here once published.",
+  "blog.read": "Read",
+  "blog.backAll": "View All Articles",
+  "blog.backBlog": "Back to Blog",
+  "blog.by": "By",
+  "blog.views": "views",
+  "blog.notFound": "Article not found",
+  "blog.notFoundDesc": "This article may have been deleted or the URL is incorrect.",
+  "blog.seoDesc": "Writing tips, platform updates, and articles about the world of novels at WOOCE Novel.",
+});
+
 export function getTranslation(lang: Language, key: string): string {
   return translations[lang]?.[key] ?? translations.en[key] ?? key;
 }
