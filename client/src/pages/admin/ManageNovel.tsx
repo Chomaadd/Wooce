@@ -2449,6 +2449,7 @@ function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: s
 // ── BlogAdminView ─────────────────────────────────────────────────────────────
 interface BlogArticle {
   _id: string; title: string; slug: string; excerpt: string;
+  content: string; coverUrl: string | null; tags: string[];
   status: "draft" | "published"; publishedAt: string | null;
   views: number; authorName: string; createdAt: string;
 }
@@ -2492,7 +2493,9 @@ function BlogAdminView() {
     setEditing(a);
     setForm({
       title: a.title, slug: a.slug, excerpt: a.excerpt ?? "",
-      content: "", coverUrl: "", tags: "", status: a.status, authorName: a.authorName ?? "Admin",
+      content: a.content ?? "", coverUrl: a.coverUrl ?? "",
+      tags: Array.isArray(a.tags) ? a.tags.join(", ") : "",
+      status: a.status, authorName: a.authorName ?? "Admin",
     });
     setSlugManual(true);
     setSlugStatus("idle");
@@ -2590,10 +2593,10 @@ function BlogAdminView() {
                   <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Eye size={10} />{a.views}</span>
                 </div>
                 <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
-                <p className="text-[11px] text-muted-foreground font-mono">/blog/{a.slug}</p>
+                <p className="text-[11px] text-muted-foreground font-mono">/artikel/{a.slug}</p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <a href={`/blog/${a.slug}`} target="_blank" rel="noreferrer">
+                <a href={`/artikel/${a.slug}`} target="_blank" rel="noreferrer">
                   <Button size="icon" variant="ghost" className="h-8 w-8" title="Lihat" data-testid={`button-blog-view-${a._id}`}><ExternalLink size={13} /></Button>
                 </a>
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(a)} data-testid={`button-blog-edit-${a._id}`}><Pencil size={13} /></Button>
@@ -2621,7 +2624,7 @@ function BlogAdminView() {
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Slug URL *</label>
               <div className={`flex items-center border rounded-xl overflow-hidden transition-all ${slugStatus === "ok" ? "border-emerald-500" : slugStatus === "taken" ? "border-destructive" : "border-border"}`}>
-                <span className="px-3 text-xs text-muted-foreground bg-muted/50 border-r border-border py-2.5 shrink-0">/blog/</span>
+                <span className="px-3 text-xs text-muted-foreground bg-muted/50 border-r border-border py-2.5 shrink-0">/artikel/</span>
                 <input
                   value={form.slug}
                   onChange={e => setSlug(e.target.value)}

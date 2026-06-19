@@ -80,6 +80,7 @@ export default function BlogDetail() {
               <ArrowLeft size={14} /> Kembali ke Blog
             </button>
           </Link>
+
         </main>
       </div>
     );

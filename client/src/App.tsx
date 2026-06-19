@@ -98,7 +98,7 @@ function Router() {
       <Route path="/koin/riwayat" component={CoinHistory} />
       <Route path="/login-bonus" component={LoginBonusPage} />
       <Route path="/payment/finish" component={PaymentFinish} />
-      <Route path="/blog/:slug" component={BlogDetail} />
+      <Route path="/artikel/:slug" component={BlogDetail} />
       <Route path="/blog" component={Blog} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />
       <Route path="/:slug" component={NovelDetail} />

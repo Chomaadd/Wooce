@@ -84,7 +84,7 @@ export default function Blog() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Link href={`/blog/${article.slug}`}>
+                <Link href={`/artikel/${article.slug}`}>
                   <div className="group rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 hover:shadow-md transition-all cursor-pointer h-full flex flex-col"
                     data-testid={`card-article-${article._id}`}>
                     {/* Cover */}

@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useSiteSettings } from "@/hooks/use-settings";
 
 const FALLBACK_NAME = "WOOCE Novel";
-const FALLBACK_DESCRIPTION = "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.";
+const FALLBACK_DESCRIPTION = "Platform baca novel, komik, dan cerita pendek terbaik";
 const FALLBACK_OG_IMAGE = "/image/landscape-wooce.png";
 
 function getSiteUrl(): string {
