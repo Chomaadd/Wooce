@@ -40,7 +40,6 @@ export default function BlogDetail() {
     enabled: !!slug,
   });
 
-  // Increment view count once
   useEffect(() => {
     if (slug) {
       fetch(`/api/blog/${slug}/view`, { method: "PATCH" }).catch(() => {});
@@ -80,7 +79,6 @@ export default function BlogDetail() {
               <ArrowLeft size={14} /> Kembali ke Blog
             </button>
           </Link>
-
         </main>
       </div>
     );
@@ -98,7 +96,6 @@ export default function BlogDetail() {
       <Navbar />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-10">
-        {/* Back */}
         <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} className="mb-7">
           <Link href="/blog">
             <button className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-blog">
@@ -107,7 +104,6 @@ export default function BlogDetail() {
           </Link>
         </motion.div>
 
-        {/* Cover image */}
         {article.coverUrl && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="rounded-2xl overflow-hidden mb-8 border border-border">
@@ -115,7 +111,6 @@ export default function BlogDetail() {
           </motion.div>
         )}
 
-        {/* Tags */}
         {article.tags.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}
             className="flex flex-wrap gap-2 mb-4">
@@ -127,27 +122,18 @@ export default function BlogDetail() {
           </motion.div>
         )}
 
-        {/* Title */}
         <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="text-2xl sm:text-3xl font-bold text-foreground leading-snug mb-4">
           {article.title}
         </motion.h1>
 
-        {/* Meta */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}
           className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-8 pb-6 border-b border-border">
-          <span className="flex items-center gap-1.5">
-            <Calendar size={12} />
-            {article.publishedAt ? formatDate(article.publishedAt) : "—"}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Eye size={12} />
-            {article.views.toLocaleString("id-ID")} kali dibaca
-          </span>
+          <span className="flex items-center gap-1.5"><Calendar size={12} />{article.publishedAt ? formatDate(article.publishedAt) : "—"}</span>
+          <span className="flex items-center gap-1.5"><Eye size={12} />{article.views.toLocaleString("id-ID")} kali dibaca</span>
           <span className="text-foreground font-medium">Oleh {article.authorName}</span>
         </motion.div>
 
-        {/* Content */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="prose prose-sm sm:prose dark:prose-invert max-w-none text-foreground">
           {article.content
@@ -156,7 +142,6 @@ export default function BlogDetail() {
           }
         </motion.div>
 
-        {/* Footer nav */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
           className="mt-12 pt-6 border-t border-border">
           <Link href="/blog">

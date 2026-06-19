@@ -31,8 +31,8 @@ import ManageNovel from "./pages/admin/ManageNovel";
 import CoinHistory from "./pages/public/CoinHistory";
 import LoginBonusPage from "./pages/public/LoginBonusPage";
 import PaymentFinish from "./pages/public/PaymentFinish";
-import Blog from "./pages/public/Blog";
-import BlogDetail from "./pages/public/BlogDetail";
+import Blog from "./pages/public/blog/Blog";
+import BlogDetail from "./pages/public/blog/BlogDetail";
 import NotFound from "@/pages/public/Not-Found";
 import { DailyLoginBonus } from "@/components/daily-login/DailyLoginBonus";
 

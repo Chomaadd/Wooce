@@ -2380,29 +2380,50 @@ export default function ManageNovel() {
   );
 }
 
-// ── BlogCoverUpload ────────────────────────────────────────────────────────────
+// ── BlogCoverUpload (with crop 16:9) ──────────────────────────────────────────
 function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [rawSrc, setRawSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const onCropComplete = useCallback((_: any, pixels: any) => setCroppedAreaPixels(pixels), []);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawSrc(reader.result as string);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleCrop = async () => {
+    if (!rawSrc || !croppedAreaPixels) return;
     setUploading(true);
     try {
+      const blob = await getCroppedBlob(rawSrc, croppedAreaPixels);
       const fd = new FormData();
-      fd.append("file", file, file.name);
+      fd.append("file", blob, `blog-cover-${Date.now()}.jpg`);
       const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
       if (!res.ok) throw new Error("Upload gagal");
       const { url } = await res.json();
       onChange(url);
+      setCropOpen(false);
+      setRawSrc(null);
       toast({ title: "Cover berhasil diupload!" });
     } catch {
       toast({ title: "Gagal upload cover", variant: "destructive" });
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   };
 
@@ -2411,37 +2432,50 @@ function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: s
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} data-testid="input-blog-cover-file" />
       {value ? (
         <div className="relative rounded-xl overflow-hidden border border-border">
-          <img src={value} alt="cover" className="w-full h-36 object-cover" />
-          <button
-            type="button"
-            onClick={() => onChange("")}
+          <img src={value} alt="cover" className="w-full aspect-video object-cover" />
+          <button type="button" onClick={() => onChange("")}
             className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
-            data-testid="button-blog-remove-cover"
-          >
+            data-testid="button-blog-remove-cover">
             <X size={13} />
+          </button>
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 text-white text-xs hover:bg-black/80 transition-colors">
+            <Upload size={11} /> Ganti
           </button>
         </div>
       ) : (
-        <div
-          onClick={() => !uploading && fileRef.current?.click()}
-          className="w-full h-28 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors"
-          data-testid="button-blog-upload-cover"
-        >
-          {uploading
-            ? <><Loader2 size={18} className="text-muted-foreground animate-spin" /><span className="text-xs text-muted-foreground">Mengupload...</span></>
-            : <><Upload size={18} className="text-muted-foreground/50" /><span className="text-xs text-muted-foreground">Klik untuk upload cover</span><span className="text-[10px] text-muted-foreground/50">JPG, PNG, WebP · Landscape direkomendasikan</span></>
-          }
+        <div onClick={() => fileRef.current?.click()}
+          className="w-full aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors"
+          data-testid="button-blog-upload-cover">
+          <Upload size={20} className="text-muted-foreground/50" />
+          <span className="text-xs text-muted-foreground">Klik untuk upload cover</span>
+          <span className="text-[10px] text-muted-foreground/50">16:9 · JPG, PNG, WebP</span>
         </div>
       )}
-      {!value && (
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-          data-testid="button-blog-upload-cover-btn"
-        >
-          {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-          {uploading ? "Mengupload..." : "Upload Gambar"}
-        </button>
-      )}
+
+      <Dialog open={cropOpen} onOpenChange={o => { if (!o) { setCropOpen(false); setRawSrc(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Crop Cover Artikel</DialogTitle></DialogHeader>
+          <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ height: 240 }}>
+            {rawSrc && (
+              <Cropper image={rawSrc} crop={crop} zoom={zoom} aspect={16 / 9}
+                onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground w-10">Zoom</span>
+            <input type="range" min={1} max={3} step={0.01} value={zoom}
+              onChange={e => setZoom(Number(e.target.value))} className="flex-1 accent-primary" />
+            <span className="text-xs text-muted-foreground w-10 text-right">{zoom.toFixed(1)}x</span>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCropOpen(false); setRawSrc(null); }}>Batal</Button>
+            <Button onClick={handleCrop} disabled={uploading}>
+              {uploading ? <><Loader2 size={13} className="animate-spin mr-1.5" />Mengupload...</> : "Gunakan Gambar Ini"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2464,7 +2498,7 @@ function slugifyBlog(text: string) {
 
 function BlogAdminView() {
   const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [mode, setMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<BlogArticle | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -2486,7 +2520,7 @@ function BlogAdminView() {
     setForm({ title: "", slug: "", excerpt: "", content: "", coverUrl: "", tags: "", status: "draft", authorName: "Admin" });
     setSlugManual(false);
     setSlugStatus("idle");
-    setDialogOpen(true);
+    setMode("editor");
   }
 
   function openEdit(a: BlogArticle) {
@@ -2499,7 +2533,7 @@ function BlogAdminView() {
     });
     setSlugManual(true);
     setSlugStatus("idle");
-    setDialogOpen(true);
+    setMode("editor");
   }
 
   function setTitle(v: string) {
@@ -2541,7 +2575,7 @@ function BlogAdminView() {
     },
     onSuccess: () => {
       toast({ title: editing ? "Artikel diperbarui!" : "Artikel dibuat!" });
-      setDialogOpen(false);
+      setMode("list");
       refetch();
     },
     onError: (e: any) => toast({ title: e.message || "Gagal", variant: "destructive" }),
@@ -2560,64 +2594,57 @@ function BlogAdminView() {
 
   const canSave = form.title.trim() && form.slug.trim() && slugStatus !== "taken" && slugStatus !== "checking";
 
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-bold text-foreground">Manajemen Blog</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Buat dan kelola artikel yang tampil di halaman /blog</p>
+  // ── Editor mode (inline, no modal) ───────────────────────────────────────────
+  if (mode === "editor") {
+    return (
+      <div className="space-y-0">
+        {/* Top action bar */}
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-border gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setMode("list")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="button-blog-back"
+          >
+            <ArrowLeft size={15} />
+            Daftar Artikel
+          </button>
+          <span className="font-semibold text-sm text-foreground flex-1 text-center truncate hidden sm:block">
+            {editing ? `Edit: ${editing.title}` : "Artikel Baru"}
+          </span>
+          <div className="flex items-center gap-2">
+            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "draft" | "published" }))}>
+              <SelectTrigger className="h-8 text-xs w-28" data-testid="select-blog-status"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Terbit</SelectItem>
+              </SelectContent>
+            </Select>
+            {editing && (
+              <a href={`/artikel/${editing.slug}`} target="_blank" rel="noreferrer">
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"><ExternalLink size={12} /> Lihat</Button>
+              </a>
+            )}
+            <Button size="sm" onClick={() => saveMutation.mutate()} disabled={!canSave || saveMutation.isPending} data-testid="button-blog-save">
+              {saveMutation.isPending ? <><Loader2 size={13} className="animate-spin mr-1.5" />Menyimpan...</> : <><Check size={13} className="mr-1.5" />Simpan</>}
+            </Button>
+          </div>
         </div>
-        <Button size="sm" onClick={openCreate} data-testid="button-blog-create">
-          <Plus size={14} className="mr-1.5" /> Artikel Baru
-        </Button>
-      </div>
 
-      {isLoading ? (
-        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
-      ) : !articles || articles.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
-          <FileText size={32} className="mb-3 opacity-30" />
-          <p className="font-medium text-sm">Belum ada artikel</p>
-          <p className="text-xs mt-1">Klik "Artikel Baru" untuk mulai menulis</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {articles.map(a => (
-            <div key={a._id} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors" data-testid={`row-article-${a._id}`}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.status === "published" ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-                    {a.status === "published" ? "Terbit" : "Draft"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">{formatDate(a.publishedAt)}</span>
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Eye size={10} />{a.views}</span>
-                </div>
-                <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
-                <p className="text-[11px] text-muted-foreground font-mono">/artikel/{a.slug}</p>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <a href={`/artikel/${a.slug}`} target="_blank" rel="noreferrer">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" title="Lihat" data-testid={`button-blog-view-${a._id}`}><ExternalLink size={13} /></Button>
-                </a>
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(a)} data-testid={`button-blog-edit-${a._id}`}><Pencil size={13} /></Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(a._id)} data-testid={`button-blog-delete-${a._id}`}><Trash2 size={13} /></Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Create / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Artikel" : "Artikel Baru"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        {/* Two-column editor layout */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_260px] gap-6">
+          {/* ── Left: main fields ── */}
+          <div className="space-y-5">
             {/* Title */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Judul *</label>
-              <Input value={form.title} onChange={e => setTitle(e.target.value)} placeholder="Judul artikel..." data-testid="input-blog-title" />
+              <Input
+                value={form.title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Judul artikel..."
+                className="text-base font-semibold h-11"
+                data-testid="input-blog-title"
+              />
             </div>
 
             {/* Slug */}
@@ -2645,53 +2672,113 @@ function BlogAdminView() {
             {/* Excerpt */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Ringkasan</label>
-              <Textarea value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} placeholder="Deskripsi singkat artikel (tampil di kartu blog)..." rows={2} data-testid="input-blog-excerpt" />
+              <Textarea
+                value={form.excerpt}
+                onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
+                placeholder="Deskripsi singkat artikel (tampil di kartu blog)..."
+                rows={2}
+                data-testid="input-blog-excerpt"
+              />
             </div>
 
             {/* Content */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Konten</label>
-              <RichTextEditor value={form.content} onChange={v => setForm(f => ({ ...f, content: v }))} placeholder="Tulis isi artikel di sini..." />
+              <RichTextEditor
+                value={form.content}
+                onChange={v => setForm(f => ({ ...f, content: v }))}
+                placeholder="Tulis isi artikel di sini..."
+                minHeight="420px"
+              />
             </div>
+          </div>
 
+          {/* ── Right: sidebar ── */}
+          <div className="space-y-5">
             {/* Cover */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cover Artikel (opsional)</label>
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cover Artikel</label>
               <BlogCoverUpload value={form.coverUrl} onChange={v => setForm(f => ({ ...f, coverUrl: v }))} />
             </div>
 
             {/* Tags */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tags (pisah dengan koma)</label>
-              <Input value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} placeholder="Tips Menulis, Update, Platform..." data-testid="input-blog-tags" />
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tags</label>
+              <Input
+                value={form.tags}
+                onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+                placeholder="Panduan, Update, Tips..."
+                data-testid="input-blog-tags"
+              />
+              <p className="text-[10px] text-muted-foreground">Pisahkan dengan koma</p>
             </div>
 
-            {/* Author & Status */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Nama Penulis</label>
-                <Input value={form.authorName} onChange={e => setForm(f => ({ ...f, authorName: e.target.value }))} placeholder="Admin" data-testid="input-blog-author" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Status</label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as "draft" | "published" }))}>
-                  <SelectTrigger data-testid="select-blog-status"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Terbit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Author */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Nama Penulis</label>
+              <Input
+                value={form.authorName}
+                onChange={e => setForm(f => ({ ...f, authorName: e.target.value }))}
+                placeholder="Admin"
+                data-testid="input-blog-author"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!canSave || saveMutation.isPending} data-testid="button-blog-save">
-              {saveMutation.isPending ? <><Loader2 size={13} className="animate-spin mr-1.5" /> Menyimpan...</> : <><Check size={13} className="mr-1.5" /> Simpan</>}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
+    );
+  }
+
+  // ── List mode ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-foreground">Manajemen Blog</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Buat dan kelola artikel di halaman /blog</p>
+        </div>
+        <Button size="sm" onClick={openCreate} data-testid="button-blog-create">
+          <Plus size={14} className="mr-1.5" /> Artikel Baru
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
+      ) : !articles || articles.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-center text-muted-foreground">
+          <FileText size={32} className="mb-3 opacity-30" />
+          <p className="font-medium text-sm">Belum ada artikel</p>
+          <p className="text-xs mt-1">Klik "Artikel Baru" untuk mulai menulis</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {articles.map(a => (
+            <div key={a._id} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors" data-testid={`row-article-${a._id}`}>
+              {a.coverUrl && (
+                <img src={a.coverUrl} alt="" className="w-14 h-10 rounded-lg object-cover flex-shrink-0 border border-border" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.status === "published" ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                    {a.status === "published" ? "Terbit" : "Draft"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{formatDate(a.publishedAt)}</span>
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Eye size={10} />{a.views}</span>
+                </div>
+                <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
+                <p className="text-[11px] text-muted-foreground font-mono">/artikel/{a.slug}</p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <a href={`/artikel/${a.slug}`} target="_blank" rel="noreferrer">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" title="Lihat" data-testid={`button-blog-view-${a._id}`}><ExternalLink size={13} /></Button>
+                </a>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(a)} data-testid={`button-blog-edit-${a._id}`}><Pencil size={13} /></Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(a._id)} data-testid={`button-blog-delete-${a._id}`}><Trash2 size={13} /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Delete Confirm */}
       <Dialog open={!!deleting} onOpenChange={v => !v && setDeleting(null)}>
