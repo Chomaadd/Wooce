@@ -2380,6 +2380,72 @@ export default function ManageNovel() {
   );
 }
 
+// ── BlogCoverUpload ────────────────────────────────────────────────────────────
+function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error("Upload gagal");
+      const { url } = await res.json();
+      onChange(url);
+      toast({ title: "Cover berhasil diupload!" });
+    } catch {
+      toast({ title: "Gagal upload cover", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} data-testid="input-blog-cover-file" />
+      {value ? (
+        <div className="relative rounded-xl overflow-hidden border border-border">
+          <img src={value} alt="cover" className="w-full h-36 object-cover" />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
+            data-testid="button-blog-remove-cover"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ) : (
+        <div
+          onClick={() => !uploading && fileRef.current?.click()}
+          className="w-full h-28 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors"
+          data-testid="button-blog-upload-cover"
+        >
+          {uploading
+            ? <><Loader2 size={18} className="text-muted-foreground animate-spin" /><span className="text-xs text-muted-foreground">Mengupload...</span></>
+            : <><Upload size={18} className="text-muted-foreground/50" /><span className="text-xs text-muted-foreground">Klik untuk upload cover</span><span className="text-[10px] text-muted-foreground/50">JPG, PNG, WebP · Landscape direkomendasikan</span></>
+          }
+        </div>
+      )}
+      {!value && (
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          data-testid="button-blog-upload-cover-btn"
+        >
+          {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+          {uploading ? "Mengupload..." : "Upload Gambar"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── BlogAdminView ─────────────────────────────────────────────────────────────
 interface BlogArticle {
   _id: string; title: string; slug: string; excerpt: string;
@@ -2585,10 +2651,10 @@ function BlogAdminView() {
               <RichTextEditor value={form.content} onChange={v => setForm(f => ({ ...f, content: v }))} placeholder="Tulis isi artikel di sini..." />
             </div>
 
-            {/* Cover URL */}
+            {/* Cover */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">URL Cover (opsional)</label>
-              <Input value={form.coverUrl} onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))} placeholder="https://..." data-testid="input-blog-cover" />
+              <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cover Artikel (opsional)</label>
+              <BlogCoverUpload value={form.coverUrl} onChange={v => setForm(f => ({ ...f, coverUrl: v }))} />
             </div>
 
             {/* Tags */}

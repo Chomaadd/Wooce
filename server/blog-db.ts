@@ -16,7 +16,6 @@ const articleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-articleSchema.index({ slug: 1 }, { unique: true });
 articleSchema.index({ status: 1, publishedAt: -1 });
 
 export const ArticleModel =
