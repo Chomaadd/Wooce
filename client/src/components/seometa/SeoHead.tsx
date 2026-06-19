@@ -48,7 +48,7 @@ export function SeoHead({
   })();
 
   const resolvedCardType = cardType ?? (image ? "summary_large_image" : "summary");
-  const fullTitle = title ? `${title} | ${siteName}` : siteName;
+  const fullTitle = title || siteName;
   const canonicalUrl = url ? `${siteUrl}${url}` : siteUrl;
 
   return (
