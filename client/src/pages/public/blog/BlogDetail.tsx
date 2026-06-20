@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useParams, Link } from "wouter";
-import { Calendar, Eye, Tag, ArrowLeft, Newspaper } from "lucide-react";
+import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
@@ -28,6 +28,88 @@ function formatDate(dateStr: string) {
   });
 }
 
+function RelatedArticleCard({ article, index }: { article: Article; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 * index }}
+    >
+      <Link href={`/artikel/${article.slug}`}>
+        <div
+          className="group flex flex-col h-full rounded-2xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer"
+          data-testid={`card-related-${article.slug}`}
+        >
+          {article.coverUrl ? (
+            <div className="w-full h-36 overflow-hidden bg-muted shrink-0">
+              <img
+                src={article.coverUrl}
+                alt={article.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+          ) : (
+            <div className="w-full h-36 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
+              <BookOpen size={28} className="text-primary/30" />
+            </div>
+          )}
+
+          <div className="flex flex-col flex-1 p-4 gap-2">
+            {article.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {article.tags.slice(0, 2).map(tag => (
+                  <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary">
+                    <Tag size={8} /> {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <h3 className="text-sm font-bold text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+              {article.title}
+            </h3>
+
+            {article.excerpt && (
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">
+                {article.excerpt}
+              </p>
+            )}
+
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-auto pt-2 border-t border-border/60">
+              <span className="flex items-center gap-1">
+                <Calendar size={10} />
+                {article.publishedAt ? formatDate(article.publishedAt) : "—"}
+              </span>
+              <span className="flex items-center gap-1">
+                <Eye size={10} />
+                {article.views.toLocaleString("id-ID")}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+function RelatedArticlesSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {[0, 1, 2].map(i => (
+        <div key={i} className="rounded-2xl border border-border overflow-hidden">
+          <Skeleton className="w-full h-36" />
+          <div className="p-4 space-y-2">
+            <Skeleton className="h-3 w-16 rounded-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function BlogDetail() {
   const { slug } = useParams<{ slug: string }>();
 
@@ -38,6 +120,12 @@ export default function BlogDetail() {
       return r.json();
     }),
     enabled: !!slug,
+  });
+
+  const { data: related = [], isLoading: relatedLoading } = useQuery<Article[]>({
+    queryKey: ["/api/blog", slug, "related"],
+    queryFn: () => fetch(`/api/blog/${slug}/related`).then(r => r.json()),
+    enabled: !!slug && !!article,
   });
 
   useEffect(() => {
@@ -142,8 +230,34 @@ export default function BlogDetail() {
           }
         </motion.div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          className="mt-12 pt-6 border-t border-border">
+        {/* Related Articles */}
+        {(relatedLoading || related.length > 0) && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mt-14"
+            data-testid="section-related-articles"
+          >
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="w-1 h-5 rounded-full bg-primary" />
+              <h2 className="text-base font-bold text-foreground">Artikel Terkait</h2>
+            </div>
+
+            {relatedLoading ? (
+              <RelatedArticlesSkeleton />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {related.map((rel, i) => (
+                  <RelatedArticleCard key={rel._id} article={rel} index={i} />
+                ))}
+              </div>
+            )}
+          </motion.section>
+        )}
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          className="mt-10 pt-6 border-t border-border">
           <Link href="/blog">
             <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
               <ArrowLeft size={14} /> Lihat Semua Artikel

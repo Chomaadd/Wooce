@@ -3178,6 +3178,29 @@ export async function registerRoutes(
     } catch { res.json({ ok: false }); }
   });
 
+  // Public: related articles by tags
+  app.get("/api/blog/:slug/related", async (req, res) => {
+    try {
+      const current = await ArticleModel.findOne({ slug: req.params.slug, status: "published" }).select("_id tags").lean();
+      if (!current || !current.tags?.length) return res.json([]);
+      const related = await ArticleModel.find({
+        status: "published",
+        _id: { $ne: current._id },
+        tags: { $in: current.tags },
+      })
+        .sort({ publishedAt: -1 })
+        .select("title slug excerpt coverUrl tags publishedAt views authorName")
+        .limit(6)
+        .lean();
+      // sort by number of matching tags descending, take top 3
+      const scored = related
+        .map(a => ({ ...a, _score: (a.tags as string[]).filter((t: string) => (current.tags as string[]).includes(t)).length }))
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 3);
+      res.json(scored);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // Admin: list all articles (draft + published)
   app.get("/api/admin/blog", requireAuth, async (req, res) => {
     try {
