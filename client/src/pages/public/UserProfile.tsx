@@ -437,10 +437,10 @@ export default function UserProfile() {
     { key: "trakteer", label: "Trakteer" },
   ];
 
-  const tabs: { key: ProfileTab; label: string; icon: any }[] = [
+  const tabs: { key: ProfileTab; label: string; icon: any; badge?: number }[] = [
     ...(isWriter ? [{ key: "cerita" as ProfileTab, label: "Cerita", icon: PenLine }] : []),
-    { key: "bookmark", label: "Bookmark", icon: Bookmark },
-    { key: "aktivitas", label: "Aktivitas", icon: Activity },
+    { key: "bookmark", label: "Bookmark", icon: Bookmark, badge: bookmarked.length > 0 ? bookmarked.length : undefined },
+    { key: "aktivitas", label: "Riwayat Baca", icon: History, badge: !historyLoading && readHistory.length > 0 ? readHistory.length : undefined },
     { key: "pengaturan", label: "Pengaturan", icon: Settings },
   ];
 
@@ -573,9 +573,9 @@ export default function UserProfile() {
                 >
                   <Icon size={12} />
                   {tab.label}
-                  {tab.key === "bookmark" && bookmarked.length > 0 && (
+                  {tab.badge !== undefined && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
-                      {bookmarked.length}
+                      {tab.badge}
                     </span>
                   )}
                 </button>
@@ -998,11 +998,17 @@ export default function UserProfile() {
           {/* ── Tab: Aktivitas ── */}
           {effectiveTab === "aktivitas" && (
             <motion.div key="aktivitas" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Activity size={13} className="text-primary" />
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <History size={13} className="text-primary" />
+                  </div>
+                  <h2 className="font-bold text-sm text-foreground">Riwayat Baca</h2>
+                  {!historyLoading && readHistory.length > 0 && (
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">({readHistory.length})</span>
+                  )}
                 </div>
-                <h2 className="font-bold text-sm text-foreground">Aktivitas Baca</h2>
+                <span className="text-[10px] text-muted-foreground/50">Tersinkron lintas perangkat</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

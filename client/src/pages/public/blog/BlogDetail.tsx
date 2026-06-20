@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useParams, Link } from "wouter";
-import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen } from "lucide-react";
+import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen, Globe, Languages } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
@@ -107,6 +107,32 @@ function RelatedArticlesSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+function TranslateButton({ articleUrl }: { articleUrl: string }) {
+  const [translated, setTranslated] = useState(false);
+
+  const handleTranslate = () => {
+    if (translated) {
+      window.location.reload();
+      return;
+    }
+    const gtUrl = `https://translate.google.com/translate?sl=id&tl=en&u=${encodeURIComponent(articleUrl)}`;
+    window.open(gtUrl, "_blank", "noopener,noreferrer");
+    setTranslated(true);
+  };
+
+  return (
+    <button
+      onClick={handleTranslate}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted hover:border-primary/30 transition-all"
+      data-testid="button-translate-article"
+      title="Terjemahkan artikel ini ke Bahasa Inggris"
+    >
+      <Languages size={12} />
+      Terjemahkan
+    </button>
   );
 }
 
@@ -216,10 +242,13 @@ export default function BlogDetail() {
         </motion.h1>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}
-          className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-8 pb-6 border-b border-border">
-          <span className="flex items-center gap-1.5"><Calendar size={12} />{article.publishedAt ? formatDate(article.publishedAt) : "—"}</span>
-          <span className="flex items-center gap-1.5"><Eye size={12} />{article.views.toLocaleString("id-ID")} kali dibaca</span>
-          <span className="text-foreground font-medium">Oleh {article.authorName}</span>
+          className="flex flex-wrap items-center justify-between gap-3 mb-8 pb-6 border-b border-border">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><Calendar size={12} />{article.publishedAt ? formatDate(article.publishedAt) : "—"}</span>
+            <span className="flex items-center gap-1.5"><Eye size={12} />{article.views.toLocaleString("id-ID")} kali dibaca</span>
+            <span className="text-foreground font-medium">Oleh {article.authorName}</span>
+          </div>
+          <TranslateButton articleUrl={typeof window !== "undefined" ? window.location.href : ""} />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
