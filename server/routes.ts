@@ -3183,7 +3183,7 @@ export async function registerRoutes(
     try {
       const articles = await ArticleModel.find()
         .sort({ createdAt: -1 })
-        .select("title slug excerpt status publishedAt views authorName createdAt")
+        .select("title slug excerpt content tags status publishedAt views authorName createdAt")
         .lean();
       res.json(articles);
     } catch { res.status(500).json({ message: "Internal server error" }); }
