@@ -20,7 +20,7 @@ import {
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X, Check, Loader2,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
-  Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash,
+  Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash, Sparkles,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
@@ -2380,8 +2380,139 @@ export default function ManageNovel() {
   );
 }
 
-// ── BlogCoverUpload (with crop 16:9) ──────────────────────────────────────────
-function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+// ── Blog Cover Generation helpers ────────────────────────────────────────────
+function _hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function _wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+const BLOG_COVER_THEMES = [
+  { name: "Midnight Navy", bg: ["#060d1f", "#0c1e4a", "#091638"] as [string, string, string], accent: "#4f8ef7", circles: [{ x: 1.05, y: -0.05, r: 380, a: 0.20 }, { x: -0.05, y: 1.05, r: 300, a: 0.14 }, { x: 0.75, y: 0.75, r: 200, a: 0.08 }] },
+  { name: "Amber Dusk",    bg: ["#130800", "#3d1800", "#6b2d00"] as [string, string, string], accent: "#f59e0b", circles: [{ x: 1.05, y: 0.4, r: 400, a: 0.22 }, { x: -0.05, y: -0.05, r: 280, a: 0.12 }, { x: 0.4, y: 1.05, r: 220, a: 0.10 }] },
+  { name: "Forest Night",  bg: ["#020d05", "#082014", "#0d3320"] as [string, string, string], accent: "#22c55e", circles: [{ x: -0.05, y: -0.05, r: 380, a: 0.16 }, { x: 1.05, y: 1.05, r: 360, a: 0.16 }, { x: 0.5, y: 0.5, r: 180, a: 0.06 }] },
+  { name: "Amethyst",      bg: ["#090318", "#1a0840", "#2a0d62"] as [string, string, string], accent: "#a855f7", circles: [{ x: 1.05, y: -0.05, r: 400, a: 0.22 }, { x: -0.05, y: 1.05, r: 320, a: 0.16 }, { x: 0.3, y: 0.4, r: 160, a: 0.08 }] },
+  { name: "Crimson Noir",  bg: ["#080000", "#250000", "#400000"] as [string, string, string], accent: "#ef4444", circles: [{ x: 1.05, y: -0.05, r: 450, a: 0.20 }, { x: -0.05, y: 1.05, r: 350, a: 0.14 }] },
+  { name: "Arctic Slate",  bg: ["#050c16", "#0e2238", "#132d4a"] as [string, string, string], accent: "#38bdf8", circles: [{ x: 0.5, y: -0.15, r: 400, a: 0.14 }, { x: 1.1, y: 1.1, r: 380, a: 0.16 }, { x: 0.1, y: 0.6, r: 180, a: 0.08 }] },
+];
+
+function _drawBlogCover(canvas: HTMLCanvasElement, title: string, tagStr: string, themeIdx: number): void {
+  const W = 1200, H = 675;
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  const theme = BLOG_COVER_THEMES[themeIdx];
+
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, theme.bg[0]);
+  bgGrad.addColorStop(0.55, theme.bg[1]);
+  bgGrad.addColorStop(1, theme.bg[2]);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  for (const c of theme.circles) {
+    const cx = c.x * W, cy = c.y * H;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, c.r);
+    g.addColorStop(0, _hexToRgba(theme.accent, c.a));
+    g.addColorStop(0.6, _hexToRgba(theme.accent, c.a * 0.3));
+    g.addColorStop(1, _hexToRgba(theme.accent, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const INSET = 26;
+  ctx.strokeStyle = _hexToRgba(theme.accent, 0.18);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(INSET, INSET, W - INSET * 2, H - INSET * 2);
+
+  (ctx as any).letterSpacing = "4px";
+  ctx.font = "500 15px Arial, sans-serif";
+  ctx.fillStyle = _hexToRgba(theme.accent, 0.85);
+  ctx.textAlign = "left";
+  ctx.fillText("WOOCE NOVEL", INSET + 18, INSET + 36);
+  (ctx as any).letterSpacing = "0px";
+  ctx.fillStyle = _hexToRgba(theme.accent, 0.30);
+  ctx.fillRect(INSET + 18, INSET + 43, 88, 1);
+
+  const raw = title.trim() || "Judul Artikel";
+  let fontSize = raw.length < 28 ? 68 : raw.length < 50 ? 54 : raw.length < 80 ? 44 : 36;
+  ctx.font = `bold ${fontSize}px Georgia, "Times New Roman", serif`;
+  const maxTW = W - 180;
+  let lines = _wrapCanvasText(ctx, raw, maxTW);
+  while (lines.length > 4 && fontSize > 24) {
+    fontSize -= 4;
+    ctx.font = `bold ${fontSize}px Georgia, "Times New Roman", serif`;
+    lines = _wrapCanvasText(ctx, raw, maxTW);
+  }
+  const lineH = fontSize * 1.32;
+  const totalH = lines.length * lineH;
+  const titleY = (H - totalH) / 2 + fontSize * 0.36;
+
+  ctx.shadowColor = "rgba(0,0,0,0.85)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  lines.forEach((l, i) => ctx.fillText(l, W / 2, titleY + i * lineH));
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  const tags = tagStr.split(",").map(t => t.trim()).filter(Boolean).slice(0, 4);
+  if (tags.length) {
+    ctx.font = "500 13px Arial, sans-serif";
+    ctx.textAlign = "left";
+    let tagX = INSET + 18;
+    const tagY = H - INSET - 20 - 28;
+    for (const tag of tags) {
+      const tw = ctx.measureText(tag).width + 28;
+      ctx.fillStyle = _hexToRgba(theme.accent, 0.18);
+      ctx.beginPath();
+      if ((ctx as any).roundRect) (ctx as any).roundRect(tagX, tagY, tw, 28, 14);
+      else ctx.rect(tagX, tagY, tw, 28);
+      ctx.fill();
+      ctx.strokeStyle = _hexToRgba(theme.accent, 0.35);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if ((ctx as any).roundRect) (ctx as any).roundRect(tagX, tagY, tw, 28, 14);
+      else ctx.rect(tagX, tagY, tw, 28);
+      ctx.stroke();
+      ctx.fillStyle = _hexToRgba(theme.accent, 0.92);
+      ctx.fillText(tag, tagX + 14, tagY + 19);
+      tagX += tw + 10;
+    }
+  }
+}
+
+// ── BlogCoverUpload (with crop 16:9 + auto-generate) ─────────────────────────
+function BlogCoverUpload({
+  value, onChange, title = "", tags = "",
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  title?: string;
+  tags?: string;
+}) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [rawSrc, setRawSrc] = useState<string | null>(null);
@@ -2390,6 +2521,9 @@ function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: s
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [genOpen, setGenOpen] = useState(false);
+  const [genImages, setGenImages] = useState<string[]>([]);
+  const [genLoading, setGenLoading] = useState(false);
   const onCropComplete = useCallback((_: any, pixels: any) => setCroppedAreaPixels(pixels), []);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2427,9 +2561,45 @@ function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: s
     }
   };
 
+  function handleGenerate() {
+    setGenImages([]);
+    setGenLoading(true);
+    setGenOpen(true);
+    setTimeout(() => {
+      const canvas = document.createElement("canvas");
+      const imgs: string[] = [];
+      for (let i = 0; i < BLOG_COVER_THEMES.length; i++) {
+        _drawBlogCover(canvas, title, tags, i);
+        imgs.push(canvas.toDataURL("image/jpeg", 0.92));
+      }
+      setGenImages(imgs);
+      setGenLoading(false);
+    }, 60);
+  }
+
+  async function selectGenCover(dataUrl: string) {
+    setUploading(true);
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const fd = new FormData();
+      fd.append("file", blob, `blog-cover-gen-${Date.now()}.jpg`);
+      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error("Upload gagal");
+      const { url } = await res.json();
+      onChange(url);
+      setGenOpen(false);
+      toast({ title: "Cover berhasil dibuat!" });
+    } catch {
+      toast({ title: "Gagal upload cover", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="space-y-2">
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} data-testid="input-blog-cover-file" />
+
       {value ? (
         <div className="relative rounded-xl overflow-hidden border border-border">
           <img src={value} alt="cover" className="w-full aspect-video object-cover" />
@@ -2438,21 +2608,38 @@ function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: s
             data-testid="button-blog-remove-cover">
             <X size={13} />
           </button>
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 text-white text-xs hover:bg-black/80 transition-colors">
-            <Upload size={11} /> Ganti
-          </button>
+          <div className="absolute bottom-2 right-2 flex gap-1.5">
+            <button type="button" onClick={handleGenerate}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 text-white text-xs hover:bg-black/80 transition-colors"
+              data-testid="button-blog-regen-cover">
+              <Sparkles size={11} /> Generate
+            </button>
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 text-white text-xs hover:bg-black/80 transition-colors">
+              <Upload size={11} /> Ganti
+            </button>
+          </div>
         </div>
       ) : (
-        <div onClick={() => fileRef.current?.click()}
-          className="w-full aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors"
-          data-testid="button-blog-upload-cover">
-          <Upload size={20} className="text-muted-foreground/50" />
-          <span className="text-xs text-muted-foreground">Klik untuk upload cover</span>
-          <span className="text-[10px] text-muted-foreground/50">16:9 · JPG, PNG, WebP</span>
+        <div className="w-full aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-3">
+          <ImageIcon size={24} className="text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground">Belum ada cover</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              data-testid="button-blog-upload-cover">
+              <Upload size={12} /> Upload Gambar
+            </button>
+            <button type="button" onClick={handleGenerate}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/30 text-xs hover:bg-primary/20 transition-colors"
+              data-testid="button-blog-gen-cover">
+              <Sparkles size={12} /> Buat Otomatis
+            </button>
+          </div>
         </div>
       )}
 
+      {/* Crop dialog */}
       <Dialog open={cropOpen} onOpenChange={o => { if (!o) { setCropOpen(false); setRawSrc(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Crop Cover Artikel</DialogTitle></DialogHeader>
@@ -2472,6 +2659,57 @@ function BlogCoverUpload({ value, onChange }: { value: string; onChange: (url: s
             <Button variant="outline" onClick={() => { setCropOpen(false); setRawSrc(null); }}>Batal</Button>
             <Button onClick={handleCrop} disabled={uploading}>
               {uploading ? <><Loader2 size={13} className="animate-spin mr-1.5" />Mengupload...</> : "Gunakan Gambar Ini"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate cover dialog */}
+      <Dialog open={genOpen} onOpenChange={o => { if (!o) setGenOpen(false); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles size={16} className="text-primary" /> Pilih Desain Cover
+            </DialogTitle>
+          </DialogHeader>
+          {genLoading ? (
+            <div className="flex flex-col items-center py-12 gap-3">
+              <Loader2 size={28} className="animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Sedang membuat cover...</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground -mt-1">Klik salah satu desain untuk dipakai sebagai cover artikel.</p>
+              <div className="grid grid-cols-3 gap-3">
+                {genImages.map((src, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => !uploading && selectGenCover(src)}
+                    disabled={uploading}
+                    className="group relative rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all focus:outline-none focus:border-primary disabled:opacity-50"
+                    data-testid={`button-blog-cover-theme-${i}`}
+                  >
+                    <img src={src} alt={BLOG_COVER_THEMES[i].name} className="w-full aspect-video object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end p-2">
+                      <span className="text-[10px] font-semibold text-transparent group-hover:text-white/90 transition-all px-2 py-0.5 rounded-full bg-black/0 group-hover:bg-black/40">
+                        {BLOG_COVER_THEMES[i].name}
+                      </span>
+                    </div>
+                    {uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <Loader2 size={20} className="animate-spin text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGenOpen(false)} disabled={uploading}>Tutup</Button>
+            <Button variant="outline" onClick={handleGenerate} disabled={genLoading || uploading}>
+              <RotateCcw size={13} className="mr-1.5" /> Refresh Semua
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2698,7 +2936,7 @@ function BlogAdminView() {
             {/* Cover */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Cover Artikel</label>
-              <BlogCoverUpload value={form.coverUrl} onChange={v => setForm(f => ({ ...f, coverUrl: v }))} />
+              <BlogCoverUpload value={form.coverUrl} onChange={v => setForm(f => ({ ...f, coverUrl: v }))} title={form.title} tags={form.tags} />
             </div>
 
             {/* Tags */}
