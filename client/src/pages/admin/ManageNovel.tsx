@@ -26,9 +26,8 @@ import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
-import { ShortUrlsPanel } from "@/pages/admin/ManageShortUrls";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog" | "url-pendek";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1566,14 +1565,21 @@ export default function ManageNovel() {
                   {tab("coins", "Koin", <Coins size={12} />, "tab-coins")}
                   {tab("messages", "Pesan", <Mail size={12} />, "tab-messages")}
                   {tab("blog", "Blog", <FileText size={12} />, "tab-blog")}
-                  {tab("url-pendek", "URL Pendek", <Scissors size={12} />, "tab-short-urls")}
+                  <Link href="/admin/short-urls">
+                    <button
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground"
+                      data-testid="tab-short-urls"
+                    >
+                      <Scissors size={12} /> URL Pendek
+                    </button>
+                  </Link>
                 </>
               );
             })()}
           </div>
         </div>
 
-      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && (view as View) !== "url-pendek" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2351,7 +2357,6 @@ export default function ManageNovel() {
       {(view as View) === "coins" && <CoinAdminView />}
       {(view as View) === "messages" && <MessagesView />}
       {(view as View) === "blog" && <BlogAdminView />}
-      {(view as View) === "url-pendek" && <ShortUrlsPanel />}
 
       </div>
 

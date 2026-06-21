@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -323,7 +324,7 @@ function UrlSection({
   );
 }
 
-export function ShortUrlsPanel() {
+export default function ManageShortUrls() {
   const { toast } = useToast();
 
   const [targetUrl, setTargetUrl] = useState("");
@@ -391,7 +392,8 @@ export function ShortUrlsPanel() {
   const expiredUrls = urls.filter(u => u.expiresAt && new Date(u.expiresAt) <= new Date());
 
   return (
-    <div className="space-y-8">
+    <AdminLayout>
+      <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold">URL Pendek</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -558,6 +560,7 @@ export function ShortUrlsPanel() {
             )}
           </div>
         )}
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
