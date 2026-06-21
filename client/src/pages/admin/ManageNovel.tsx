@@ -21,6 +21,7 @@ import {
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
   Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash, Sparkles, Scissors,
+  Download, FileJson,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
@@ -1197,6 +1198,47 @@ export default function ManageNovel() {
   const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
   const [pdfDownloading, setPdfDownloading] = useState(false);
 
+  const [exportLoading, setExportLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<"skip" | "overwrite">("skip");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: boolean; total: number; inserted: number; updated: number; skipped: number; errors: number; } | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleExportBlog() {
+    setExportLoading(true);
+    try {
+      const res = await fetch("/api/admin/export/blog", { credentials: "include" });
+      if (!res.ok) throw new Error("Export gagal");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `blog-export-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert("Export gagal, coba lagi."); }
+    finally { setExportLoading(false); }
+  }
+
+  async function handleImportBlog() {
+    if (!importFile) return;
+    setImportLoading(true); setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile); formData.append("mode", importMode);
+      const res = await fetch("/api/admin/import/blog", { method: "POST", credentials: "include", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Import gagal");
+      setImportResult(data);
+    } catch (err: any) { alert(err.message || "Import gagal."); }
+    finally { setImportLoading(false); }
+  }
+
+  function resetImport() {
+    setImportFile(null); setImportResult(null);
+    if (importFileInputRef.current) importFileInputRef.current.value = "";
+  }
+
   // ── Story search & filter state ────────────────────────────────────────────
   const [storySearch, setStorySearch] = useState("");
   const [storyFilterCategory, setStoryFilterCategory] = useState<string>("all");
@@ -1479,10 +1521,29 @@ export default function ManageNovel() {
           <span className="font-bold text-sm text-foreground">Admin Novel</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportBlog}
+            disabled={exportLoading}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted disabled:opacity-50"
+            data-testid="button-export-blog"
+            title="Export semua artikel blog ke file JSON"
+          >
+            {exportLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            <span className="hidden sm:inline">Export Blog</span>
+          </button>
+          <button
+            onClick={() => { setImportOpen(true); resetImport(); }}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted"
+            data-testid="button-import-blog"
+            title="Import artikel blog dari file JSON"
+          >
+            <Upload size={13} />
+            <span className="hidden sm:inline">Import Blog</span>
+          </button>
           <Link href="/">
             <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted" data-testid="button-view-site">
               <ExternalLink size={13} />
-              Lihat Situs
+              <span className="hidden sm:inline">Lihat Situs</span>
             </button>
           </Link>
           <button
@@ -1491,7 +1552,7 @@ export default function ManageNovel() {
             data-testid="button-credentials"
           >
             <KeyRound size={13} />
-            Kredensial
+            <span className="hidden sm:inline">Kredensial</span>
           </button>
           <button
             onClick={async () => {
@@ -1502,7 +1563,7 @@ export default function ManageNovel() {
             data-testid="button-logout"
           >
             <LogOut size={13} />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </div>
@@ -2375,6 +2436,102 @@ export default function ManageNovel() {
       </div>
 
       {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
+
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={() => { if (!importLoading) { setImportOpen(false); resetImport(); } }} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Upload size={15} className="text-primary" />
+                <h2 className="font-semibold text-sm">Import Artikel Blog</h2>
+              </div>
+              {!importLoading && (
+                <button onClick={() => { setImportOpen(false); resetImport(); }} className="p-1 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+            <div className="p-5 space-y-4">
+              {!importResult ? (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mode Import</label>
+                    <div className="flex gap-2">
+                      {(["skip", "overwrite"] as const).map(m => (
+                        <button key={m} onClick={() => setImportMode(m)}
+                          className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${importMode === m ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"}`}>
+                          {m === "skip" ? "Lewati yang ada" : "Timpa yang ada"}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {importMode === "skip" ? "Artikel yang slug-nya sudah ada tidak akan diubah." : "Artikel yang slug-nya sudah ada akan diperbarui."}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">File JSON</label>
+                    <div
+                      className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-all"
+                      onClick={() => importFileInputRef.current?.click()}
+                    >
+                      {importFile ? (
+                        <div className="flex items-center justify-center gap-2 text-sm">
+                          <FileJson size={16} className="text-primary" />
+                          <span className="font-medium truncate max-w-xs">{importFile.name}</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <Upload size={20} className="mx-auto text-muted-foreground/50" />
+                          <p className="text-sm text-muted-foreground">Klik untuk pilih file JSON</p>
+                          <p className="text-xs text-muted-foreground/60">Format: export dari WOOCE Blog</p>
+                        </div>
+                      )}
+                    </div>
+                    <input ref={importFileInputRef} type="file" accept=".json" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) setImportFile(f); }} />
+                  </div>
+                  <button
+                    onClick={handleImportBlog}
+                    disabled={!importFile || importLoading}
+                    className="w-full py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                  >
+                    {importLoading ? <><Loader2 size={14} className="animate-spin" />Mengimpor...</> : "Mulai Import"}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 size={16} /> Import selesai
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Total", val: importResult.total },
+                      { label: "Baru", val: importResult.inserted, color: "text-emerald-600" },
+                      { label: "Diperbarui", val: importResult.updated, color: "text-blue-600" },
+                      { label: "Dilewati", val: importResult.skipped, color: "text-amber-600" },
+                    ].map(r => (
+                      <div key={r.label} className="bg-muted/50 rounded-lg px-3 py-2 text-center">
+                        <p className={`text-lg font-bold ${r.color ?? ""}`}>{r.val}</p>
+                        <p className="text-[11px] text-muted-foreground">{r.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {importResult.errors > 0 && (
+                    <p className="text-xs text-destructive">{importResult.errors} artikel gagal diimpor.</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button onClick={() => { setImportOpen(false); resetImport(); }}
+                      className="flex-1 py-2 text-sm font-medium border border-border rounded-xl hover:bg-accent transition-colors">Selesai</button>
+                    <button onClick={resetImport}
+                      className="flex-1 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors">Import Lagi</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

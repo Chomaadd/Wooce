@@ -9,20 +9,11 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Save, ArrowLeft, ExternalLink, Check, X, Loader2, AlertCircle, Info, ShieldCheck, Monitor, Smartphone, Tablet, Chrome, Globe } from "lucide-react";
+import { User, Save, ArrowLeft, ExternalLink, Check, X, Loader2, AlertCircle, Info } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook, SiX } from "react-icons/si";
 import { Link } from "wouter";
 import { isBannedNickname } from "@shared/bannedWords";
 
-type LoginHistoryEntry = {
-  _id: string;
-  loginAt: string;
-  ip: string | null;
-  browser: string;
-  os: string;
-  device: string;
-  method: "google" | "email" | "other";
-};
 
 type WriterMe = {
   id: string; name: string; email: string; photoUrl?: string | null;
@@ -87,11 +78,6 @@ export default function WriterProfileSettings() {
     enabled: !!user && user.role === "writer" && user.status === "active",
   });
 
-  const { data: loginHistory = [] } = useQuery<LoginHistoryEntry[]>({
-    queryKey: ["/api/writer/login-history"],
-    queryFn: () => fetch("/api/writer/login-history", { credentials: "include" }).then(r => r.json()),
-    enabled: !!user && user.role === "writer" && user.status === "active",
-  });
 
   const [form, setForm] = useState({
     name: "", bio: "", slug: "",
@@ -270,65 +256,6 @@ export default function WriterProfileSettings() {
             </div>
           </motion.div>
         )}
-
-        {/* Riwayat Akses */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
-          className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={14} className="text-primary" />
-            <h2 className="text-sm font-bold text-foreground">Riwayat Akses</h2>
-          </div>
-          {loginHistory.length === 0 ? (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
-              <ShieldCheck size={18} className="text-muted-foreground/40 shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Belum ada riwayat login tercatat</p>
-                <p className="text-[11px] text-muted-foreground/70 mt-0.5">Riwayat akan muncul otomatis setelah login berikutnya via Google.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <p className="text-[11px] text-muted-foreground">20 sesi login terakhir. Jika ada aktivitas yang tidak dikenali, segera ganti akun Google-mu.</p>
-              {loginHistory.map((entry, i) => {
-                const DeviceIcon = entry.device === "Mobile" ? Smartphone : entry.device === "Tablet" ? Tablet : Monitor;
-                const isFirst = i === 0;
-                const date = new Date(entry.loginAt);
-                const diffMs = Date.now() - date.getTime();
-                const diffMin = Math.floor(diffMs / 60000);
-                const diffHr = Math.floor(diffMin / 60);
-                const diffDay = Math.floor(diffHr / 24);
-                const relativeTime = diffMin < 1 ? "Baru saja"
-                  : diffMin < 60 ? `${diffMin} menit lalu`
-                  : diffHr < 24 ? `${diffHr} jam lalu`
-                  : diffDay < 7 ? `${diffDay} hari lalu`
-                  : date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
-                return (
-                  <div key={entry._id} data-testid={`login-history-item-${i}`}
-                    className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${isFirst ? "bg-primary/5 border border-primary/20" : "bg-muted/40"}`}>
-                    <div className={`mt-0.5 shrink-0 ${isFirst ? "text-primary" : "text-muted-foreground"}`}>
-                      <DeviceIcon size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`text-xs font-semibold ${isFirst ? "text-primary" : "text-foreground"}`}>
-                          {entry.browser} · {entry.os}
-                        </span>
-                        {isFirst && <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium">Sesi ini</span>}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-[11px] text-muted-foreground">{relativeTime}</span>
-                        {entry.ip && <span className="text-[11px] text-muted-foreground font-mono">{entry.ip}</span>}
-                        <span className="text-[11px] text-muted-foreground">
-                          {entry.method === "google" ? "· Google" : "· Email"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
 
         {/* Photo & Identity */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}

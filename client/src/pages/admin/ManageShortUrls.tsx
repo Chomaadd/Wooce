@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { AdminLayout } from "@/components/layout/AdminLayout";
 import {
   Copy, Trash2, Link2, ExternalLink, Plus, MousePointerClick,
-  RefreshCw, Clock, Infinity, Pencil, ArrowLeft,
+  RefreshCw, Clock, Infinity, Pencil, LogOut,
 } from "lucide-react";
 
 interface ShortUrl {
@@ -327,6 +326,14 @@ function UrlSection({
 
 export default function ManageShortUrls() {
   const { toast } = useToast();
+  const [adminVerified, setAdminVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/admin-verify", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (d.ok) setAdminVerified(true); else { setAdminVerified(false); window.location.href = "/login"; } })
+      .catch(() => { setAdminVerified(false); window.location.href = "/login"; });
+  }, []);
 
   const [targetUrl, setTargetUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -392,9 +399,49 @@ export default function ManageShortUrls() {
   const activeUrls = urls.filter(u => !u.expiresAt || new Date(u.expiresAt) > new Date());
   const expiredUrls = urls.filter(u => u.expiresAt && new Date(u.expiresAt) <= new Date());
 
+  if (adminVerified === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <AdminLayout>
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-6 flex h-14 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-7 h-7 rounded-lg object-cover" />
+            <span className="font-bold text-sm text-foreground">Admin URL Pendek</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/novel">
+              <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted">
+                ← Dashboard
+              </button>
+            </Link>
+            <Link href="/">
+              <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted" data-testid="button-view-site">
+                <ExternalLink size={13} />
+                Lihat Situs
+              </button>
+            </Link>
+            <button
+              onClick={async () => {
+                await fetch("/api/auth/admin-logout", { method: "POST", credentials: "include" });
+                window.location.href = "/login";
+              }}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1.5 rounded-full hover:bg-destructive/10"
+              data-testid="button-logout"
+            >
+              <LogOut size={13} />
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold">URL Pendek</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -562,6 +609,6 @@ export default function ManageShortUrls() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   );
 }
