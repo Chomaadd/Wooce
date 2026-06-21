@@ -26,8 +26,9 @@ import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
+import { ShortUrlsPanel } from "@/pages/admin/ManageShortUrls";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog" | "url-pendek";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1531,78 +1532,48 @@ export default function ManageNovel() {
     <div className="min-h-screen bg-background">
       <AdminHeader />
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
-          {/* Tab Nav — scrollable on mobile */}
-        <div className="overflow-x-auto mb-5 -mx-1 px-1">
-          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-max min-w-full sm:w-fit">
-          <button
-            onClick={() => { setView("stories"); setSelectedStory(null); setSelectedSeason(null); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (view as View) !== "reports" && (view as View) !== "coins" && (view as View) !== "messages" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Cerita
-          </button>
-          <button
-            onClick={() => setView("stats")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view === "stats" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <BarChart2 size={13} /> Statistik
-          </button>
-          <button
-            onClick={() => setView("settings")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view === "settings" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Settings size={13} /> Settings
-          </button>
-          <button
-            onClick={() => setView("announcements")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${view === "announcements" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Bell size={13} /> Pengumuman
-          </button>
-          <button
-            onClick={() => setView("approvals")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "approvals" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <ShieldCheck size={13} /> Approval
-          </button>
-          <button
-            onClick={() => setView("reports")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "reports" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Flag size={13} /> Laporan
-          </button>
-          <button
-            onClick={() => setView("coins")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "coins" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            data-testid="tab-coins"
-          >
-            <Coins size={13} /> Koin
-          </button>
-          <button
-            onClick={() => setView("messages")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "messages" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            data-testid="tab-messages"
-          >
-            <Mail size={13} /> Pesan
-          </button>
-          <button
-            onClick={() => setView("blog")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${(view as View) === "blog" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            data-testid="tab-blog"
-          >
-            <FileText size={13} /> Blog
-          </button>
-          <Link href="/admin/short-urls">
-            <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground"
-              data-testid="tab-short-urls"
-            >
-              <Scissors size={13} /> URL Pendek
-            </button>
-          </Link>
+          {/* Tab Nav — compact, wraps gracefully */}
+        <div className="mb-5">
+          <div className="flex flex-wrap gap-1 p-1 bg-muted/50 rounded-xl">
+            {(() => {
+              const isStoryView = ["stories", "seasons", "chapters", "write"].includes(view);
+              const tab = (v: string, label: string, icon?: React.ReactNode, testId?: string) => {
+                const active = v === "stories" ? isStoryView : view === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      if (v === "stories") { setSelectedStory(null); setSelectedSeason(null); }
+                      setView(v as View);
+                    }}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    data-testid={testId}
+                  >
+                    {icon}
+                    {label}
+                  </button>
+                );
+              };
+              return (
+                <>
+                  {tab("stories", "Cerita", <BookOpen size={12} />)}
+                  {tab("stats", "Statistik", <BarChart2 size={12} />)}
+                  {tab("settings", "Settings", <Settings size={12} />)}
+                  {tab("announcements", "Pengumuman", <Bell size={12} />)}
+                  <div className="w-px bg-border/50 self-stretch my-0.5 mx-0.5" />
+                  {tab("approvals", "Approval", <ShieldCheck size={12} />)}
+                  {tab("reports", "Laporan", <Flag size={12} />)}
+                  {tab("coins", "Koin", <Coins size={12} />, "tab-coins")}
+                  {tab("messages", "Pesan", <Mail size={12} />, "tab-messages")}
+                  {tab("blog", "Blog", <FileText size={12} />, "tab-blog")}
+                  {tab("url-pendek", "URL Pendek", <Scissors size={12} />, "tab-short-urls")}
+                </>
+              );
+            })()}
           </div>
         </div>
 
-      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && (view as View) !== "url-pendek" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2380,6 +2351,7 @@ export default function ManageNovel() {
       {(view as View) === "coins" && <CoinAdminView />}
       {(view as View) === "messages" && <MessagesView />}
       {(view as View) === "blog" && <BlogAdminView />}
+      {(view as View) === "url-pendek" && <ShortUrlsPanel />}
 
       </div>
 
