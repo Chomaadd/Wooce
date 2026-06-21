@@ -3300,6 +3300,59 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  // ── Data Export / Import ──────────────────────────────────────────────────
+
+  // Export blog articles as JSON download
+  app.get("/api/admin/export/blog", requireAuth, async (_req, res) => {
+    try {
+      const articles = await ArticleModel.find({}).lean();
+      const clean = articles.map(({ _id, __v, ...rest }: any) => rest);
+      const json = JSON.stringify(clean, null, 2);
+      const filename = `blog-export-${new Date().toISOString().slice(0, 10)}.json`;
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(json);
+    } catch { res.status(500).json({ message: "Gagal mengekspor data" }); }
+  });
+
+  // Import blog articles from JSON upload
+  app.post("/api/admin/import/blog", requireAuth, multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "File tidak ditemukan" });
+      let articles: any[];
+      try {
+        articles = JSON.parse(req.file.buffer.toString("utf-8"));
+        if (!Array.isArray(articles)) throw new Error("Bukan array");
+      } catch {
+        return res.status(400).json({ message: "Format file tidak valid. Pastikan file JSON berisi array artikel." });
+      }
+
+      const mode = (req.body.mode as string) || "skip"; // "skip" | "overwrite"
+      let inserted = 0, skipped = 0, updated = 0, errors = 0;
+
+      for (const article of articles) {
+        if (!article.slug || !article.title) { errors++; continue; }
+        try {
+          const existing = await ArticleModel.findOne({ slug: article.slug });
+          const { _id, __v, ...data } = article;
+          if (existing) {
+            if (mode === "overwrite") {
+              await ArticleModel.updateOne({ slug: article.slug }, { $set: data });
+              updated++;
+            } else {
+              skipped++;
+            }
+          } else {
+            await ArticleModel.create(data);
+            inserted++;
+          }
+        } catch { errors++; }
+      }
+
+      res.json({ ok: true, inserted, skipped, updated, errors, total: articles.length });
+    } catch { res.status(500).json({ message: "Gagal mengimpor data" }); }
+  });
+
   // ── Social Bot OG Middleware ──────────────────────────────────────────────
   const SITE_NAME = "WOOCE Novel";
   const SITE_DESC = "Platform baca novel, komik, dan cerita pendek terbaik — WOOCE Novel.";

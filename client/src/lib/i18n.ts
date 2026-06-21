@@ -333,6 +333,7 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.nav.short_urls": "Short URLs",
     "admin.nav.settings": "Settings",
     "admin.nav.credentials": "Credentials",
+    "admin.nav.data": "Data Manager",
 
     "admin.uploading": "Uploading...",
     "admin.confirm.undone": "This action cannot be undone.",
@@ -979,6 +980,7 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.nav.short_urls": "URL Pendek",
     "admin.nav.settings": "Pengaturan",
     "admin.nav.credentials": "Kredensial",
+    "admin.nav.data": "Kelola Data",
 
     "admin.uploading": "Mengunggah...",
     "admin.confirm.undone": "Tindakan ini tidak bisa dibatalkan.",
