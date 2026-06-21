@@ -28,6 +28,7 @@ import WriterStories from "./pages/writer/WriterStories";
 import WriterProfileSettings from "./pages/writer/WriterProfileSettings";
 import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
+import ManageShortUrls from "./pages/admin/ManageShortUrls";
 import CoinHistory from "./pages/public/CoinHistory";
 import LoginBonusPage from "./pages/public/LoginBonusPage";
 import PaymentFinish from "./pages/public/PaymentFinish";
@@ -94,6 +95,7 @@ function Router() {
       <Route path="/writer/profil" component={WriterProfileSettings} />
       <Route path="/login" component={Login} />
       <Route path="/admin/novel" component={ManageNovel} />
+      <Route path="/admin/short-urls" component={ManageShortUrls} />
       <Route path="/admin/credentials"><Redirect to="/admin/novel" /></Route>
       <Route path="/koin/riwayat" component={CoinHistory} />
       <Route path="/login-bonus" component={LoginBonusPage} />

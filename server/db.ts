@@ -141,6 +141,16 @@ readHistorySchema.index({ userId: 1, readAt: -1 });
 
 export const ReadHistoryModel = mongoose.models.ReadHistory || mongoose.model('ReadHistory', readHistorySchema);
 
+const shortUrlSchema = new mongoose.Schema({
+  slug:      { type: String, required: true, unique: true, trim: true },
+  targetUrl: { type: String, required: true },
+  title:     { type: String, default: null },
+  expiresAt: { type: Date, default: null },
+  clicks:    { type: Number, default: 0 },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+
+export const ShortUrlModel = mongoose.models.ShortUrl || mongoose.model('ShortUrl', shortUrlSchema);
+
 export const AdminModel = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 export const UserModel = mongoose.models.User || mongoose.model('User', userMongoSchema);
 export const AuthorModel = mongoose.models.Author || mongoose.model('Author', authorMongoSchema);

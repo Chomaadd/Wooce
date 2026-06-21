@@ -27,7 +27,7 @@ import {
   sendStoryDeletedByWriterEmail,
   sendStoryRemovedByReportEmail,
 } from "./email";
-import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel, FollowModel, ReadHistoryModel } from "./db";
+import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel, FollowModel, ReadHistoryModel, ShortUrlModel } from "./db";
 import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
 import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
@@ -3320,6 +3320,55 @@ export async function registerRoutes(
   function esc(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
+
+  // ── Short URL API ────────────────────────────────────────────────────────
+  app.get("/api/short-urls", requireAuth, async (_req, res) => {
+    try {
+      const urls = await ShortUrlModel.find().sort({ createdAt: -1 });
+      res.json(urls.map(u => ({
+        id: (u._id as any).toString(),
+        slug: u.slug, targetUrl: u.targetUrl, title: u.title,
+        expiresAt: u.expiresAt, clicks: u.clicks, createdAt: (u as any).createdAt,
+      })));
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.post("/api/short-urls", requireAuth, async (req, res) => {
+    try {
+      const { slug, targetUrl, title, expiryMs } = req.body;
+      if (!slug || !targetUrl) return res.status(400).json({ message: "slug dan targetUrl wajib diisi" });
+      const expiresAt = expiryMs && expiryMs > 0 ? new Date(Date.now() + Number(expiryMs)) : null;
+      const url = await ShortUrlModel.create({ slug: slug.toLowerCase(), targetUrl, title: title || null, expiresAt });
+      res.status(201).json({
+        id: (url._id as any).toString(),
+        slug: url.slug, targetUrl: url.targetUrl, title: url.title,
+        expiresAt: url.expiresAt, clicks: url.clicks, createdAt: (url as any).createdAt,
+      });
+    } catch (err: any) {
+      if (err.code === 11000) return res.status(409).json({ message: "Slug sudah dipakai, coba slug lain." });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/short-urls/:id", requireAuth, async (req, res) => {
+    try {
+      await ShortUrlModel.findByIdAndDelete(req.params.id);
+      res.json({ ok: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── Short URL public redirect ─────────────────────────────────────────────
+  app.get("/:slug", async (req, res, next) => {
+    try {
+      const { slug } = req.params;
+      if (!slug || slug.length < 4 || slug.includes(".")) return next();
+      const url = await ShortUrlModel.findOne({ slug });
+      if (!url) return next();
+      if (url.expiresAt && new Date(url.expiresAt) < new Date()) return next();
+      await ShortUrlModel.updateOne({ _id: url._id }, { $inc: { clicks: 1 } });
+      return res.redirect(302, url.targetUrl);
+    } catch { return next(); }
+  });
 
   const NON_STORY_SLUGS = new Set([
     "login", "admin", "writer", "register", "verify",
