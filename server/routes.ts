@@ -2542,6 +2542,17 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.get("/api/auth/my-login-history", requireAuth, async (req: any, res) => {
+    try {
+      const userId = new mongoose.Types.ObjectId(req.session.userId);
+      const history = await LoginHistoryModel.find({ userId })
+        .sort({ loginAt: -1 })
+        .limit(20)
+        .lean();
+      res.json(history);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   app.post("/api/writer/stories", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;

@@ -13,6 +13,7 @@ import {
   PenLine, LogOut, User, Star, ExternalLink, Edit2, Check, X,
   Loader2, Copy, Upload, RotateCcw, Camera, AlertTriangle, Trash2,
   LayoutGrid, Settings, Activity, Download, FileText, Coins, History, Clock,
+  ShieldCheck, Monitor, Smartphone, Tablet,
 } from "lucide-react";
 import type { NovelStory } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
@@ -269,6 +270,16 @@ export default function UserProfile() {
     queryFn: () => fetch("/api/user/read-history?limit=20", { credentials: "include" }).then(r => r.json()),
     enabled: !!user && !user.isAdmin,
     staleTime: 30_000,
+  });
+
+  const { data: loginHistory = [] } = useQuery<Array<{
+    _id: string; loginAt: string; ip: string | null;
+    browser: string; os: string; device: string; method: string;
+  }>>({
+    queryKey: ["/api/auth/my-login-history"],
+    queryFn: () => fetch("/api/auth/my-login-history", { credentials: "include" }).then(r => r.ok ? r.json() : []),
+    enabled: !!user && !user.isAdmin,
+    staleTime: 60_000,
   });
 
   const authorData = writerMe?.author ?? null;
@@ -1200,6 +1211,64 @@ export default function UserProfile() {
                       }
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Riwayat Login */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border bg-muted/20 flex items-center gap-2">
+                  <ShieldCheck size={13} className="text-primary" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Riwayat Akses</h3>
+                </div>
+                <div className="px-5 py-4">
+                  {loginHistory.length === 0 ? (
+                    <div className="flex items-center gap-3 py-2">
+                      <ShieldCheck size={16} className="text-muted-foreground/30 shrink-0" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Belum ada riwayat login tercatat</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">Riwayat akan muncul otomatis setelah login berikutnya.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-muted-foreground mb-3">20 sesi login terakhir di akunmu.</p>
+                      {loginHistory.map((entry, i) => {
+                        const DeviceIcon = entry.device === "Mobile" ? Smartphone : entry.device === "Tablet" ? Tablet : Monitor;
+                        const isFirst = i === 0;
+                        const date = new Date(entry.loginAt);
+                        const diffMs = Date.now() - date.getTime();
+                        const diffMin = Math.floor(diffMs / 60000);
+                        const diffHr = Math.floor(diffMin / 60);
+                        const diffDay = Math.floor(diffHr / 24);
+                        const rel = diffMin < 1 ? "Baru saja"
+                          : diffMin < 60 ? `${diffMin} menit lalu`
+                          : diffHr < 24 ? `${diffHr} jam lalu`
+                          : diffDay < 7 ? `${diffDay} hari lalu`
+                          : date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+                        return (
+                          <div key={entry._id}
+                            className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${isFirst ? "bg-primary/5 border border-primary/20" : "bg-muted/40"}`}>
+                            <div className={`mt-0.5 shrink-0 ${isFirst ? "text-primary" : "text-muted-foreground"}`}>
+                              <DeviceIcon size={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-xs font-semibold ${isFirst ? "text-primary" : "text-foreground"}`}>
+                                  {entry.browser} · {entry.os}
+                                </span>
+                                {isFirst && <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium">Sesi ini</span>}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-[11px] text-muted-foreground">{rel}</span>
+                                {entry.ip && <span className="text-[11px] text-muted-foreground font-mono">{entry.ip}</span>}
+                                <span className="text-[11px] text-muted-foreground">{entry.method === "google" ? "· Google" : "· Email"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
