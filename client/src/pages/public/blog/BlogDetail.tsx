@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useParams, Link } from "wouter";
-import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen, Languages, Loader2, RotateCcw } from "lucide-react";
+import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
@@ -110,47 +110,8 @@ function RelatedArticlesSkeleton() {
   );
 }
 
-async function translateHtml(html: string): Promise<string> {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-
-  // Use doc.createTreeWalker (not document) so the walker is scoped to the parsed doc
-  const textNodes: Text[] = [];
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-  let node: Node | null;
-  while ((node = walker.nextNode())) {
-    const t = node as Text;
-    if (t.textContent?.trim()) textNodes.push(t);
-  }
-  if (textNodes.length === 0) return html;
-
-  // Send the trimmed text for translation, but remember original whitespace padding
-  const originals = textNodes.map(n => n.textContent ?? "");
-  const segments = originals.map(s => s.trim());
-
-  const res = await fetch("/api/translate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ segments, from: "id", to: "en" }),
-  });
-  if (!res.ok) throw new Error("Translation failed");
-  const data = await res.json() as { segments: string[] };
-
-  // Re-inject translated text, restoring original leading/trailing whitespace
-  data.segments.forEach((translated, i) => {
-    const orig = originals[i];
-    const leading  = orig.match(/^\s*/)?.[0]  ?? "";
-    const trailing = orig.match(/\s*$/)?.[0]  ?? "";
-    textNodes[i].textContent = leading + translated + trailing;
-  });
-  return doc.body.innerHTML;
-}
-
 export default function BlogDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const [translating, setTranslating] = useState(false);
-  const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
-  const [translatedHtml, setTranslatedHtml] = useState<string | null>(null);
-  const isTranslated = translatedTitle !== null;
 
   const { data: article, isLoading, isError } = useQuery<Article>({
     queryKey: ["/api/blog", slug],
@@ -172,33 +133,6 @@ export default function BlogDetail() {
       fetch(`/api/blog/${slug}/view`, { method: "PATCH" }).catch(() => {});
     }
   }, [slug]);
-
-  const handleTranslate = useCallback(async () => {
-    if (isTranslated) {
-      setTranslatedTitle(null);
-      setTranslatedHtml(null);
-      return;
-    }
-    if (!article) return;
-    setTranslating(true);
-    try {
-      const renderedContent = renderRichContent(article.content || "");
-      const [tTitle, tHtml] = await Promise.all([
-        fetch("/api/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ segments: [article.title], from: "id", to: "en" }),
-        }).then(r => r.json()).then((d: { segments: string[] }) => d.segments[0]),
-        translateHtml(renderedContent),
-      ]);
-      setTranslatedTitle(tTitle);
-      setTranslatedHtml(tHtml);
-    } catch {
-      // silently fallback — keep original
-    } finally {
-      setTranslating(false);
-    }
-  }, [article, isTranslated]);
 
   if (isLoading) {
     return (
@@ -278,52 +212,22 @@ export default function BlogDetail() {
 
         <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="text-2xl sm:text-3xl font-bold text-foreground leading-snug mb-4">
-          {isTranslated && translatedTitle ? translatedTitle : article.title}
+          {article.title}
         </motion.h1>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}
-          className="flex flex-wrap items-center justify-between gap-3 mb-8 pb-6 border-b border-border">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><Calendar size={12} />{article.publishedAt ? formatDate(article.publishedAt) : "—"}</span>
-            <span className="flex items-center gap-1.5"><Eye size={12} />{article.views.toLocaleString("id-ID")} kali dibaca</span>
-            <span className="text-foreground font-medium">Oleh {article.authorName}</span>
-          </div>
-          <button
-            onClick={handleTranslate}
-            disabled={translating}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
-              isTranslated
-                ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-primary/30"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            data-testid="button-translate-article"
-          >
-            {translating ? (
-              <><Loader2 size={12} className="animate-spin" /> Menerjemahkan…</>
-            ) : isTranslated ? (
-              <><RotateCcw size={12} /> Tampilkan Original</>
-            ) : (
-              <><Languages size={12} /> Terjemahkan</>
-            )}
-          </button>
+          className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-8 pb-6 border-b border-border">
+          <span className="flex items-center gap-1.5"><Calendar size={12} />{article.publishedAt ? formatDate(article.publishedAt) : "—"}</span>
+          <span className="flex items-center gap-1.5"><Eye size={12} />{article.views.toLocaleString("id-ID")} kali dibaca</span>
+          <span className="text-foreground font-medium">Oleh {article.authorName}</span>
         </motion.div>
-
-        {isTranslated && translatedTitle && (
-          <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/15 text-xs text-primary">
-            <Languages size={11} />
-            <span>Terjemahan otomatis — mungkin tidak sempurna.</span>
-          </div>
-        )}
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="prose prose-sm sm:prose dark:prose-invert max-w-none text-foreground">
-          {isTranslated && translatedHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: translatedHtml }} />
-          ) : article.content ? (
-            <div dangerouslySetInnerHTML={{ __html: renderRichContent(article.content) }} />
-          ) : (
-            <p className="text-muted-foreground italic">Belum ada konten.</p>
-          )}
+          {article.content
+            ? <div dangerouslySetInnerHTML={{ __html: renderRichContent(article.content) }} />
+            : <p className="text-muted-foreground italic">Belum ada konten.</p>
+          }
         </motion.div>
 
         {/* Related Articles */}
