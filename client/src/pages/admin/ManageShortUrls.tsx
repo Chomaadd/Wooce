@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { AdminLayout } from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -393,8 +392,8 @@ export default function ManageShortUrls() {
   const expiredUrls = urls.filter(u => u.expiresAt && new Date(u.expiresAt) <= new Date());
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
         <div>
           <Link href="/admin/novel">
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
@@ -568,6 +567,6 @@ export default function ManageShortUrls() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   );
 }
