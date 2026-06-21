@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors, KeyRound, Database } from "lucide-react";
+import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors, KeyRound, Download } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-settings";
 import { useLanguage } from "@/hooks/use-language";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
@@ -13,6 +13,26 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  async function handleExportBlog() {
+    setExportLoading(true);
+    try {
+      const res = await fetch("/api/admin/export/blog", { credentials: "include" });
+      if (!res.ok) throw new Error("Export gagal");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blog-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Export gagal, coba lagi.");
+    } finally {
+      setExportLoading(false);
+    }
+  }
   const { data: siteSettings } = useSiteSettings();
   const { t, language, setLanguage } = useLanguage();
 
@@ -46,7 +66,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: "/admin/messages",   label: t("admin.nav.messages"),   icon: Mail },
     { href: "/admin/novel",      label: t("admin.nav.novel"),      icon: BookOpen },
     { href: "/admin/short-urls", label: t("admin.nav.short_urls"), icon: Scissors },
-    { href: "/admin/data",       label: t("admin.nav.data"),       icon: Database },
     { href: "/admin/settings",   label: t("admin.nav.settings"),   icon: Settings },
   ];
 
@@ -134,6 +153,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right: actions — compact on mobile */}
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={handleExportBlog}
+              disabled={exportLoading}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all disabled:opacity-50"
+              data-testid="button-export-blog"
+              title="Export data blog ke JSON"
+            >
+              {exportLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              <span className="hidden md:inline">Export Blog</span>
+            </button>
             <button
               onClick={() => setCredentialsOpen(true)}
               className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
