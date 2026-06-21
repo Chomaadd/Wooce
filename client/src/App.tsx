@@ -34,6 +34,7 @@ import LoginBonusPage from "./pages/public/LoginBonusPage";
 import PaymentFinish from "./pages/public/PaymentFinish";
 import Blog from "./pages/public/blog/Blog";
 import BlogDetail from "./pages/public/blog/BlogDetail";
+import LinkExpired from "./pages/public/LinkExpired";
 import NotFound from "@/pages/public/Not-Found";
 import { DailyLoginBonus } from "@/components/daily-login/DailyLoginBonus";
 
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/payment/finish" component={PaymentFinish} />
       <Route path="/artikel/:slug" component={BlogDetail} />
       <Route path="/blog" component={Blog} />
+      <Route path="/link-kedaluwarsa" component={LinkExpired} />
       <Route path="/:slug/:seasonSlug/:chapterSlug" component={NovelRead} />
       <Route path="/:slug" component={NovelDetail} />
       <Route component={NotFound} />

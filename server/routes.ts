@@ -3357,6 +3357,25 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.patch("/api/short-urls/:id", requireAuth, async (req, res) => {
+    try {
+      const { targetUrl, title, expiryMs } = req.body;
+      const update: Record<string, any> = {};
+      if (targetUrl) update.targetUrl = targetUrl;
+      if (title !== undefined) update.title = title || null;
+      if (expiryMs !== undefined) {
+        update.expiresAt = Number(expiryMs) > 0 ? new Date(Date.now() + Number(expiryMs)) : null;
+      }
+      const url = await ShortUrlModel.findByIdAndUpdate(req.params.id, update, { new: true });
+      if (!url) return res.status(404).json({ message: "URL tidak ditemukan" });
+      res.json({
+        id: (url._id as any).toString(),
+        slug: url.slug, targetUrl: url.targetUrl, title: url.title,
+        expiresAt: url.expiresAt, clicks: url.clicks, createdAt: (url as any).createdAt,
+      });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // ── Short URL public redirect ─────────────────────────────────────────────
   app.get("/:slug", async (req, res, next) => {
     try {
@@ -3364,7 +3383,9 @@ export async function registerRoutes(
       if (!slug || slug.length < 4 || slug.includes(".")) return next();
       const url = await ShortUrlModel.findOne({ slug });
       if (!url) return next();
-      if (url.expiresAt && new Date(url.expiresAt) < new Date()) return next();
+      if (url.expiresAt && new Date(url.expiresAt) < new Date()) {
+        return res.redirect(302, `/link-kedaluwarsa?slug=${encodeURIComponent(slug)}`);
+      }
       await ShortUrlModel.updateOne({ _id: url._id }, { $inc: { clicks: 1 } });
       return res.redirect(302, url.targetUrl);
     } catch { return next(); }
