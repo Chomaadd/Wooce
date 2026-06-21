@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors, KeyRound, Download } from "lucide-react";
+import { LayoutDashboard, FileText, Music, Image, Mail, LogOut, Loader2, Menu, X, ScrollText, BarChart2, Link2, BookOpen, Settings, Scissors, KeyRound, Download, Upload, CheckCircle2, AlertCircle, FileJson } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-settings";
 import { useLanguage } from "@/hooks/use-language";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
+
+interface ImportResult {
+  ok: boolean; total: number; inserted: number; updated: number; skipped: number; errors: number;
+}
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -14,6 +18,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<"skip" | "overwrite">("skip");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleExportBlog() {
     setExportLoading(true);
@@ -33,6 +43,32 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       setExportLoading(false);
     }
   }
+
+  async function handleImportBlog() {
+    if (!importFile) return;
+    setImportLoading(true);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      formData.append("mode", importMode);
+      const res = await fetch("/api/admin/import/blog", { method: "POST", credentials: "include", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Import gagal");
+      setImportResult(data);
+    } catch (err: any) {
+      alert(err.message || "Import gagal. Periksa format file JSON.");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function resetImport() {
+    setImportFile(null);
+    setImportResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   const { data: siteSettings } = useSiteSettings();
   const { t, language, setLanguage } = useLanguage();
 
@@ -151,17 +187,26 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Right: actions — compact on mobile */}
+          {/* Right: actions */}
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={handleExportBlog}
               disabled={exportLoading}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all disabled:opacity-50"
               data-testid="button-export-blog"
-              title="Export data blog ke JSON"
+              title="Export semua artikel blog ke file JSON"
             >
               {exportLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
               <span className="hidden md:inline">Export Blog</span>
+            </button>
+            <button
+              onClick={() => { setImportOpen(true); resetImport(); }}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
+              data-testid="button-open-import"
+              title="Import artikel blog dari file JSON"
+            >
+              <Upload size={13} />
+              <span className="hidden md:inline">Import Blog</span>
             </button>
             <button
               onClick={() => setCredentialsOpen(true)}
@@ -213,6 +258,125 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
+
+      {/* Import Blog Modal */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={() => { if (!importLoading) { setImportOpen(false); resetImport(); } }} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Upload size={15} className="text-primary" />
+                <h2 className="font-semibold text-sm">Import Artikel Blog</h2>
+              </div>
+              {!importLoading && (
+                <button onClick={() => { setImportOpen(false); resetImport(); }} className="p-1 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+
+            <div className="p-5 space-y-4">
+              {!importResult ? (
+                <>
+                  {/* Mode */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mode Import</label>
+                    <div className="flex gap-2">
+                      {(["skip", "overwrite"] as const).map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setImportMode(m)}
+                          className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${importMode === m ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"}`}
+                        >
+                          {m === "skip" ? "Lewati yang ada" : "Timpa yang ada"}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {importMode === "skip" ? "Artikel yang slug-nya sudah ada di database tidak akan diubah." : "Artikel yang slug-nya sudah ada akan diperbarui seluruhnya."}
+                    </p>
+                  </div>
+
+                  {/* File picker */}
+                  <div
+                    className="border-2 border-dashed border-border rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-all"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="dropzone-import-blog"
+                  >
+                    <FileJson size={24} className="text-muted-foreground" />
+                    {importFile ? (
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-foreground">{importFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(importFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center">Klik untuk pilih file <span className="text-primary font-semibold">.json</span><br/>hasil export blog</p>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={e => setImportFile(e.target.files?.[0] ?? null)}
+                    data-testid="input-file-import-blog"
+                  />
+
+                  <button
+                    onClick={handleImportBlog}
+                    disabled={!importFile || importLoading}
+                    className="w-full py-2.5 text-sm font-semibold rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    data-testid="button-import-submit"
+                  >
+                    {importLoading ? <><Loader2 size={14} className="animate-spin" /> Mengimpor...</> : <><Upload size={14} /> Mulai Import</>}
+                  </button>
+                </>
+              ) : (
+                /* Result */
+                <div className="space-y-4">
+                  <div className={`rounded-xl p-4 border space-y-3 ${importResult.errors > 0 ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
+                    <div className="flex items-center gap-2">
+                      {importResult.errors > 0
+                        ? <AlertCircle size={15} className="text-amber-600 dark:text-amber-400" />
+                        : <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" />
+                      }
+                      <span className="text-sm font-semibold text-foreground">Import selesai — {importResult.total} artikel diproses</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-background/60 rounded-lg px-3 py-2">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base">{importResult.inserted}</span>
+                        <p className="text-muted-foreground">artikel baru</p>
+                      </div>
+                      <div className="bg-background/60 rounded-lg px-3 py-2">
+                        <span className="text-blue-600 dark:text-blue-400 font-bold text-base">{importResult.updated}</span>
+                        <p className="text-muted-foreground">diperbarui</p>
+                      </div>
+                      <div className="bg-background/60 rounded-lg px-3 py-2">
+                        <span className="text-zinc-500 font-bold text-base">{importResult.skipped}</span>
+                        <p className="text-muted-foreground">dilewati</p>
+                      </div>
+                      <div className="bg-background/60 rounded-lg px-3 py-2">
+                        <span className="text-red-500 font-bold text-base">{importResult.errors}</span>
+                        <p className="text-muted-foreground">error</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={resetImport} className="flex-1 py-2 text-xs font-medium rounded-lg border border-border hover:bg-accent transition-colors text-muted-foreground">
+                      Import Lagi
+                    </button>
+                    <button onClick={() => { setImportOpen(false); resetImport(); }} className="flex-1 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all">
+                      Selesai
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
