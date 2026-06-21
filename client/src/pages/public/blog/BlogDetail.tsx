@@ -113,9 +113,9 @@ function RelatedArticlesSkeleton() {
 async function translateHtml(html: string): Promise<string> {
   const doc = new DOMParser().parseFromString(html, "text/html");
 
-  // Walk all text nodes, collect non-empty ones
+  // Use doc.createTreeWalker (not document) so the walker is scoped to the parsed doc
   const textNodes: Text[] = [];
-  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
   let node: Node | null;
   while ((node = walker.nextNode())) {
     const t = node as Text;
@@ -123,7 +123,10 @@ async function translateHtml(html: string): Promise<string> {
   }
   if (textNodes.length === 0) return html;
 
-  const segments = textNodes.map(n => n.textContent ?? "");
+  // Send the trimmed text for translation, but remember original whitespace padding
+  const originals = textNodes.map(n => n.textContent ?? "");
+  const segments = originals.map(s => s.trim());
+
   const res = await fetch("/api/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -131,8 +134,13 @@ async function translateHtml(html: string): Promise<string> {
   });
   if (!res.ok) throw new Error("Translation failed");
   const data = await res.json() as { segments: string[] };
+
+  // Re-inject translated text, restoring original leading/trailing whitespace
   data.segments.forEach((translated, i) => {
-    textNodes[i].textContent = translated;
+    const orig = originals[i];
+    const leading  = orig.match(/^\s*/)?.[0]  ?? "";
+    const trailing = orig.match(/\s*$/)?.[0]  ?? "";
+    textNodes[i].textContent = leading + translated + trailing;
   });
   return doc.body.innerHTML;
 }
