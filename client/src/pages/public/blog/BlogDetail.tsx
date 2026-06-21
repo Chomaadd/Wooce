@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useParams, Link } from "wouter";
-import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen, Globe, Languages } from "lucide-react";
+import { Calendar, Eye, Tag, ArrowLeft, Newspaper, BookOpen, Languages, Loader2, RotateCcw } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
@@ -110,34 +110,23 @@ function RelatedArticlesSkeleton() {
   );
 }
 
-function TranslateButton({ articleUrl }: { articleUrl: string }) {
-  const [translated, setTranslated] = useState(false);
-
-  const handleTranslate = () => {
-    if (translated) {
-      window.location.reload();
-      return;
-    }
-    const gtUrl = `https://translate.google.com/translate?sl=id&tl=en&u=${encodeURIComponent(articleUrl)}`;
-    window.open(gtUrl, "_blank", "noopener,noreferrer");
-    setTranslated(true);
-  };
-
-  return (
-    <button
-      onClick={handleTranslate}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted hover:border-primary/30 transition-all"
-      data-testid="button-translate-article"
-      title="Terjemahkan artikel ini ke Bahasa Inggris"
-    >
-      <Languages size={12} />
-      Terjemahkan
-    </button>
-  );
+function stripHtmlToSegments(html: string): string[] {
+  if (typeof window === "undefined") return [];
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const blocks = Array.from(doc.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th"));
+  if (blocks.length === 0) {
+    const txt = doc.body.textContent?.trim() ?? "";
+    return txt ? [txt] : [];
+  }
+  return blocks.map(el => el.textContent?.trim() ?? "").filter(Boolean);
 }
 
 export default function BlogDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const [translating, setTranslating] = useState(false);
+  const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
+  const [translatedSegments, setTranslatedSegments] = useState<string[] | null>(null);
+  const isTranslated = translatedTitle !== null;
 
   const { data: article, isLoading, isError } = useQuery<Article>({
     queryKey: ["/api/blog", slug],
@@ -159,6 +148,34 @@ export default function BlogDetail() {
       fetch(`/api/blog/${slug}/view`, { method: "PATCH" }).catch(() => {});
     }
   }, [slug]);
+
+  const handleTranslate = useCallback(async () => {
+    if (isTranslated) {
+      setTranslatedTitle(null);
+      setTranslatedSegments(null);
+      return;
+    }
+    if (!article) return;
+    setTranslating(true);
+    try {
+      const contentSegs = stripHtmlToSegments(article.content || "");
+      const segments = [article.title, ...contentSegs];
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ segments, from: "id", to: "en" }),
+      });
+      if (!res.ok) throw new Error("Translation failed");
+      const data = await res.json() as { segments: string[] };
+      const [tTitle, ...tSegs] = data.segments;
+      setTranslatedTitle(tTitle);
+      setTranslatedSegments(tSegs);
+    } catch {
+      // silently fallback — keep original
+    } finally {
+      setTranslating(false);
+    }
+  }, [article, isTranslated]);
 
   if (isLoading) {
     return (
@@ -238,7 +255,7 @@ export default function BlogDetail() {
 
         <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="text-2xl sm:text-3xl font-bold text-foreground leading-snug mb-4">
-          {article.title}
+          {isTranslated && translatedTitle ? translatedTitle : article.title}
         </motion.h1>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}
@@ -248,15 +265,46 @@ export default function BlogDetail() {
             <span className="flex items-center gap-1.5"><Eye size={12} />{article.views.toLocaleString("id-ID")} kali dibaca</span>
             <span className="text-foreground font-medium">Oleh {article.authorName}</span>
           </div>
-          <TranslateButton articleUrl={typeof window !== "undefined" ? window.location.href : ""} />
+          <button
+            onClick={handleTranslate}
+            disabled={translating}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+              isTranslated
+                ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-primary/30"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            data-testid="button-translate-article"
+          >
+            {translating ? (
+              <><Loader2 size={12} className="animate-spin" /> Menerjemahkan…</>
+            ) : isTranslated ? (
+              <><RotateCcw size={12} /> Tampilkan Original</>
+            ) : (
+              <><Languages size={12} /> Terjemahkan</>
+            )}
+          </button>
         </motion.div>
+
+        {isTranslated && translatedTitle && (
+          <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/15 text-xs text-primary">
+            <Languages size={11} />
+            <span>Terjemahan otomatis — mungkin tidak sempurna.</span>
+          </div>
+        )}
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="prose prose-sm sm:prose dark:prose-invert max-w-none text-foreground">
-          {article.content
-            ? <div dangerouslySetInnerHTML={{ __html: renderRichContent(article.content) }} />
-            : <p className="text-muted-foreground italic">Belum ada konten.</p>
-          }
+          {isTranslated && translatedSegments ? (
+            <div className="space-y-4">
+              {translatedSegments.map((seg, i) => (
+                <p key={i}>{seg}</p>
+              ))}
+            </div>
+          ) : article.content ? (
+            <div dangerouslySetInnerHTML={{ __html: renderRichContent(article.content) }} />
+          ) : (
+            <p className="text-muted-foreground italic">Belum ada konten.</p>
+          )}
         </motion.div>
 
         {/* Related Articles */}
