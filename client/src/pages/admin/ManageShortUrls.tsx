@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Link } from "wouter";
 import {
   Copy, Trash2, Link2, ExternalLink, Plus, MousePointerClick,
-  RefreshCw, Clock, Infinity, Pencil,
+  RefreshCw, Clock, Infinity, Pencil, ArrowLeft,
 } from "lucide-react";
 
 interface ShortUrl {
@@ -395,6 +396,12 @@ export default function ManageShortUrls() {
     <AdminLayout>
       <div className="space-y-8">
         <div>
+          <Link href="/admin/novel">
+            <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+              <ArrowLeft size={14} />
+              Kembali ke Admin
+            </button>
+          </Link>
           <h1 className="text-2xl font-bold">URL Pendek</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Buat tautan pendek seperti{" "}
