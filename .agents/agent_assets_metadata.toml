@@ -6,3 +6,9 @@ id = "HNXx9bFPZ3Ph7ZbBBjSab"
 uri = "file://test-real-output.pdf"
 type = "pdf"
 title = "PDF dengan konten novel asli — spacing diperbaiki"
+
+[[outputs]]
+id = "WP0Krk0cPhWGeFUdt2ma3"
+uri = "file://blog-export.json"
+type = "unspecified"
+title = "Blog Export — 5 Artikel Staging"
