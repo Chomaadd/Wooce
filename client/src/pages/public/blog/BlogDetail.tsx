@@ -110,22 +110,38 @@ function RelatedArticlesSkeleton() {
   );
 }
 
-function stripHtmlToSegments(html: string): string[] {
-  if (typeof window === "undefined") return [];
+async function translateHtml(html: string): Promise<string> {
   const doc = new DOMParser().parseFromString(html, "text/html");
-  const blocks = Array.from(doc.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th"));
-  if (blocks.length === 0) {
-    const txt = doc.body.textContent?.trim() ?? "";
-    return txt ? [txt] : [];
+
+  // Walk all text nodes, collect non-empty ones
+  const textNodes: Text[] = [];
+  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const t = node as Text;
+    if (t.textContent?.trim()) textNodes.push(t);
   }
-  return blocks.map(el => el.textContent?.trim() ?? "").filter(Boolean);
+  if (textNodes.length === 0) return html;
+
+  const segments = textNodes.map(n => n.textContent ?? "");
+  const res = await fetch("/api/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ segments, from: "id", to: "en" }),
+  });
+  if (!res.ok) throw new Error("Translation failed");
+  const data = await res.json() as { segments: string[] };
+  data.segments.forEach((translated, i) => {
+    textNodes[i].textContent = translated;
+  });
+  return doc.body.innerHTML;
 }
 
 export default function BlogDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [translating, setTranslating] = useState(false);
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
-  const [translatedSegments, setTranslatedSegments] = useState<string[] | null>(null);
+  const [translatedHtml, setTranslatedHtml] = useState<string | null>(null);
   const isTranslated = translatedTitle !== null;
 
   const { data: article, isLoading, isError } = useQuery<Article>({
@@ -152,24 +168,23 @@ export default function BlogDetail() {
   const handleTranslate = useCallback(async () => {
     if (isTranslated) {
       setTranslatedTitle(null);
-      setTranslatedSegments(null);
+      setTranslatedHtml(null);
       return;
     }
     if (!article) return;
     setTranslating(true);
     try {
-      const contentSegs = stripHtmlToSegments(article.content || "");
-      const segments = [article.title, ...contentSegs];
-      const res = await fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ segments, from: "id", to: "en" }),
-      });
-      if (!res.ok) throw new Error("Translation failed");
-      const data = await res.json() as { segments: string[] };
-      const [tTitle, ...tSegs] = data.segments;
+      const renderedContent = renderRichContent(article.content || "");
+      const [tTitle, tHtml] = await Promise.all([
+        fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segments: [article.title], from: "id", to: "en" }),
+        }).then(r => r.json()).then((d: { segments: string[] }) => d.segments[0]),
+        translateHtml(renderedContent),
+      ]);
       setTranslatedTitle(tTitle);
-      setTranslatedSegments(tSegs);
+      setTranslatedHtml(tHtml);
     } catch {
       // silently fallback — keep original
     } finally {
@@ -294,12 +309,8 @@ export default function BlogDetail() {
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="prose prose-sm sm:prose dark:prose-invert max-w-none text-foreground">
-          {isTranslated && translatedSegments ? (
-            <div className="space-y-4">
-              {translatedSegments.map((seg, i) => (
-                <p key={i}>{seg}</p>
-              ))}
-            </div>
+          {isTranslated && translatedHtml ? (
+            <div dangerouslySetInnerHTML={{ __html: translatedHtml }} />
           ) : article.content ? (
             <div dangerouslySetInnerHTML={{ __html: renderRichContent(article.content) }} />
           ) : (
