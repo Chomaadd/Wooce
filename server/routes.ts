@@ -194,21 +194,37 @@ export async function registerRoutes(
   app.get("/auth/done", (req: any, res: any) => {
     const result = (req.query.result as string) || "error";
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Login</title>
-    <style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#0f0f0f;color:#fff;font-size:14px;}</style>
-    </head><body><p>Memproses login...</p><script>
+    <style>
+      body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#0f0f0f;color:#fff;font-size:14px;gap:16px;}
+      #btn{display:none;padding:10px 24px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}
+      #btn:hover{background:#6d28d9;}
+    </style>
+    </head><body><p id="msg">Memproses login...</p><button id="btn" onclick="window.close()">Tutup Jendela Ini</button><script>
       (function(){
         var result = ${JSON.stringify(result)};
         try {
           localStorage.setItem('wooce-auth-result', JSON.stringify({ result: result, ts: Date.now() }));
         } catch(e) {}
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: 'wooce-auth', result: result }, window.location.origin);
+          }
+        } catch(e) {}
         window.close();
         setTimeout(function(){
           if (!window.closed) {
-            if (result === 'success') window.location.href = '/';
-            else if (result === 'pending') window.location.href = '/?auth=pending';
-            else window.location.href = '/?auth=error';
+            var btn = document.getElementById('btn');
+            var msg = document.getElementById('msg');
+            if (result === 'success') {
+              msg.textContent = 'Login berhasil! Silakan tutup jendela ini.';
+            } else if (result === 'pending') {
+              msg.textContent = 'Akun kamu sedang ditinjau admin. Silakan tutup jendela ini.';
+            } else {
+              msg.textContent = 'Login gagal. Silakan tutup jendela ini dan coba lagi.';
+            }
+            if (btn) btn.style.display = 'block';
           }
-        }, 400);
+        }, 600);
       })();
     </script></body></html>`;
     res.setHeader("Content-Type", "text/html; charset=utf-8");

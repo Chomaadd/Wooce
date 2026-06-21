@@ -54,6 +54,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
     const cleanup = () => {
       clearInterval(authPollId);
       clearInterval(closedPollId);
+      window.removeEventListener("message", onMessage);
       window.removeEventListener("storage", onStorage);
       try { localStorage.removeItem("wooce-auth-result"); } catch {}
     };
@@ -79,8 +80,19 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
       }
     };
 
-    // 1. Storage event — fires IMMEDIATELY when popup writes localStorage
-    //    This is the fastest & most reliable way to detect OAuth result
+    // 1a. postMessage — fires from popup via window.opener.postMessage (most reliable)
+    const onMessage = async (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (!e.data || e.data.type !== "wooce-auth") return;
+      const result = e.data.result;
+      if (result === "success") await finish(true);
+      else if (result === "pending") await finish(false, "pending");
+      else await finish(false, "error");
+    };
+    window.addEventListener("message", onMessage);
+
+    // 1b. Storage event — fires IMMEDIATELY when popup writes localStorage
+    //    Backup for browsers where postMessage fails
     const onStorage = async (e: StorageEvent) => {
       if (e.key !== "wooce-auth-result" || !e.newValue) return;
       try {

@@ -179,7 +179,8 @@ export default function WriterProfileSettings() {
     slugStatus !== "taken" &&
     slugStatus !== "checking" &&
     slugStatus !== "banned" &&
-    !(isFirstTime && (!form.slug || slugStatus === "invalid"));
+    slugStatus !== "invalid" &&
+    !(isFirstTime && !form.slug);
 
   if (authLoading || isLoading) {
     return (

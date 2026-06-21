@@ -498,6 +498,7 @@ export default function WriterStories() {
     null,
   );
   const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameDismissed, setUsernameDismissed] = useState(false);
 
   const { data: writerMe, isLoading: writerMeLoading } = useQuery<WriterMe>({
     queryKey: ["/api/writer/me"],
@@ -2646,11 +2647,9 @@ export default function WriterStories() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!needsUsername} onOpenChange={() => {}}>
+      <Dialog open={!!needsUsername && !usernameDismissed} onOpenChange={(open) => { if (!open) setUsernameDismissed(true); }}>
         <DialogContent
           className="max-w-md"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <div className="flex items-center gap-3 mb-1">
