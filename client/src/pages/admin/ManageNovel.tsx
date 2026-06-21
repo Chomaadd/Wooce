@@ -20,7 +20,7 @@ import {
   Upload, ImageIcon, RotateCcw, Clock, CalendarClock, X, Check, Loader2,
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
-  Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash, Sparkles,
+  Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash, Sparkles, Scissors,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import Cropper from "react-easy-crop";
@@ -1591,6 +1591,14 @@ export default function ManageNovel() {
           >
             <FileText size={13} /> Blog
           </button>
+          <Link href="/admin/short-urls">
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground"
+              data-testid="tab-short-urls"
+            >
+              <Scissors size={13} /> URL Pendek
+            </button>
+          </Link>
           </div>
         </div>
 
