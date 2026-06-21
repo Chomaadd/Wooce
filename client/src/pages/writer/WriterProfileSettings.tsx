@@ -9,10 +9,20 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Save, ArrowLeft, ExternalLink, Check, X, Loader2, AlertCircle, Info } from "lucide-react";
+import { User, Save, ArrowLeft, ExternalLink, Check, X, Loader2, AlertCircle, Info, ShieldCheck, Monitor, Smartphone, Tablet, Chrome, Globe } from "lucide-react";
 import { SiTiktok, SiInstagram, SiFacebook, SiX } from "react-icons/si";
 import { Link } from "wouter";
 import { isBannedNickname } from "@shared/bannedWords";
+
+type LoginHistoryEntry = {
+  _id: string;
+  loginAt: string;
+  ip: string | null;
+  browser: string;
+  os: string;
+  device: string;
+  method: "google" | "email" | "other";
+};
 
 type WriterMe = {
   id: string; name: string; email: string; photoUrl?: string | null;
@@ -74,6 +84,12 @@ export default function WriterProfileSettings() {
   const { data: writerData, isLoading } = useQuery<WriterMe>({
     queryKey: ["/api/writer/me"],
     queryFn: () => fetch("/api/writer/me", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user && user.role === "writer" && user.status === "active",
+  });
+
+  const { data: loginHistory = [] } = useQuery<LoginHistoryEntry[]>({
+    queryKey: ["/api/writer/login-history"],
+    queryFn: () => fetch("/api/writer/login-history", { credentials: "include" }).then(r => r.json()),
     enabled: !!user && user.role === "writer" && user.status === "active",
   });
 
@@ -360,6 +376,64 @@ export default function WriterProfileSettings() {
             <InputField label="Saweria" value={form.saweria} onChange={v => set("saweria", v)} placeholder="username" prefix="saweria.com/" />
             <InputField label="Trakteer" value={form.trakteer} onChange={v => set("trakteer", v)} placeholder="username" prefix="trakteer.id/" />
           </div>
+        </motion.div>
+
+        {/* Login History */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+          className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={14} className="text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Riwayat Akses</h2>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-2">20 sesi login terakhir di akunmu. Jika ada aktivitas yang tidak kamu kenali, segera ganti password.</p>
+          {loginHistory.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">Belum ada riwayat login tercatat.</p>
+          ) : (
+            <div className="space-y-2">
+              {loginHistory.map((entry, i) => {
+                const DeviceIcon = entry.device === "Mobile" ? Smartphone : entry.device === "Tablet" ? Tablet : Monitor;
+                const isFirst = i === 0;
+                const date = new Date(entry.loginAt);
+                const now = new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffMin = Math.floor(diffMs / 60000);
+                const diffHr = Math.floor(diffMin / 60);
+                const diffDay = Math.floor(diffHr / 24);
+                const relativeTime = diffMin < 1 ? "Baru saja"
+                  : diffMin < 60 ? `${diffMin} menit lalu`
+                  : diffHr < 24 ? `${diffHr} jam lalu`
+                  : diffDay < 7 ? `${diffDay} hari lalu`
+                  : date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+
+                return (
+                  <div key={entry._id}
+                    data-testid={`login-history-item-${i}`}
+                    className={`flex items-start gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${isFirst ? "bg-primary/5 border border-primary/20" : "bg-muted/40"}`}>
+                    <div className={`mt-0.5 shrink-0 ${isFirst ? "text-primary" : "text-muted-foreground"}`}>
+                      <DeviceIcon size={15} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-xs font-semibold ${isFirst ? "text-primary" : "text-foreground"}`}>
+                          {entry.browser} · {entry.os}
+                        </span>
+                        {isFirst && (
+                          <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium">Sesi ini</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                        <span className="text-[11px] text-muted-foreground">{relativeTime}</span>
+                        {entry.ip && <span className="text-[11px] text-muted-foreground font-mono">{entry.ip}</span>}
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                          {entry.method === "google" ? <><Globe size={10} /> Google</> : <><Chrome size={10} /> Email</>}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
 
         {/* Save button */}

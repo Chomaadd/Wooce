@@ -30,6 +30,7 @@ import {
 import { UserModel, NovelStoryModel, NovelSeasonModel, NovelChapterModel, VerificationRequestModel, AuthorModel, FollowModel, ReadHistoryModel, ShortUrlModel } from "./db";
 import { CharacterModel } from "./characterModel";
 import { ReportModel } from "./reportModel";
+import { LoginHistoryModel, parseUserAgent } from "./login-history-db";
 import { ChapterPremiumModel, CoinTransactionModel, UnlockedChapterModel } from "./coinModel";
 import { TopupOrderModel, COIN_PACKAGES } from "./paymentModel";
 import { LoginBonusModel, DAY_REWARDS, QUEST_MILESTONES, todayStr, yesterdayStr } from "./loginBonusModel";
@@ -248,6 +249,27 @@ export async function registerRoutes(
         req.session.userRole = user.role;
         req.session.save((saveErr: any) => {
           if (saveErr) console.error("[OAuth] Session save error:", saveErr);
+          // Record login history (fire-and-forget)
+          try {
+            const ua = req.headers["user-agent"] || "";
+            const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+            const parsed = parseUserAgent(ua);
+            LoginHistoryModel.create({
+              userId: new mongoose.Types.ObjectId(user.id),
+              ip,
+              userAgent: ua,
+              ...parsed,
+              method: "google",
+            }).catch(() => {});
+            // Keep only last 20 login records per user
+            LoginHistoryModel.find({ userId: new mongoose.Types.ObjectId(user.id) })
+              .sort({ loginAt: -1 }).skip(20).exec()
+              .then((old: any[]) => {
+                if (old.length > 0) {
+                  LoginHistoryModel.deleteMany({ _id: { $in: old.map((o: any) => o._id) } }).exec().catch(() => {});
+                }
+              }).catch(() => {});
+          } catch {}
           if (user.role === "writer" && user.status === "pending") {
             return res.redirect("/auth/done?result=pending");
           }
@@ -2506,6 +2528,18 @@ export async function registerRoutes(
       console.error("PATCH /api/writer/profile error:", err);
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // Writer: login history
+  app.get("/api/writer/login-history", requireWriter, async (req: any, res) => {
+    try {
+      const userId = new mongoose.Types.ObjectId(req.session.userId);
+      const history = await LoginHistoryModel.find({ userId })
+        .sort({ loginAt: -1 })
+        .limit(20)
+        .lean();
+      res.json(history);
+    } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
   app.post("/api/writer/stories", requireWriter, async (req: any, res) => {
