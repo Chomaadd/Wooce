@@ -1531,48 +1531,62 @@ export default function ManageNovel() {
     <div className="min-h-screen bg-background">
       <AdminHeader />
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
-          {/* Tab Nav — compact, wraps gracefully */}
-        <div className="mb-5">
-          <div className="flex flex-wrap gap-1 p-1 bg-muted/50 rounded-xl">
+          {/* Tab Nav — icon only, tooltip on hover */}
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-0.5 p-1 bg-muted/60 rounded-2xl border border-border/40 shadow-sm">
             {(() => {
               const isStoryView = ["stories", "seasons", "chapters", "write"].includes(view);
-              const tab = (v: string, label: string, icon?: React.ReactNode, testId?: string) => {
+
+              const tab = (v: string, label: string, icon: React.ReactNode, testId?: string) => {
                 const active = v === "stories" ? isStoryView : view === v;
                 return (
-                  <button
-                    key={v}
-                    onClick={() => {
-                      if (v === "stories") { setSelectedStory(null); setSelectedSeason(null); }
-                      setView(v as View);
-                    }}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${active ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    data-testid={testId}
-                  >
-                    {icon}
-                    {label}
-                  </button>
+                  <div key={v} className="relative group">
+                    <button
+                      onClick={() => {
+                        if (v === "stories") { setSelectedStory(null); setSelectedSeason(null); }
+                        setView(v as View);
+                      }}
+                      className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 ${
+                        active
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/80"
+                      }`}
+                      data-testid={testId}
+                    >
+                      {icon}
+                    </button>
+                    <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 text-[11px] font-medium bg-popover text-popover-foreground border border-border rounded-lg shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[200]">
+                      {label}
+                    </span>
+                  </div>
                 );
               };
+
               return (
                 <>
-                  {tab("stories", "Cerita", <BookOpen size={12} />)}
-                  {tab("stats", "Statistik", <BarChart2 size={12} />)}
-                  {tab("settings", "Settings", <Settings size={12} />)}
-                  {tab("announcements", "Pengumuman", <Bell size={12} />)}
-                  <div className="w-px bg-border/50 self-stretch my-0.5 mx-0.5" />
-                  {tab("approvals", "Approval", <ShieldCheck size={12} />)}
-                  {tab("reports", "Laporan", <Flag size={12} />)}
-                  {tab("coins", "Koin", <Coins size={12} />, "tab-coins")}
-                  {tab("messages", "Pesan", <Mail size={12} />, "tab-messages")}
-                  {tab("blog", "Blog", <FileText size={12} />, "tab-blog")}
-                  <Link href="/admin/short-urls">
-                    <button
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground"
-                      data-testid="tab-short-urls"
-                    >
-                      <Scissors size={12} /> URL Pendek
-                    </button>
-                  </Link>
+                  {tab("stories", "Cerita", <BookOpen size={15} />)}
+                  {tab("stats", "Statistik", <BarChart2 size={15} />)}
+                  {tab("settings", "Settings", <Settings size={15} />)}
+                  {tab("announcements", "Pengumuman", <Bell size={15} />)}
+                  <div className="w-px bg-border/60 self-stretch my-1.5 mx-0.5" />
+                  {tab("approvals", "Approval", <ShieldCheck size={15} />)}
+                  {tab("reports", "Laporan", <Flag size={15} />)}
+                  {tab("coins", "Koin", <Coins size={15} />, "tab-coins")}
+                  {tab("messages", "Pesan", <Mail size={15} />, "tab-messages")}
+                  {tab("blog", "Blog", <FileText size={15} />, "tab-blog")}
+                  <div className="relative group">
+                    <Link href="/admin/short-urls">
+                      <button
+                        className="flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 text-muted-foreground hover:text-foreground hover:bg-background/80"
+                        data-testid="tab-short-urls"
+                      >
+                        <Scissors size={15} />
+                      </button>
+                    </Link>
+                    <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 text-[11px] font-medium bg-popover text-popover-foreground border border-border rounded-lg shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[200]">
+                      URL Pendek
+                    </span>
+                  </div>
                 </>
               );
             })()}
