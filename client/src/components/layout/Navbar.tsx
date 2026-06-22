@@ -596,17 +596,15 @@ export function Navbar() {
                 <Newspaper size={15} />
               </button>
             </Link>
-            <div className="hidden sm:block">
-              <Link href="/bookmarks">
-                <button
-                  className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                  data-testid="button-bookmarks"
-                  aria-label="Bookmark"
-                >
-                  <Bookmark size={15} />
-                </button>
-              </Link>
-            </div>
+            <Link href="/topup-koin">
+              <button
+                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                data-testid="button-topup-koin-nav"
+                aria-label="Top Up Koin"
+              >
+                <Coins size={15} />
+              </button>
+            </Link>
             {user?.isAdmin && (
               <Link href="/admin/novel">
                 <button
