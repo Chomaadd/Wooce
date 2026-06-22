@@ -24,11 +24,12 @@ import {
   Download, FileJson,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
+import { ShortUrlsAdminView } from "./ManageShortUrls";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog" | "short-urls";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1635,26 +1636,14 @@ export default function ManageNovel() {
                   {tab("coins", "Koin", <Coins size={15} />, "tab-coins")}
                   {tab("messages", "Pesan", <Mail size={15} />, "tab-messages")}
                   {tab("blog", "Blog", <FileText size={15} />, "tab-blog")}
-                  <div className="relative group">
-                    <Link href="/admin/short-urls">
-                      <button
-                        className="flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 text-muted-foreground hover:text-foreground hover:bg-background/80"
-                        data-testid="tab-short-urls"
-                      >
-                        <Scissors size={15} />
-                      </button>
-                    </Link>
-                    <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 text-[11px] font-medium bg-popover text-popover-foreground border border-border rounded-lg shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[200]">
-                      URL Pendek
-                    </span>
-                  </div>
+                  {tab("short-urls", "URL Pendek", <Scissors size={15} />, "tab-short-urls")}
                 </>
               );
             })()}
           </div>
         </div>
 
-      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && (view as View) !== "short-urls" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2432,6 +2421,7 @@ export default function ManageNovel() {
       {(view as View) === "coins" && <CoinAdminView />}
       {(view as View) === "messages" && <MessagesView />}
       {(view as View) === "blog" && <BlogAdminView />}
+      {(view as View) === "short-urls" && <ShortUrlsAdminView />}
 
       </div>
 

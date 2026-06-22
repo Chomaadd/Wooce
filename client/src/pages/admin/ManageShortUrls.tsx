@@ -6,10 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import {
   Copy, Trash2, Link2, ExternalLink, Plus, MousePointerClick,
-  RefreshCw, Clock, Infinity, Pencil, LogOut,
+  RefreshCw, Clock, Infinity, Pencil,
 } from "lucide-react";
 
 interface ShortUrl {
@@ -84,119 +84,89 @@ function UrlCard({
   onDelete: (id: string) => void;
   isDeleting: boolean;
 }) {
-  const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [editTargetUrl, setEditTargetUrl] = useState(url.targetUrl);
-  const [editTitle, setEditTitle] = useState(url.title || "");
+  const [editTitle, setEditTitle] = useState(url.title ?? "");
   const [editExpiryMode, setEditExpiryMode] = useState<"keep" | ExpiryUnit>("keep");
   const [editExpiryAmount, setEditExpiryAmount] = useState(7);
+  const { toast } = useToast();
 
   const editMutation = useMutation({
     mutationFn: () => {
-      const body: Record<string, any> = {
-        targetUrl: editTargetUrl,
-        title: editTitle,
-      };
-      if (editExpiryMode !== "keep") {
-        body.expiryMs = computeExpiryMs(editExpiryMode as ExpiryUnit, editExpiryAmount);
+      let expiresAt: string | null | undefined = undefined;
+      if (editExpiryMode === "permanent") expiresAt = null;
+      else if (editExpiryMode !== "keep") {
+        expiresAt = new Date(Date.now() + computeExpiryMs(editExpiryMode, editExpiryAmount)).toISOString();
       }
-      return apiRequest("PATCH", `/api/short-urls/${url.id}`, body).then(r => r.json());
+      return apiRequest("PATCH", `/api/short-urls/${url.id}`, {
+        targetUrl: editTargetUrl,
+        title: editTitle || null,
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
+      }).then(r => r.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/short-urls"] });
-      setEditing(false);
       toast({ title: "URL berhasil diperbarui" });
+      setEditing(false);
     },
     onError: () => {
       toast({ title: "Gagal memperbarui URL", variant: "destructive" });
     },
   });
 
-  const shortLink = `${BASE_URL}/${url.slug}`;
   const expiry = formatExpiry(url.expiresAt);
-  const expired = url.expiresAt && new Date(url.expiresAt) <= new Date();
+  const shortLink = `${BASE_URL}/${url.slug}`;
 
   return (
-    <div
-      data-testid={`card-short-url-${url.id}`}
-      className={`bg-card border rounded-2xl px-4 py-4 transition-all ${
-        expired ? "border-border/50 opacity-60" : "border-border"
-      }`}
-    >
+    <div className={`bg-card border rounded-2xl px-4 py-3.5 space-y-2 transition-colors ${expiry.isExpired ? "border-destructive/30 opacity-60" : expiry.isNearExpiry ? "border-yellow-500/40" : "border-border"}`}>
       {!editing ? (
         <>
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              {url.title && (
-                <p className="font-medium text-sm truncate">{url.title}</p>
-              )}
-              <button
-                type="button"
-                className="font-mono text-primary text-sm hover:underline truncate max-w-full text-left"
-                data-testid={`text-short-url-slug-${url.id}`}
-                onClick={() => onCopy(shortLink)}
-              >
-                {shortLink}
-              </button>
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{url.targetUrl}</p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {url.title && <p className="text-sm font-semibold truncate">{url.title}</p>}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Link2 className="w-3 h-3 text-primary shrink-0" />
+                <span className="font-mono text-xs text-primary truncate">{shortLink}</span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground truncate">{url.targetUrl}</span>
+              </div>
             </div>
-
-            <div className="flex items-center gap-0.5 shrink-0">
-              <Button
-                variant="ghost" size="icon"
-                data-testid={`button-copy-${url.id}`}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
                 onClick={() => onCopy(shortLink)}
-                title="Salin link"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Salin"
+                data-testid={`button-copy-${url.id}`}
               >
-                <Copy className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost" size="icon"
-                data-testid={`button-open-${url.id}`}
-                onClick={() => window.open(shortLink, "_blank")}
-                title="Buka link"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost" size="icon"
-                data-testid={`button-edit-short-url-${url.id}`}
-                onClick={() => {
-                  setEditTargetUrl(url.targetUrl);
-                  setEditTitle(url.title || "");
-                  setEditExpiryMode("keep");
-                  setEditExpiryAmount(7);
-                  setEditing(true);
-                }}
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setEditing(true)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="Edit"
+                data-testid={`button-edit-${url.id}`}
               >
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost" size="icon"
-                data-testid={`button-delete-short-url-${url.id}`}
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
                 onClick={() => onDelete(url.id)}
                 disabled={isDeleting}
-                className="text-destructive hover:text-destructive"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 title="Hapus"
+                data-testid={`button-delete-${url.id}`}
               >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-            <div className={`flex items-center gap-1 text-xs rounded-full px-2.5 py-1 ${
-              expiry.isExpired
-                ? "bg-destructive/10 text-destructive"
-                : expiry.isNearExpiry
-                ? "bg-orange-500/10 text-orange-500"
-                : "bg-muted/60 text-muted-foreground"
-            }`}>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className={`flex items-center gap-1 ${expiry.isExpired ? "text-destructive" : expiry.isNearExpiry ? "text-yellow-500" : ""}`}>
               {url.expiresAt ? <Clock className="w-3 h-3" /> : <Infinity className="w-3 h-3" />}
               <span data-testid={`text-expiry-${url.id}`}>{expiry.label}</span>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1">
+            <div className="flex items-center gap-1">
               <MousePointerClick className="w-3 h-3" />
               <span data-testid={`text-clicks-${url.id}`}>{url.clicks} klik</span>
             </div>
@@ -297,18 +267,12 @@ function UrlSection({
     <div className="space-y-3">
       <h2 className="font-semibold text-base flex items-center gap-2">
         {title}
-        {urls.length > 0 && (
-          <span className="text-muted-foreground font-normal text-sm">({urls.length})</span>
-        )}
+        <span className="text-muted-foreground text-sm font-normal">({urls.length})</span>
       </h2>
-
       {urls.length === 0 ? (
-        <div className="bg-card border border-dashed border-border rounded-2xl py-10 text-center">
-          <Link2 className="w-7 h-7 text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">{emptyLabel}</p>
-        </div>
+        <p className="text-sm text-muted-foreground py-4 text-center">{emptyLabel}</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {urls.map(url => (
             <UrlCard
               key={url.id}
@@ -324,17 +288,8 @@ function UrlSection({
   );
 }
 
-export default function ManageShortUrls() {
+export function ShortUrlsAdminView() {
   const { toast } = useToast();
-  const [adminVerified, setAdminVerified] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/admin-verify", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => { if (d.ok) setAdminVerified(true); else { setAdminVerified(false); window.location.href = "/login"; } })
-      .catch(() => { setAdminVerified(false); window.location.href = "/login"; });
-  }, []);
-
   const [targetUrl, setTargetUrl] = useState("");
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState(generateSlug());
@@ -399,216 +354,178 @@ export default function ManageShortUrls() {
   const activeUrls = urls.filter(u => !u.expiresAt || new Date(u.expiresAt) > new Date());
   const expiredUrls = urls.filter(u => u.expiresAt && new Date(u.expiresAt) <= new Date());
 
-  if (adminVerified === null) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-6 flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/image/icon-navbar.png" alt="WOOCE Novel" className="w-7 h-7 rounded-lg object-cover" />
-            <span className="font-bold text-sm text-foreground">Admin URL Pendek</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/novel">
-              <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted">
-                ← Dashboard
-              </button>
-            </Link>
-            <Link href="/">
-              <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full hover:bg-muted" data-testid="button-view-site">
-                <ExternalLink size={13} />
-                Lihat Situs
-              </button>
-            </Link>
-            <button
-              onClick={async () => {
-                await fetch("/api/auth/admin-logout", { method: "POST", credentials: "include" });
-                window.location.href = "/login";
-              }}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-3 py-1.5 rounded-full hover:bg-destructive/10"
-              data-testid="button-logout"
-            >
-              <LogOut size={13} />
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold">URL Pendek</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Buat tautan pendek seperti{" "}
-            <span className="font-mono text-primary">{BASE_URL}/xuwkajs</span>{" "}
-            yang redirect ke URL manapun.
-          </p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold">URL Pendek</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Buat tautan pendek seperti{" "}
+          <span className="font-mono text-primary">{BASE_URL}/xuwkajs</span>{" "}
+          yang redirect ke URL manapun.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <h2 className="font-semibold text-base">Buat URL Pendek Baru</h2>
+
+        <div className="space-y-2">
+          <Label htmlFor="targetUrl">URL Tujuan</Label>
+          <Input
+            id="targetUrl"
+            data-testid="input-target-url"
+            type="url"
+            placeholder="https://contoh.com/halaman-yang-panjang-sekali"
+            value={targetUrl}
+            onChange={e => setTargetUrl(e.target.value)}
+            required
+          />
         </div>
 
-        {/* Form Buat URL */}
-        <form onSubmit={handleSubmit} className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <h2 className="font-semibold text-base">Buat URL Pendek Baru</h2>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="targetUrl">URL Tujuan</Label>
+            <Label htmlFor="title">Label (opsional)</Label>
             <Input
-              id="targetUrl"
-              data-testid="input-target-url"
-              type="url"
-              placeholder="https://contoh.com/halaman-yang-panjang-sekali"
-              value={targetUrl}
-              onChange={e => setTargetUrl(e.target.value)}
-              required
+              id="title"
+              data-testid="input-short-url-title"
+              placeholder="Contoh: Link Portfolio"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Label (opsional)</Label>
-              <Input
-                id="title"
-                data-testid="input-short-url-title"
-                placeholder="Contoh: Link Portfolio"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Kedaluwarsa</Label>
-              <div className="flex gap-2">
-                {expiryUnit !== "permanent" && (
-                  <Input
-                    data-testid="input-expiry-amount"
-                    type="number"
-                    min={1}
-                    value={expiryAmount}
-                    onChange={e => setExpiryAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-20 shrink-0"
-                  />
-                )}
-                <Select value={expiryUnit} onValueChange={v => setExpiryUnit(v as ExpiryUnit)}>
-                  <SelectTrigger data-testid="select-expiry-unit" className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(UNIT_LABELS) as ExpiryUnit[]).map(u => (
-                      <SelectItem key={u} value={u}>{UNIT_LABELS[u]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="slug">Slug (akhiran URL)</Label>
-              {!isCustomSlug && (
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-                  onClick={() => setIsCustomSlug(true)}
-                >
-                  Edit manual
-                </button>
+            <Label>Kedaluwarsa</Label>
+            <div className="flex gap-2">
+              {expiryUnit !== "permanent" && (
+                <Input
+                  data-testid="input-expiry-amount"
+                  type="number"
+                  min={1}
+                  value={expiryAmount}
+                  onChange={e => setExpiryAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 shrink-0"
+                />
               )}
+              <Select value={expiryUnit} onValueChange={v => setExpiryUnit(v as ExpiryUnit)}>
+                <SelectTrigger data-testid="select-expiry-unit" className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(UNIT_LABELS) as ExpiryUnit[]).map(u => (
+                    <SelectItem key={u} value={u}>{UNIT_LABELS[u]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">{BASE_URL}/</span>
-              <Input
-                id="slug"
-                data-testid="input-slug"
-                value={slug}
-                onChange={e => {
-                  setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""));
-                  setIsCustomSlug(true);
-                }}
-                className="font-mono"
-                maxLength={12}
-              />
-              {!isCustomSlug && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  data-testid="button-regenerate-slug"
-                  onClick={() => setSlug(generateSlug())}
-                  title="Acak slug baru"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Hanya huruf kecil dan angka, minimal 4 karakter, maksimal 12 karakter.
-            </p>
           </div>
+        </div>
 
-          {targetUrl && (
-            <div className="bg-muted/50 rounded-xl px-4 py-3 text-sm space-y-1">
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-muted-foreground">Pratinjau:</span>
-                <span className="font-mono text-primary">{BASE_URL}/{slug}</span>
-                <span className="text-muted-foreground">→</span>
-                <span className="truncate text-xs">{targetUrl}</span>
-              </div>
-              <div className="flex items-center gap-1 text-muted-foreground text-xs">
-                {expiryUnit === "permanent"
-                  ? <><Infinity className="w-3 h-3" /> Permanen (tidak pernah kedaluwarsa)</>
-                  : <><Clock className="w-3 h-3" /> Aktif selama {expiryPreviewLabel()}</>
-                }
-              </div>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            data-testid="button-create-short-url"
-            disabled={createMutation.isPending || !targetUrl || slug.length < 4}
-            className="w-full gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {createMutation.isPending ? "Membuat..." : "Buat URL Pendek"}
-          </Button>
-        </form>
-
-        {/* Daftar URL */}
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 bg-muted/40 rounded-2xl animate-pulse" />
-            ))}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="slug">Slug (akhiran URL)</Label>
+            {!isCustomSlug && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                onClick={() => setIsCustomSlug(true)}
+              >
+                Edit manual
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">{BASE_URL}/</span>
+            <Input
+              id="slug"
+              data-testid="input-slug"
+              value={slug}
+              onChange={e => {
+                setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""));
+                setIsCustomSlug(true);
+              }}
+              className="font-mono"
+              maxLength={12}
+            />
+            {!isCustomSlug && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                data-testid="button-regenerate-slug"
+                onClick={() => setSlug(generateSlug())}
+                title="Acak slug baru"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Hanya huruf kecil dan angka, minimal 4 karakter, maksimal 12 karakter.
+          </p>
+        </div>
+
+        {targetUrl && (
+          <div className="bg-muted/50 rounded-xl px-4 py-3 text-sm space-y-1">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-muted-foreground">Pratinjau:</span>
+              <span className="font-mono text-primary">{BASE_URL}/{slug}</span>
+              <span className="text-muted-foreground">→</span>
+              <span className="truncate text-xs">{targetUrl}</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground text-xs">
+              {expiryUnit === "permanent"
+                ? <><Infinity className="w-3 h-3" /> Permanen (tidak pernah kedaluwarsa)</>
+                : <><Clock className="w-3 h-3" /> Aktif selama {expiryPreviewLabel()}</>
+              }
+            </div>
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          data-testid="button-create-short-url"
+          disabled={createMutation.isPending || !targetUrl || slug.length < 4}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          {createMutation.isPending ? "Membuat..." : "Buat URL Pendek"}
+        </Button>
+      </form>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-20 bg-muted/40 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <UrlSection
+            title="URL Aktif"
+            emptyLabel="Belum ada URL pendek. Buat yang pertama di atas!"
+            urls={activeUrls}
+            onCopy={copyToClipboard}
+            onDelete={id => deleteMutation.mutate(id)}
+            isDeleting={deleteMutation.isPending}
+          />
+          {expiredUrls.length > 0 && (
             <UrlSection
-              title="URL Aktif"
-              emptyLabel="Belum ada URL pendek. Buat yang pertama di atas!"
-              urls={activeUrls}
+              title="URL Kedaluwarsa"
+              emptyLabel="Tidak ada URL kedaluwarsa."
+              urls={expiredUrls}
               onCopy={copyToClipboard}
               onDelete={id => deleteMutation.mutate(id)}
               isDeleting={deleteMutation.isPending}
             />
-            {expiredUrls.length > 0 && (
-              <UrlSection
-                title="URL Kedaluwarsa"
-                emptyLabel="Tidak ada URL kedaluwarsa."
-                urls={expiredUrls}
-                onCopy={copyToClipboard}
-                onDelete={id => deleteMutation.mutate(id)}
-                isDeleting={deleteMutation.isPending}
-              />
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+export default function ManageShortUrls() {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation("/admin/novel"); }, []);
+  return null;
 }
