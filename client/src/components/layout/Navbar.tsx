@@ -577,7 +577,7 @@ export function Navbar() {
           )}
 
           <div className="flex items-center gap-1 shrink-0">
-            <Link href="/novels" className="hidden sm:inline-flex">
+            <Link href="/novels">
               <button
                 className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-all-novels"
@@ -595,7 +595,7 @@ export function Navbar() {
                 <Newspaper size={15} />
               </button>
             </Link>
-            <Link href="/topup-koin" className="hidden sm:inline-flex">
+            <Link href="/topup-koin">
               <button
                 className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-topup-koin-nav"
@@ -845,6 +845,22 @@ export function Navbar() {
                       >
                         <span className="flex items-center gap-2"><Bell size={12} /> {t("navbar.user.notifications")}</span>
                         {unreadCount > 0 && <span className="w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+                      </button>
+                      <Link href="/blog">
+                        <button
+                          className="sm:hidden w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-blog-mobile-menu"
+                        >
+                          <Newspaper size={12} /> Blog
+                        </button>
+                      </Link>
+                      <button
+                        className="sm:hidden w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                        onClick={() => { setUserMenuOpen(false); setWriterModalOpen(true); }}
+                        data-testid="button-become-writer-mobile-menu"
+                      >
+                        <PenLine size={12} /> Menjadi Penulis
                       </button>
 
                       {user.role === "writer" && user.status === "active" && (
