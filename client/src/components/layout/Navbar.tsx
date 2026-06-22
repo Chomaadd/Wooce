@@ -502,7 +502,6 @@ export function Navbar() {
           >
             <PenLine size={11} />
             <span className="hidden sm:inline">{t("writer.button")}</span>
-            <span className="sm:hidden">Penulis</span>
           </button>
 
           {isHome ? (
@@ -578,7 +577,7 @@ export function Navbar() {
           )}
 
           <div className="flex items-center gap-1 shrink-0">
-            <Link href="/novels">
+            <Link href="/novels" className="hidden sm:inline-flex">
               <button
                 className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-all-novels"
@@ -587,7 +586,7 @@ export function Navbar() {
                 <Library size={15} />
               </button>
             </Link>
-            <Link href="/blog">
+            <Link href="/blog" className="hidden sm:inline-flex">
               <button
                 className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-blog"
@@ -596,7 +595,7 @@ export function Navbar() {
                 <Newspaper size={15} />
               </button>
             </Link>
-            <Link href="/topup-koin">
+            <Link href="/topup-koin" className="hidden sm:inline-flex">
               <button
                 className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-topup-koin-nav"
@@ -927,8 +926,7 @@ export function Navbar() {
                 data-testid="button-google-login"
               >
                 <LogIn size={13} />
-                <span className="hidden sm:inline">Login</span>
-                <span className="sm:hidden">Masuk</span>
+                <span className="hidden sm:inline">Masuk</span>
               </button>
             )}
             <button

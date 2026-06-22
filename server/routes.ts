@@ -2542,7 +2542,7 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
-  app.get("/api/auth/my-login-history", requireAuth, async (req: any, res) => {
+  app.get("/api/auth/my-login-history", requireUser, async (req: any, res) => {
     try {
       const userId = new mongoose.Types.ObjectId(req.session.userId);
       const history = await LoginHistoryModel.find({ userId })

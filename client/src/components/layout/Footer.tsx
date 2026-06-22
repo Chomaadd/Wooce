@@ -77,7 +77,7 @@ export function Footer() {
               <span className="opacity-30">·</span>
               <Link href="/topup-koin">
                 <span className="hover:text-foreground transition-colors cursor-pointer">
-                  Top Up Koin
+                  TopUp Koin
                 </span>
               </Link>
             </div>
