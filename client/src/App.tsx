@@ -30,6 +30,7 @@ import Login from "./pages/admin/Login";
 import ManageNovel from "./pages/admin/ManageNovel";
 import ManageShortUrls from "./pages/admin/ManageShortUrls";
 import CoinHistory from "./pages/public/CoinHistory";
+import TopupKoin from "./pages/public/TopupKoin";
 import LoginBonusPage from "./pages/public/LoginBonusPage";
 import PaymentFinish from "./pages/public/PaymentFinish";
 import Blog from "./pages/public/blog/Blog";
@@ -98,6 +99,7 @@ function Router() {
       <Route path="/admin/novel" component={ManageNovel} />
       <Route path="/admin/short-urls" component={ManageShortUrls} />
       <Route path="/admin/credentials"><Redirect to="/admin/novel" /></Route>
+      <Route path="/topup-koin" component={TopupKoin} />
       <Route path="/koin/riwayat" component={CoinHistory} />
       <Route path="/login-bonus" component={LoginBonusPage} />
       <Route path="/payment/finish" component={PaymentFinish} />
