@@ -1542,6 +1542,10 @@ export async function registerRoutes(
       const storyMap   = new Map(storyDocs.map((s: any) => [s._id.toString(), s]));
       const seasonMap  = new Map(seasonDocs.map((s: any) => [s._id.toString(), s]));
 
+      // Fetch login history
+      const loginHistoryDocs = await LoginHistoryModel.find({ userId: userObjId })
+        .sort({ loginAt: -1 }).limit(50).lean() as any[];
+
       const exportedAt = new Date().toLocaleString("id-ID", {
         day: "2-digit", month: "long", year: "numeric",
         hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta",
@@ -1570,6 +1574,14 @@ export async function registerRoutes(
             unlockedAt: u.createdAt?.toISOString?.() ?? new Date(u.createdAt).toISOString(),
           };
         }),
+        loginHistory: loginHistoryDocs.map((h: any) => ({
+          loginAt: h.loginAt?.toISOString?.() ?? new Date(h.loginAt).toISOString(),
+          browser: h.browser || "Unknown",
+          os: h.os || "Unknown",
+          device: h.device || "Desktop",
+          ip: h.ip || null,
+          method: h.method || "other",
+        })),
       });
 
       const safeName = ((user as any).name || "user").replace(/[^a-z0-9]/gi, "_").toLowerCase();

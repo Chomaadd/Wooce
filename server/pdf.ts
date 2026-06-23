@@ -415,6 +415,14 @@ export interface UserDataExportInput {
     seasonNumber: number;
     unlockedAt: string;
   }[];
+  loginHistory?: {
+    loginAt: string;
+    browser: string;
+    os: string;
+    device: string;
+    ip: string | null;
+    method: string;
+  }[];
 }
 
 export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> {
@@ -585,6 +593,58 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
 
     y += 14;
 
+    // ── Section: Riwayat Login ────────────────────────────────────────────────
+    if (data.loginHistory && data.loginHistory.length > 0) {
+      if (y > PAGE_BOTTOM - 60) { y = nextPage(); }
+
+      doc.rect(50, y, pageW - 100, 28).fill(PRIMARY);
+      doc.fill("#ffffff").fontSize(11).font("Helvetica-Bold")
+        .text(`Riwayat Akses Login  (${data.loginHistory.length} sesi terakhir)`, 60, y + 9, { lineBreak: false });
+      y += 36;
+
+      // Column headers
+      if (y > PAGE_BOTTOM - 20) { y = nextPage(); }
+      doc.rect(50, y, pageW - 100, 18).fill("#e8eaf7");
+      const colTgl  = 60;
+      const colDev  = 153;
+      const colBr   = 213;
+      const colOS   = 273;
+      const colMeth = 323;
+      const colIP   = 363;
+      cell("TANGGAL",   colTgl,  y + 5, 88,         PRIMARY, 7.5, "Helvetica-Bold");
+      cell("PERANGKAT", colDev,  y + 5, 56,         PRIMARY, 7.5, "Helvetica-Bold");
+      cell("BROWSER",   colBr,   y + 5, 56,         PRIMARY, 7.5, "Helvetica-Bold");
+      cell("OS",        colOS,   y + 5, 46,         PRIMARY, 7.5, "Helvetica-Bold");
+      cell("METODE",    colMeth, y + 5, 36,         PRIMARY, 7.5, "Helvetica-Bold");
+      cell("IP",        colIP,   y + 5, pageW - colIP - 50, PRIMARY, 7.5, "Helvetica-Bold");
+      y += 20;
+
+      const METHOD_LABELS: Record<string, string> = { google: "Google", email: "Email", other: "Lainnya" };
+
+      for (const h of data.loginHistory) {
+        if (y > PAGE_BOTTOM - 14) { y = nextPage(); }
+
+        const rowBg = y % 28 < 14 ? "#f8f9ff" : "#ffffff";
+        doc.rect(50, y, pageW - 100, 16).fill(rowBg);
+
+        const dateStr = new Date(h.loginAt).toLocaleString("id-ID", {
+          day: "2-digit", month: "short", year: "2-digit",
+          hour: "2-digit", minute: "2-digit",
+        });
+
+        cell(dateStr,                       colTgl,  y + 4, 88,                    DARK, 7, "Helvetica");
+        cell(h.device,                      colDev,  y + 4, 56,                    GRAY, 7, "Helvetica");
+        cell(h.browser,                     colBr,   y + 4, 56,                    DARK, 7, "Helvetica");
+        cell(h.os,                          colOS,   y + 4, 46,                    GRAY, 7, "Helvetica");
+        cell(METHOD_LABELS[h.method] ?? h.method, colMeth, y + 4, 36,             DARK, 7, "Helvetica");
+        cell(h.ip || "-",                   colIP,   y + 4, pageW - colIP - 50,   GRAY, 7, "Helvetica");
+
+        y += 16;
+      }
+
+      y += 14;
+    }
+
     // ── Summary footer note ───────────────────────────────────────────────────
     if (y + 30 > PAGE_BOTTOM) { y = nextPage(); }
     doc.save();
@@ -593,7 +653,7 @@ export function generateUserDataPdf(data: UserDataExportInput): Promise<Buffer> 
     y += 10;
     doc.fill(GRAY).fontSize(8).font("Helvetica")
       .text(
-        `Dokumen ini berisi ${data.coinTransactions.length} transaksi koin dan ${data.unlockedChapters.length} chapter terbuka milik ${data.name}.`,
+        `Dokumen ini berisi ${data.coinTransactions.length} transaksi koin, ${data.unlockedChapters.length} chapter terbuka, dan ${data.loginHistory?.length ?? 0} riwayat login milik ${data.name}.`,
         50, y, { width: pageW - 100, align: "center", lineBreak: false }
       );
     y += 20;
