@@ -586,24 +586,6 @@ export function Navbar() {
                 <Library size={15} />
               </button>
             </Link>
-            <Link href="/blog" className="hidden sm:inline-flex">
-              <button
-                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                data-testid="button-blog"
-                aria-label="Blog"
-              >
-                <Newspaper size={15} />
-              </button>
-            </Link>
-            <Link href="/topup-koin">
-              <button
-                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                data-testid="button-topup-koin-nav"
-                aria-label="Top Up Koin"
-              >
-                <Coins size={15} />
-              </button>
-            </Link>
             {user?.isAdmin && (
               <Link href="/admin/novel">
                 <button
