@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import { broadcastToAdmins } from "./ws-admin";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import mongoose from "mongoose";
@@ -708,6 +709,8 @@ export async function registerRoutes(
       sendWriterPendingEmail(user.email, user.name).catch(console.error);
       storage.createNotification({ userId: user.id, type: "pending", title: "Pengajuan Sedang Ditinjau", message: "Permohonanmu untuk menjadi penulis sedang ditinjau oleh admin. Kami akan segera memberitahumu." }).catch(console.error);
 
+      broadcastToAdmins({ type: "writer_application", userId: user.id, userName: user.name, novelTitle: "" });
+
       res.json({ success: true, user: updated });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1303,6 +1306,9 @@ export async function registerRoutes(
         reason,
         details: details ?? "",
       });
+
+      broadcastToAdmins({ type: "report_submitted", storyTitle: story.title, reportType: reason });
+
       res.status(201).json({ ...report.toObject(), id: report._id.toString() });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -2115,7 +2121,9 @@ export async function registerRoutes(
       const orderId = `WOOCE-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
       const snap = await getMidtransSnap();
-      const siteUrl = process.env.SITE_URL || "";
+      const effectiveCfg = await getEffectiveConfig();
+      const siteUrl = (effectiveCfg.siteUrl || "").replace(/\/+$/, "") ||
+        (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
       const transaction = await snap.createTransaction({
         transaction_details: { order_id: orderId, gross_amount: pkg.price },
         item_details: [{ id: packageId, price: pkg.price, quantity: 1, name: `${pkg.label} - WOOCE Novel` }],
@@ -2196,6 +2204,9 @@ export async function registerRoutes(
           link: "/koin/riwayat",
         }).catch(console.error);
 
+        { const buyer = await UserModel.findById(order.userId).select("name username").lean() as any;
+          broadcastToAdmins({ type: "payment_received", orderId, coins: order.coins, amount: order.amount, userName: buyer?.name || buyer?.username || "User" }); }
+
       } else if (isFailed) {
         await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "failed" } });
 
@@ -2209,6 +2220,8 @@ export async function registerRoutes(
           message: `Transaksi untuk ${order.coins} koin ${reason}. Tidak ada koin yang dikurangi. Kamu bisa coba lagi kapan saja.`,
           link: "/koin/riwayat",
         }).catch(console.error);
+
+        broadcastToAdmins({ type: "payment_failed", orderId, coins: order.coins, reason });
       }
 
       res.json({ ok: true });
@@ -2305,6 +2318,9 @@ export async function registerRoutes(
             message: `Pembelian ${order.coins} koin seharga ${priceFormatted} telah dikonfirmasi.`,
             link: "/koin/riwayat",
           }).catch(console.error);
+
+          const buyer = await UserModel.findById(userObjId).select("name username").lean() as any;
+          broadcastToAdmins({ type: "payment_received", orderId, coins: order.coins, amount: order.amount, userName: buyer?.name || buyer?.username || "User" });
         }
 
         await TopupOrderModel.findOneAndUpdate({ orderId }, { $set: { status: "paid" } });
@@ -3193,6 +3209,8 @@ export async function registerRoutes(
 
       // Save to DB first so messages are never lost
       await ContactMessageModel.create({ name, email, subject, message, ipAddress: ip });
+
+      broadcastToAdmins({ type: "contact_message", name, subject });
 
       // Try to send email notification (silently skipped if Gmail not configured)
       sendContactNotification({ name, email, subject, message }).catch((err) => {

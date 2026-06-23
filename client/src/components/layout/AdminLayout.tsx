@@ -7,6 +7,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
+import { useAdminWs } from "@/hooks/use-admin-ws";
 
 interface ImportResult {
   ok: boolean; total: number; inserted: number; updated: number; skipped: number; errors: number;
@@ -15,6 +16,8 @@ interface ImportResult {
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, isLoading, logout } = useAuth();
+
+  useAdminWs(!!user && (user as any).role === "admin");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);

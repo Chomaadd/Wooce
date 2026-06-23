@@ -9,6 +9,7 @@ import { createServer } from "http";
 import { log, colorMethod, colorStatus, clr } from "./logger";
 import { NotificationModel } from "./notificationModel";
 import { ContactMessageModel } from "./contactMessageModel";
+import { initAdminWs } from "./ws-admin";
 
 export { log };
 
@@ -65,6 +66,8 @@ const healthcheckMiddleware = (_req: Request, res: Response, next: NextFunction)
   next();
 };
 app.use(healthcheckMiddleware);
+
+initAdminWs(httpServer);
 
 // Start the server immediately so healthchecks work
 const port = parseInt(process.env.PORT || "5000", 10);
