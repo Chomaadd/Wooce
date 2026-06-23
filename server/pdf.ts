@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import path from "path";
 import fs from "fs";
 
-const LOGO_PATH = path.join(process.cwd(), "public", "image", "landscape-wooce.png");
+const LOGO_PATH = path.join(process.cwd(), "public", "image", "icon-email-new.png");
 const LOGO_W = 120;
 const LOGO_H = Math.round(LOGO_W * (372 / 1181)); // ≈ 38px
 

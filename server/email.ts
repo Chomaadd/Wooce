@@ -118,7 +118,7 @@ function createUnifiedTransport(baseUrl: string, gmailUser?: string, gmailPass?:
       sendMail: async (opts: any) => {
         // Ganti CID logo dengan URL publik agar Resend bisa render gambar
         const html = typeof opts.html === "string"
-          ? opts.html.replace(`cid:${LOGO_CID}`, `${baseUrl}/image/landscape-wooce.png`)
+          ? opts.html.replace(`cid:${LOGO_CID}`, `${baseUrl}/image/icon-email-new.png`)
           : opts.html || "";
 
         // Ambil lampiran non-logo (misal: PDF backup)

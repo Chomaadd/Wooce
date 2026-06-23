@@ -3,7 +3,7 @@ import { useSiteSettings } from "@/hooks/use-settings";
 
 const FALLBACK_NAME = "WOOCE Novel";
 const FALLBACK_DESCRIPTION = "Platform baca novel, komik, dan cerita pendek terbaik";
-const FALLBACK_OG_IMAGE = "/image/landscape-wooce.png";
+const FALLBACK_OG_IMAGE = "/image/icon-email-new.png";
 
 function getSiteUrl(): string {
   if (typeof window !== "undefined") return window.location.origin;
