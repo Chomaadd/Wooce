@@ -45,9 +45,9 @@ export function initAdminWs(server: Server) {
 export function broadcastToAdmins(event: AdminWsEvent) {
   if (adminClients.size === 0) return;
   const payload = JSON.stringify(event);
-  for (const ws of adminClients) {
+  adminClients.forEach((ws) => {
     if (ws.readyState === WebSocket.OPEN) {
       try { ws.send(payload); } catch {}
     }
-  }
+  });
 }
