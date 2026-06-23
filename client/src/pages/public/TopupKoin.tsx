@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SeoHead } from "@/components/seometa/SeoHead";
 import { TopupModal } from "@/components/payment/TopupModal";
+import { LoginModal } from "@/components/layout/LoginModal";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import {
@@ -129,6 +130,7 @@ export default function TopupKoin() {
   const { t, language } = useLanguage();
   const isID = language === "id";
   const [showModal, setShowModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const faqItems = isID ? FAQ_ID : FAQ_EN;
 
@@ -136,7 +138,7 @@ export default function TopupKoin() {
     if (user) {
       setShowModal(true);
     } else {
-      window.location.href = "/auth/google";
+      setShowLoginModal(true);
     }
   };
 
@@ -411,6 +413,13 @@ export default function TopupKoin() {
       <AnimatePresence>
         {showModal && (
           <TopupModal onClose={() => setShowModal(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Login modal (shown when user is not logged in and clicks buy) */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <LoginModal onClose={() => setShowLoginModal(false)} />
         )}
       </AnimatePresence>
     </>
