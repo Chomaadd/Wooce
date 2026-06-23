@@ -855,6 +855,15 @@ export function Navbar() {
                           <Newspaper size={12} /> Blog
                         </button>
                       </Link>
+                      <Link href="/topup-koin">
+                        <button
+                          className="sm:hidden w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-2"
+                          onClick={() => setUserMenuOpen(false)}
+                          data-testid="button-topup-mobile-menu"
+                        >
+                          <Coins size={12} /> Top Up Koin
+                        </button>
+                      </Link>
                       {user.role === "writer" && user.status === "active" && (
                         <Link href="/writer/cerita">
                           <button
