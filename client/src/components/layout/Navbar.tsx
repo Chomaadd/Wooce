@@ -497,11 +497,11 @@ export function Navbar() {
 
           <button
             onClick={() => setWriterModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold border border-border/70 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold border border-border/70 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
             data-testid="button-become-writer"
           >
             <PenLine size={11} />
-            <span className="hidden sm:inline">{t("writer.button")}</span>
+            <span>{t("writer.button")}</span>
           </button>
 
           {isHome ? (
