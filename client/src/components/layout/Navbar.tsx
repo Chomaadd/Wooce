@@ -11,6 +11,7 @@ import type { NovelStory, AppNotification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { LoginModal } from "@/components/layout/LoginModal";
 import { TopupModal } from "@/components/payment/TopupModal";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
@@ -480,6 +481,7 @@ export function Navbar() {
   }, []);
 
   return (
+    <TooltipProvider delayDuration={400}>
     <>
     <header className="sticky top-0 z-40 w-full">
       <div className="glass border-b border-border/40">
@@ -577,35 +579,50 @@ export function Navbar() {
           )}
 
           <div className="flex items-center gap-1 shrink-0">
-            <Link href="/novels">
-              <button
-                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                data-testid="button-all-novels"
-                aria-label="Semua Novel"
-              >
-                <Library size={15} />
-              </button>
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/novels">
+                  <button
+                    className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                    data-testid="button-all-novels"
+                    aria-label="Semua Novel"
+                  >
+                    <Library size={15} />
+                  </button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Semua Novel</TooltipContent>
+            </Tooltip>
 
             {/* Desktop-only: Blog & Top Up icons */}
-            <Link href="/blog">
-              <button
-                className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                data-testid="button-blog-desktop"
-                aria-label="Blog"
-              >
-                <Newspaper size={15} />
-              </button>
-            </Link>
-            <Link href="/topup-koin">
-              <button
-                className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                data-testid="button-topup-desktop"
-                aria-label="Top Up Koin"
-              >
-                <Coins size={15} />
-              </button>
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/blog">
+                  <button
+                    className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                    data-testid="button-blog-desktop"
+                    aria-label="Blog"
+                  >
+                    <Newspaper size={15} />
+                  </button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Blog</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/topup-koin">
+                  <button
+                    className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                    data-testid="button-topup-desktop"
+                    aria-label="Top Up Koin"
+                  >
+                    <Coins size={15} />
+                  </button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Top Up Koin</TooltipContent>
+            </Tooltip>
 
             {user?.isAdmin && (
               <Link href="/admin/novel">
@@ -634,24 +651,29 @@ export function Navbar() {
             {/* ── Notification Bell ── */}
             {showNotifBell && (
               <div className="relative hidden sm:block" ref={notifRef}>
-                <button
-                  onClick={() => {
-                    setNotifOpen(prev => !prev);
-                    if (!notifOpen && unreadCount > 0) {
-                      markAllReadMutation.mutate();
-                    }
-                  }}
-                  className="relative p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                  data-testid="button-notification-bell"
-                  aria-label="Notifikasi"
-                >
-                  <Bell size={15} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        setNotifOpen(prev => !prev);
+                        if (!notifOpen && unreadCount > 0) {
+                          markAllReadMutation.mutate();
+                        }
+                      }}
+                      className="relative p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      data-testid="button-notification-bell"
+                      aria-label="Notifikasi"
+                    >
+                      <Bell size={15} />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Notifikasi</TooltipContent>
+                </Tooltip>
 
                 <AnimatePresence>
                   {notifOpen && (
@@ -957,13 +979,18 @@ export function Navbar() {
               <Globe size={14} />
               {language === "id" ? "EN" : "ID"}
             </button>
-            <button
-              onClick={toggleTheme}
-              className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-              data-testid="button-theme-toggle"
-            >
-              {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={toggleTheme}
+                  className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                  data-testid="button-theme-toggle"
+                >
+                  {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{theme === "light" ? "Mode Gelap" : "Mode Terang"}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -1041,5 +1068,6 @@ export function Navbar() {
         )}
       </AnimatePresence>
     </>
+    </TooltipProvider>
   );
 }
