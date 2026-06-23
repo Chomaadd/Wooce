@@ -586,6 +586,27 @@ export function Navbar() {
                 <Library size={15} />
               </button>
             </Link>
+
+            {/* Desktop-only: Blog & Top Up links */}
+            <Link href="/blog">
+              <button
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                data-testid="button-blog-desktop"
+              >
+                <Newspaper size={13} />
+                Blog
+              </button>
+            </Link>
+            <Link href="/topup-koin">
+              <button
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                data-testid="button-topup-desktop"
+              >
+                <Coins size={13} />
+                Top Up
+              </button>
+            </Link>
+
             {user?.isAdmin && (
               <Link href="/admin/novel">
                 <button

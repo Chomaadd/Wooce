@@ -46,8 +46,16 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
         </tr>
         <tr>
           <td style="background:#f9fafb;border-radius:0 0 20px 20px;padding:20px 40px;border-top:1px solid #e5e7eb;text-align:center;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+              <tr><td align="center">
+                <a href="https://www.tiktok.com/@woocenovel" style="display:inline-block;margin:0 5px;width:28px;height:28px;background:#111827;border-radius:50%;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">Tt</a>
+                <a href="https://www.facebook.com/woocenovel" style="display:inline-block;margin:0 5px;width:28px;height:28px;background:#1877f2;border-radius:50%;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">f</a>
+                <a href="https://instagram.com/woocenovel" style="display:inline-block;margin:0 5px;width:28px;height:28px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:50%;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">in</a>
+              </td></tr>
+            </table>
             <p style="margin:0 0 4px;color:#6b7280;font-size:12px;">Email ini dikirim otomatis dari platform</p>
             <a href="${BASE_URL}" style="color:#7c3aed;font-size:13px;font-weight:600;text-decoration:none;">WOOCE Novel</a>
+            <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;">&copy; 2026 Choomad Group. Seluruh hak cipta dilindungi.</p>
           </td>
         </tr>
       </table>
