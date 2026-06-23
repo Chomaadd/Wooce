@@ -5,9 +5,9 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Lock, KeyRound, Eye, EyeOff, CheckCircle2, XCircle,
   Save, RefreshCw, Mail, Globe, Shield, ChevronRight,
-  Loader2, ShieldCheck, X, Copy, Check, ExternalLink, CreditCard, Send,
+  Loader2, ShieldCheck, X, Copy, Check, ExternalLink, CreditCard, Send, MonitorSmartphone,
 } from "lucide-react";
-import { useState as useLocalState } from "react";
+import { EmailPreviewModal } from "@/components/admin/EmailPreviewModal";
 
 interface ConfigField {
   value: string;
@@ -52,7 +52,7 @@ const GROUP_META = {
 };
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useLocalState(false);
+  const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
@@ -96,6 +96,7 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
   const [visibleSecrets, setVisibleSecrets] = useState<Set<FieldKey>>(new Set());
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testingEmail, setTestingEmail] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   const { data: config, isLoading } = useQuery<SiteConfig>({
     queryKey: ["/api/admin/site-config"],
@@ -550,26 +551,37 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
                         </p>
                       </div>
                     )}
-                    <form onSubmit={handleTestEmail} className="flex gap-2">
-                      <input
-                        type="email"
-                        value={testEmailTo}
-                        onChange={e => setTestEmailTo(e.target.value)}
-                        placeholder="Kirim ke alamat email..."
-                        disabled={!emailActive}
-                        className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        data-testid="input-test-email"
-                      />
+                    <div className="flex gap-2">
                       <button
-                        type="submit"
-                        disabled={testingEmail || !testEmailTo || !emailActive}
-                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
-                        data-testid="button-send-test-email"
+                        type="button"
+                        onClick={() => setShowEmailPreview(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-border bg-background hover:bg-accent rounded-lg transition-all whitespace-nowrap"
+                        data-testid="button-preview-email"
                       >
-                        {testingEmail ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                        {testingEmail ? "Mengirim..." : "Kirim Test"}
+                        <MonitorSmartphone size={12} />
+                        Preview
                       </button>
-                    </form>
+                      <form onSubmit={handleTestEmail} className="flex gap-2 flex-1">
+                        <input
+                          type="email"
+                          value={testEmailTo}
+                          onChange={e => setTestEmailTo(e.target.value)}
+                          placeholder="Kirim ke alamat email..."
+                          disabled={!emailActive}
+                          className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="input-test-email"
+                        />
+                        <button
+                          type="submit"
+                          disabled={testingEmail || !testEmailTo || !emailActive}
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                          data-testid="button-send-test-email"
+                        >
+                          {testingEmail ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                          {testingEmail ? "Mengirim..." : "Kirim Test"}
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </div>
 

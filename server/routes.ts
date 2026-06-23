@@ -540,6 +540,21 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/email-preview", requireAuth, async (req, res) => {
+    try {
+      const type = (req.query.type as string) || "test";
+      const { generateEmailHtml } = await import("./email");
+      const { getEffectiveConfig } = await import("./site-config");
+      const config = await getEffectiveConfig();
+      const baseUrl = config.siteUrl ||
+        (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://wooce-novel.replit.app");
+      const html = generateEmailHtml(type, baseUrl.replace(/\/+$/, ""));
+      res.json({ html });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Gagal generate preview." });
+    }
+  });
+
   app.get("/api/auth/me", async (req, res) => {
     if (req.session.adminId) {
       const adminUsername = (process.env.ADMIN_USERNAME || "admin").trim();

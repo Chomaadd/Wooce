@@ -546,6 +546,179 @@ export async function sendStoryRemovedByReportEmail(
   }));
 }
 
+export function generateEmailHtml(type: string, baseUrl: string): string {
+  const logoUrl = `${baseUrl}/image/icon-email-new.png`;
+  const wrap = (bg: string, title: string, sub: string, body: string) =>
+    emailWrapper(bg, title, sub, body, baseUrl).replace(`cid:${LOGO_CID}`, logoUrl);
+
+  switch (type) {
+    case "otp":
+      return wrap(
+        "linear-gradient(90deg,#dc2626,#b91c1c)",
+        "Verifikasi Penghapusan Akun",
+        "Masukkan kode OTP untuk mengonfirmasi",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami menerima permintaan untuk <strong>menghapus akunmu</strong> di WOOCE Novel. Gunakan kode OTP berikut:</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td align="center">
+          <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:24px 40px;display:inline-block;">
+            <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#7c3aed;font-family:'Courier New',monospace;">482916</span>
+          </div>
+        </td></tr></table>
+        <div style="background:#fff7ed;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:24px;">
+          <p style="margin:0;font-size:13px;color:#92400e;line-height:1.6;">Kode ini berlaku selama <strong>10 menit</strong>. Jika kamu tidak meminta ini, abaikan email ini — akunmu aman.</p>
+        </div>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;text-align:center;">Penghapusan akun bersifat <strong>permanen</strong> dan tidak dapat dibatalkan.</p>`
+      );
+
+    case "writer-pending":
+      return wrap(
+        "linear-gradient(90deg,#d97706,#b45309)",
+        "Pengajuan Sedang Ditinjau",
+        "Kami sudah menerima permohonanmu",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Permohonanmu untuk menjadi <strong>penulis di WOOCE Novel</strong> sudah kami terima dan sedang dalam proses peninjauan oleh tim admin.</p>
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
+          <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">Proses peninjauan biasanya berlangsung <strong>1-3 hari kerja</strong>. Kamu akan mendapat email lanjutan setelah keputusan diambil.</p>
+        </div>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Sambil menunggu, kamu tetap bisa menikmati semua novel di platform kami.</p>`
+      );
+
+    case "writer-approved":
+      return wrap(
+        "linear-gradient(90deg,#059669,#10b981)",
+        "Pengajuan Diterima! 🎉",
+        "Selamat bergabung sebagai penulis WOOCE Novel",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kabar baik! Pengajuanmu untuk menjadi penulis di <strong>WOOCE Novel</strong> telah <strong>disetujui</strong>. Kamu sekarang bisa mulai menulis dan mempublikasikan karyamu!</p>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#065f46;">Yang bisa kamu lakukan sekarang:</p>
+          <ul style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:1.9;">
+            <li>Upload cover dan buat cerita pertamamu</li>
+            <li>Atur season dan jadwal rilis chapter</li>
+            <li>Pantau statistik pembaca dari dashboard</li>
+          </ul>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+          <a href="${baseUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:6px;">Buka Dashboard Penulis</a>
+        </td></tr></table>`
+      );
+
+    case "writer-rejected":
+      return wrap(
+        "linear-gradient(90deg,#dc2626,#b91c1c)",
+        "Pengajuan Tidak Disetujui",
+        "Jangan menyerah, kamu bisa coba lagi",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Setelah ditinjau, pengajuanmu untuk menjadi penulis di <strong>WOOCE Novel</strong> belum bisa kami setujui saat ini.</p>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
+          <p style="margin:0;color:#991b1b;font-size:14px;line-height:1.6;">Kamu bisa mengajukan permohonan kembali setelah <strong>7 hari</strong>. Pastikan profilmu sudah lengkap sebelum mendaftar ulang.</p>
+        </div>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Tetap semangat menulis! Kami selalu terbuka untuk pengajuan berikutnya.</p>`
+      );
+
+    case "writer-suspended":
+      return wrap(
+        "linear-gradient(90deg,#ea580c,#c2410c)",
+        "Akun Disuspend",
+        "Tindakan diperlukan pada akunmu",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami ingin memberitahu bahwa akun penulismu di <strong>WOOCE Novel</strong> telah <strong>disuspend</strong> oleh tim admin karena melanggar panduan konten platform.</p>
+        <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
+          <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.6;">Akses ke dashboard penulis sementara dinonaktifkan. Kamu bisa mengajukan permohonan kembali setelah <strong>30 hari</strong>.</p>
+        </div>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">Jika kamu merasa ini adalah kesalahan, hubungi tim kami melalui halaman kontak.</p>`
+      );
+
+    case "account-deleted":
+      return wrap(
+        "linear-gradient(90deg,#374151,#111827)",
+        "Akun Dihapus",
+        "Pemberitahuan resmi dari WOOCE Novel",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami memberitahu bahwa akunmu di <strong>WOOCE Novel</strong> telah <strong>dihapus permanen</strong> oleh tim admin karena melanggar standar komunitas dan ketentuan layanan kami.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+          <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Semua data yang terkait dengan akunmu telah dihapus dari sistem kami. Jika kamu merasa ini adalah kesalahan, silakan hubungi kami melalui halaman kontak.</p>
+        </div>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih atas pemahaman dan kerja samamu.</p>`
+      );
+
+    case "story-backup":
+      return wrap(
+        "linear-gradient(90deg,#5b21b6,#7c3aed)",
+        "Backup Novel Tersimpan",
+        "Novel telah dihapus dari platform",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Novel <strong>"Jejak Abyss"</strong> telah berhasil dihapus dari WOOCE Novel sesuai permintaanmu.</p>
+        <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;padding:18px 22px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;color:#065f46;font-size:13px;font-weight:600;">📄 File Backup Terlampir</p>
+          <p style="margin:0;color:#374151;font-size:13px;line-height:1.6;">Kami telah menyiapkan <strong>backup lengkap</strong> seluruh isi novel ini dalam file PDF yang terlampir. Simpan file ini sebagai arsip pribadimu.</p>
+        </div>
+        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;padding:16px 22px;margin-bottom:24px;">
+          <p style="margin:0;color:#5b21b6;font-size:13px;line-height:1.6;">Karya yang pernah kamu tulis adalah bagian dari perjalananmu. Siapa tahu suatu saat kamu ingin melanjutkannya kembali — dan kami selalu terbuka untukmu. ✨</p>
+        </div>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Terima kasih sudah berkarya di WOOCE Novel, <strong>Choiril</strong>. Sampai jumpa di karya selanjutnya!</p>`
+      );
+
+    case "contact":
+      return wrap(
+        "linear-gradient(90deg,#2563eb,#1d4ed8)",
+        "Pesan Baru Masuk",
+        "Ada yang mengirim pesan lewat form contact",
+        `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+          <tr><td style="padding:0 0 10px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;padding:14px 18px;">
+              <tr><td><span style="color:#7c3aed;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Nama</span><br/>
+              <span style="color:#1f2937;font-size:15px;font-weight:600;">Choiril Ahmad</span></td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="padding:0 0 10px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-radius:12px;padding:14px 18px;">
+              <tr><td><span style="color:#2563eb;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Email</span><br/>
+              <span style="color:#1f2937;font-size:15px;font-weight:600;">choiril@example.com</span></td></tr>
+            </table>
+          </td></tr>
+        </table>
+        <div style="border-left:4px solid #7c3aed;background:#fafafa;border-radius:0 12px 12px 0;padding:18px 22px;margin-bottom:28px;">
+          <p style="margin:0 0 6px;color:#7c3aed;font-size:11px;font-weight:600;text-transform:uppercase;">Pesan</p>
+          <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;">Halo, saya ingin bertanya mengenai cara mendaftar sebagai penulis di platform WOOCE Novel. Terima kasih!</p>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+          <a href="#" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:50px;">Balas Pesan</a>
+        </td></tr></table>`
+      );
+
+    case "story-report-removed":
+      return wrap(
+        "linear-gradient(90deg,#dc2626,#9a3412)",
+        "Cerita Dihapus dari Platform",
+        "Konten melanggar ketentuan WOOCE Novel",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hai <strong>Choiril</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Kami ingin memberitahukan bahwa ceritamu <strong>"Jejak Abyss"</strong> telah <strong>dihapus permanen</strong> dari platform WOOCE Novel setelah ditinjau oleh tim admin.</p>
+        <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:14px;padding:18px 22px;margin:0 0 24px;">
+          <p style="margin:0 0 6px;color:#9a3412;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Alasan Penghapusan</p>
+          <p style="margin:0;color:#7c2d12;font-size:15px;font-weight:600;">Konten mengandung unsur kekerasan yang berlebihan</p>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:14px;padding:16px 20px;margin:0 0 24px;">
+          <p style="margin:0 0 6px;color:#166534;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">File Backup Terlampir</p>
+          <p style="margin:0;color:#15803d;font-size:14px;line-height:1.6;">Seluruh konten ceritamu telah kami simpankan dalam file PDF yang terlampir di email ini.</p>
+        </div>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">Jika kamu merasa penghapusan ini adalah kesalahan, hubungi tim kami melalui halaman Kontak.</p>`
+      );
+
+    default: // "test"
+      return wrap(
+        "linear-gradient(90deg,#7c3aed,#a855f7)",
+        "Test Email Berhasil!",
+        "Konfigurasi email kamu sudah benar",
+        `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Email ini dikirim sebagai konfirmasi bahwa konfigurasi email di <strong>WOOCE Novel</strong> sudah berfungsi dengan baik.</p>
+        <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;padding:16px 20px;margin-bottom:20px;">
+          <p style="margin:0;color:#065f46;font-size:14px;line-height:1.6;">Sistem email siap digunakan untuk notifikasi penulis, OTP, dan pesan kontak.</p>
+        </div>
+        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.7;">Salam,<br/><strong style="color:#111827;">Tim WOOCE Novel</strong></p>`
+      );
+  }
+}
+
 export async function sendTestEmail(to: string) {
   return guardStrict((t, from, BASE_URL) => t.sendMail({
     from: `"WOOCE Novel" <${from}>`,
