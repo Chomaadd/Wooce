@@ -28,36 +28,64 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
 <!DOCTYPE html>
 <html lang="id">
 <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
-<body style="margin:0;padding:0;background:#0d0d1a;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d1a;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#f6f6f6;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f6f6;padding:40px 16px;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Top accent bar -->
         <tr>
-          <td style="background:${headerBg};border-radius:20px 20px 0 0;padding:36px 40px 32px;text-align:center;">
-            <img src="cid:${LOGO_CID}" alt="WOOCE Novel" width="120" style="width:120px;max-width:30%;height:auto;display:block;margin:0 auto 16px;border-radius:10px;" />
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${headerTitle}</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px;">${headerSub}</p>
+          <td style="background:${headerBg};height:4px;padding:0;"></td>
+        </tr>
+
+        <!-- Header: Logo -->
+        <tr>
+          <td style="padding:32px 40px 24px;text-align:center;border-bottom:1px solid #f0f0f0;">
+            <img src="cid:${LOGO_CID}" alt="WOOCE Novel" style="height:56px;width:auto;max-width:280px;display:block;margin:0 auto;border-radius:6px;" />
           </td>
         </tr>
+
+        <!-- Body -->
         <tr>
-          <td style="background:#ffffff;padding:36px 40px;">
+          <td style="padding:32px 40px;">
+            <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">${headerTitle}</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">${headerSub}</p>
             ${bodyContent}
           </td>
         </tr>
+
+        <!-- Footer -->
         <tr>
-          <td style="background:#f9fafb;border-radius:0 0 20px 20px;padding:20px 40px;border-top:1px solid #e5e7eb;text-align:center;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+          <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
+
+            <!-- Social Media -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
               <tr><td align="center">
-                <a href="https://www.tiktok.com/@woocenovel" style="display:inline-block;margin:0 5px;width:28px;height:28px;background:#111827;border-radius:50%;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">Tt</a>
-                <a href="https://www.facebook.com/woocenovel" style="display:inline-block;margin:0 5px;width:28px;height:28px;background:#1877f2;border-radius:50%;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">f</a>
-                <a href="https://instagram.com/woocenovel" style="display:inline-block;margin:0 5px;width:28px;height:28px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:50%;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:700;text-decoration:none;">in</a>
+                <a href="https://www.tiktok.com/@woocenovel" style="display:inline-block;margin:0 6px;width:32px;height:32px;background:#111827;border-radius:50%;text-align:center;line-height:32px;color:#fff;font-size:12px;font-weight:700;text-decoration:none;">Tt</a>
+                <a href="https://www.facebook.com/woocenovel" style="display:inline-block;margin:0 6px;width:32px;height:32px;background:#1877f2;border-radius:50%;text-align:center;line-height:32px;color:#fff;font-size:12px;font-weight:700;text-decoration:none;">f</a>
+                <a href="https://instagram.com/woocenovel" style="display:inline-block;margin:0 6px;width:32px;height:32px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:50%;text-align:center;line-height:32px;color:#fff;font-size:12px;font-weight:700;text-decoration:none;">in</a>
               </td></tr>
             </table>
-            <p style="margin:0 0 4px;color:#6b7280;font-size:12px;">Email ini dikirim otomatis dari platform</p>
-            <a href="${BASE_URL}" style="color:#7c3aed;font-size:13px;font-weight:600;text-decoration:none;">WOOCE Novel</a>
-            <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;">&copy; 2026 Choomad Group. Seluruh hak cipta dilindungi.</p>
+
+            <!-- Policy links -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr><td align="center">
+                <a href="${BASE_URL}/privacy" style="color:#6b7280;font-size:12px;text-decoration:underline;margin:0 8px;">Kebijakan Privasi</a>
+                <span style="color:#d1d5db;font-size:12px;">|</span>
+                <a href="${BASE_URL}/terms" style="color:#6b7280;font-size:12px;text-decoration:underline;margin:0 8px;">Syarat &amp; Ketentuan</a>
+                <span style="color:#d1d5db;font-size:12px;">|</span>
+                <a href="${BASE_URL}/contact" style="color:#6b7280;font-size:12px;text-decoration:underline;margin:0 8px;">Pusat Bantuan</a>
+              </td></tr>
+            </table>
+
+            <!-- Disclaimer -->
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;line-height:1.6;">
+              Email ini dikirim otomatis oleh WOOCE Novel. Mohon jangan membalas email ini.<br/>
+              &copy; 2026 Choomad Group. Seluruh hak cipta dilindungi.
+            </p>
           </td>
         </tr>
+
       </table>
     </td></tr>
   </table>
