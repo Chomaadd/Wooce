@@ -136,7 +136,7 @@ export default function TopupKoin() {
     if (user) {
       setShowModal(true);
     } else {
-      window.location.href = "/login";
+      window.location.href = "/auth/google";
     }
   };
 
