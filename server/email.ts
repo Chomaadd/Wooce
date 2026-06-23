@@ -4,10 +4,10 @@ import { Resend } from "resend";
 import { getEffectiveConfig } from "./site-config";
 
 const LOGO_CID = "logo@wooce-novel";
-const LOGO_PATH = path.resolve("public/image/landscape-wooce.png");
+const LOGO_PATH = path.resolve("public/image/icon-email-new.png");
 
 const logoAttachment = {
-  filename: "landscape-wooce.png",
+  filename: "icon-email-new.png",
   path: LOGO_PATH,
   cid: LOGO_CID,
 };
