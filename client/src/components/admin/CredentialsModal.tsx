@@ -26,14 +26,16 @@ interface SiteConfig {
   midtransIsProduction: ConfigField;
   resendApiKey: ConfigField;
   resendFromEmail: ConfigField;
+  resendSupportEmail: ConfigField;
 }
 
 type FieldKey = keyof SiteConfig;
 
 const FIELD_META: Record<FieldKey, { label: string; hint: string; placeholder: string; secret: boolean; group: string }> = {
   siteUrl:              { label: "Site URL",             hint: "URL publik platform, misal: https://wooce-novel.replit.app",               placeholder: "https://wooce-novel.replit.app",     secret: false, group: "general" },
-  resendApiKey:         { label: "Resend API Key",       hint: "API Key dari resend.com — wajib untuk Railway/Render",                      placeholder: "re_xxxxxxxxxxxxxxxxxxxx",             secret: true,  group: "resend"  },
-  resendFromEmail:      { label: "From Email (Resend)",  hint: "Alamat pengirim, dari domain verified di Resend",                           placeholder: "WOOCE Novel <noreply@domain.com>",   secret: false, group: "resend"  },
+  resendApiKey:         { label: "Resend API Key",          hint: "API Key dari resend.com — wajib untuk Railway/Render",                                                         placeholder: "re_xxxxxxxxxxxxxxxxxxxx",              secret: true,  group: "resend"  },
+  resendFromEmail:      { label: "From Email (Notifikasi)", hint: "Email pengirim untuk notifikasi transaksional (verifikasi, approval, OTP, dll). Contoh: noreply@domain.com", placeholder: "noreply@woocenovel.my.id",             secret: false, group: "resend"  },
+  resendSupportEmail:   { label: "From Email (Support)",    hint: "Email pengirim khusus halaman Kontak & laporan konten. Jika kosong, pakai From Email Notifikasi.",           placeholder: "support@woocenovel.my.id",            secret: false, group: "resend"  },
   gmailUser:            { label: "Gmail Address",        hint: "Alamat Gmail pengirim (opsional jika pakai Resend)",                        placeholder: "yourmail@gmail.com",                 secret: false, group: "email"   },
   gmailAppPassword:     { label: "Gmail App Password",   hint: "App Password Gmail — bukan password biasa (opsional jika pakai Resend)",    placeholder: "xxxx xxxx xxxx xxxx",                secret: true,  group: "email"   },
   googleClientId:       { label: "Google Client ID",     hint: "Client ID dari Google Cloud Console untuk OAuth",                           placeholder: "xxxxxx.apps.googleusercontent.com",  secret: false, group: "oauth"   },
@@ -599,6 +601,8 @@ export function CredentialsModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
+
+      {showEmailPreview && <EmailPreviewModal onClose={() => setShowEmailPreview(false)} />}
     </div>
   );
 }

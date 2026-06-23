@@ -74,12 +74,6 @@ export function Footer() {
                   Blog
                 </span>
               </Link>
-              <span className="opacity-30">·</span>
-              <Link href="/topup-koin">
-                <span className="hover:text-foreground transition-colors cursor-pointer">
-                  TopUp Koin
-                </span>
-              </Link>
             </div>
           </div>
 
