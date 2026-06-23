@@ -587,23 +587,23 @@ export function Navbar() {
               </button>
             </Link>
 
-            {/* Desktop-only: Blog & Top Up links */}
+            {/* Desktop-only: Blog & Top Up icons */}
             <Link href="/blog">
               <button
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-blog-desktop"
+                aria-label="Blog"
               >
-                <Newspaper size={13} />
-                Blog
+                <Newspaper size={15} />
               </button>
             </Link>
             <Link href="/topup-koin">
               <button
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="hidden sm:flex p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
                 data-testid="button-topup-desktop"
+                aria-label="Top Up Koin"
               >
-                <Coins size={13} />
-                Top Up
+                <Coins size={15} />
               </button>
             </Link>
 
