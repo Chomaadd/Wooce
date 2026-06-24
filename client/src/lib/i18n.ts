@@ -1632,6 +1632,62 @@ Object.assign((translations as any).en, {
   "topup.cta.browse": "Browse Novels",
 });
 
+Object.assign((translations as any).id, {
+  "payment.finish.seoTitle": "Status Pembayaran — WOOCE Novel",
+  "payment.finish.seoDesc": "Status pembayaran koin WOOCE Novel",
+  "payment.finish.success.title": "Pembayaran Berhasil!",
+  "payment.finish.success.subtitle": "{{coins}} koin telah ditambahkan ke akunmu.",
+  "payment.finish.success.subtitle.generic": "Koin telah ditambahkan ke akunmu.",
+  "payment.finish.pending.title": "Pembayaran Sedang Diproses",
+  "payment.finish.pending.subtitle": "Transaksimu masih dalam proses verifikasi. Koin akan ditambahkan otomatis setelah dikonfirmasi.",
+  "payment.finish.pending.note": "Jika sudah membayar tapi status masih diproses, klik Periksa Ulang. Butuh bantuan? Hubungi kami.",
+  "payment.finish.failed.title": "Pembayaran Gagal",
+  "payment.finish.failed.subtitle": "Transaksi dibatalkan atau ditolak. Tidak ada koin yang dipotong dari akunmu.",
+  "payment.finish.expired.title": "Pembayaran Kedaluwarsa",
+  "payment.finish.expired.subtitle": "Waktu pembayaran habis. Silakan buat pesanan baru untuk melanjutkan.",
+  "payment.finish.loading.title": "Memeriksa Status Pembayaran...",
+  "payment.finish.loading.subtitle": "Mohon tunggu sebentar.",
+  "payment.finish.polling": "Memverifikasi pembayaran secara real-time",
+  "payment.finish.polling.count": "Pengecekan ke-{{n}}",
+  "payment.finish.redirect": "Otomatis diarahkan ke beranda dalam {{n}} detik...",
+  "payment.finish.detail.coins": "Koin diterima",
+  "payment.finish.detail.coinsUnit": "Koin",
+  "payment.finish.detail.amount": "Total dibayar",
+  "payment.finish.detail.orderId": "Order ID",
+  "payment.finish.btn.home": "Kembali ke Beranda",
+  "payment.finish.btn.history": "Lihat Riwayat Koin",
+  "payment.finish.btn.recheck": "Periksa Ulang Status",
+  "payment.finish.btn.tryAgain": "Coba Beli Lagi",
+});
+
+Object.assign((translations as any).en, {
+  "payment.finish.seoTitle": "Payment Status — WOOCE Novel",
+  "payment.finish.seoDesc": "WOOCE Novel coin payment status",
+  "payment.finish.success.title": "Payment Successful!",
+  "payment.finish.success.subtitle": "{{coins}} coins have been added to your account.",
+  "payment.finish.success.subtitle.generic": "Coins have been added to your account.",
+  "payment.finish.pending.title": "Payment Processing",
+  "payment.finish.pending.subtitle": "Your transaction is still being verified. Coins will be added automatically after confirmation.",
+  "payment.finish.pending.note": "If you've paid but status is still processing, click Re-check. Need help? Contact us.",
+  "payment.finish.failed.title": "Payment Failed",
+  "payment.finish.failed.subtitle": "Transaction was cancelled or rejected. No coins were deducted from your account.",
+  "payment.finish.expired.title": "Payment Expired",
+  "payment.finish.expired.subtitle": "Payment time ran out. Please create a new order to continue.",
+  "payment.finish.loading.title": "Checking Payment Status...",
+  "payment.finish.loading.subtitle": "Please wait a moment.",
+  "payment.finish.polling": "Verifying payment in real-time",
+  "payment.finish.polling.count": "Check #{{n}}",
+  "payment.finish.redirect": "Redirecting to home in {{n}} seconds...",
+  "payment.finish.detail.coins": "Coins received",
+  "payment.finish.detail.coinsUnit": "Coins",
+  "payment.finish.detail.amount": "Total paid",
+  "payment.finish.detail.orderId": "Order ID",
+  "payment.finish.btn.home": "Back to Home",
+  "payment.finish.btn.history": "View Coin History",
+  "payment.finish.btn.recheck": "Re-check Status",
+  "payment.finish.btn.tryAgain": "Try Buying Again",
+});
+
 export function getTranslation(lang: Language, key: string): string {
   return translations[lang]?.[key] ?? translations.en[key] ?? key;
 }

@@ -62,54 +62,42 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
             <table cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 16px auto;">
               <tr>
                 <!-- TikTok -->
-                <td style="padding:0 6px;">
-                  <a href="https://www.tiktok.com/@woocenovel" target="_blank" style="display:inline-block;text-decoration:none;" title="TikTok">
-                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <td align="center" style="padding:0 8px;">
+                  <a href="https://www.tiktok.com/@woocenovel" target="_blank" style="text-decoration:none;display:block;">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:10px;overflow:hidden;background:#000000;width:40px;height:40px;margin:0 auto;">
                       <tr>
-                        <td width="36" height="36" align="center" valign="middle" style="background:#000000;border-radius:8px;width:36px;height:36px;">
-                          <span style="color:#ffffff;font-size:15px;font-weight:900;font-family:Arial,sans-serif;line-height:1;">&#9835;</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td align="center" style="padding-top:4px;">
-                          <span style="color:#6b7280;font-size:10px;font-family:Arial,sans-serif;">TikTok</span>
+                        <td width="40" height="40" align="center" valign="middle" bgcolor="#000000" style="width:40px;height:40px;background:#000000;">
+                          <span style="color:#ffffff;font-size:13px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-0.5px;line-height:40px;display:block;">TikTok</span>
                         </td>
                       </tr>
                     </table>
+                    <p style="margin:4px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,sans-serif;text-align:center;">TikTok</p>
                   </a>
                 </td>
                 <!-- Facebook -->
-                <td style="padding:0 6px;">
-                  <a href="https://www.facebook.com/woocenovel" target="_blank" style="display:inline-block;text-decoration:none;" title="Facebook">
-                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <td align="center" style="padding:0 8px;">
+                  <a href="https://www.facebook.com/woocenovel" target="_blank" style="text-decoration:none;display:block;">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:10px;overflow:hidden;background:#1877F2;width:40px;height:40px;margin:0 auto;">
                       <tr>
-                        <td width="36" height="36" align="center" valign="middle" style="background:#1877F2;border-radius:8px;width:36px;height:36px;">
-                          <span style="color:#ffffff;font-size:18px;font-weight:900;font-family:Arial,sans-serif;line-height:1;">f</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td align="center" style="padding-top:4px;">
-                          <span style="color:#6b7280;font-size:10px;font-family:Arial,sans-serif;">Facebook</span>
+                        <td width="40" height="40" align="center" valign="middle" bgcolor="#1877F2" style="width:40px;height:40px;background:#1877F2;">
+                          <span style="color:#ffffff;font-size:22px;font-weight:900;font-family:Arial,Helvetica,sans-serif;line-height:40px;display:block;">f</span>
                         </td>
                       </tr>
                     </table>
+                    <p style="margin:4px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,sans-serif;text-align:center;">Facebook</p>
                   </a>
                 </td>
                 <!-- Instagram -->
-                <td style="padding:0 6px;">
-                  <a href="https://instagram.com/woocenovel" target="_blank" style="display:inline-block;text-decoration:none;" title="Instagram">
-                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <td align="center" style="padding:0 8px;">
+                  <a href="https://instagram.com/woocenovel" target="_blank" style="text-decoration:none;display:block;">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:10px;overflow:hidden;background:#C13584;width:40px;height:40px;margin:0 auto;">
                       <tr>
-                        <td width="36" height="36" align="center" valign="middle" style="background:#E1306C;border-radius:8px;width:36px;height:36px;">
-                          <span style="color:#ffffff;font-size:17px;font-weight:900;font-family:Arial,sans-serif;line-height:1;">&#9900;</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td align="center" style="padding-top:4px;">
-                          <span style="color:#6b7280;font-size:10px;font-family:Arial,sans-serif;">Instagram</span>
+                        <td width="40" height="40" align="center" valign="middle" bgcolor="#C13584" style="width:40px;height:40px;background:#C13584;">
+                          <span style="color:#ffffff;font-size:13px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-0.5px;line-height:40px;display:block;">Inst.</span>
                         </td>
                       </tr>
                     </table>
+                    <p style="margin:4px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,sans-serif;text-align:center;">Instagram</p>
                   </a>
                 </td>
               </tr>
