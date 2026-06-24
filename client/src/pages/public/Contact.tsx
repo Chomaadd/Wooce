@@ -6,7 +6,8 @@ import { SeoHead } from "@/components/seometa/SeoHead";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Mail, MessageSquare, Send, Instagram } from "lucide-react";
+import { Link } from "wouter";
+import { Mail, MessageSquare, Send, Instagram, HelpCircle, ArrowRight } from "lucide-react";
 import { SiFacebook, SiTiktok } from "react-icons/si";
 
 export default function Contact() {
@@ -82,6 +83,26 @@ export default function Contact() {
                   : "Have a question, suggestion, or want to collaborate? Send us a message and we'll get back to you soon."}
               </p>
             </div>
+
+            {/* FAQ Banner */}
+            <Link href="/faq">
+              <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 hover:bg-primary/10 hover:border-primary/30 transition-all cursor-pointer group">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <HelpCircle size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground leading-tight">
+                      {language === "id" ? "Cek FAQ dulu, mungkin pertanyaanmu sudah terjawab" : "Check our FAQ first — your question might already be answered"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {language === "id" ? "Lihat 40+ pertanyaan umum seputar akun, pembayaran, dan fitur" : "Browse 40+ common questions about account, payment, and features"}
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-primary shrink-0 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
 
             <div className="grid sm:grid-cols-5 gap-6">
               <div className="sm:col-span-2 flex flex-col gap-4">
