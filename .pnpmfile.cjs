@@ -1,1 +1,0 @@
-{"onlyBuiltDependencies":["bcrypt","bufferutil","esbuild"]}
