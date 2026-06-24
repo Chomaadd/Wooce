@@ -2002,6 +2002,83 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.get("/api/admin/topup/orders", requireAuth, async (req, res) => {
+    try {
+      const { status, page = "1", limit = "50" } = req.query as any;
+      const filter: any = {};
+      if (status && status !== "all") filter.status = status;
+
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(100, parseInt(limit) || 50);
+      const skip = (pageNum - 1) * limitNum;
+
+      const [orders, total] = await Promise.all([
+        TopupOrderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).lean(),
+        TopupOrderModel.countDocuments(filter),
+      ]);
+
+      const userIds = [...new Set((orders as any[]).map((o: any) => o.userId?.toString()).filter(Boolean))];
+      const users = await UserModel.find({ _id: { $in: userIds } }).select("_id name email username").lean();
+      const userMap = new Map<string, any>();
+      for (const u of users as any[]) userMap.set(u._id.toString(), u);
+
+      res.json({
+        orders: (orders as any[]).map((o: any) => ({
+          orderId: o.orderId,
+          userId: o.userId?.toString(),
+          userName: userMap.get(o.userId?.toString())?.name || userMap.get(o.userId?.toString())?.username || "–",
+          userEmail: userMap.get(o.userId?.toString())?.email || "–",
+          coins: o.coins,
+          amount: o.amount,
+          packageId: o.packageId,
+          status: o.status,
+          createdAt: o.createdAt,
+        })),
+        total,
+        page: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+      });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/admin/topup/stats", requireAuth, async (_req, res) => {
+    try {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000);
+
+      const [todayAgg, pendingCount, totalAgg, dailyStats] = await Promise.all([
+        TopupOrderModel.aggregate([
+          { $match: { status: "paid", createdAt: { $gte: todayStart } } },
+          { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: "$amount" } } },
+        ]),
+        TopupOrderModel.countDocuments({ status: "pending" }),
+        TopupOrderModel.aggregate([
+          { $match: { status: "paid" } },
+          { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
+        ]),
+        TopupOrderModel.aggregate([
+          { $match: { status: "paid", createdAt: { $gte: weekAgo } } },
+          { $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "+07:00" } },
+            revenue: { $sum: "$amount" },
+            count: { $sum: 1 },
+          }},
+          { $sort: { _id: 1 } },
+        ]),
+      ]);
+
+      res.json({
+        todayRevenue: todayAgg[0]?.revenue ?? 0,
+        todayCount: todayAgg[0]?.count ?? 0,
+        pendingCount,
+        totalRevenue: totalAgg[0]?.total ?? 0,
+        totalCount: totalAgg[0]?.count ?? 0,
+        dailyStats,
+      });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   app.patch("/api/admin/chapters/:id/premium", requireAuth, async (req, res) => {
     try {
       const { coinPrice } = z.object({ coinPrice: z.number().int().min(5).max(50).nullable() }).parse(req.body);

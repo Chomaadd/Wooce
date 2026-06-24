@@ -21,7 +21,7 @@ import {
   LogOut, ExternalLink, Settings, TrendingUp, BarChart2, Bell,
   Info, AlertTriangle, CheckCircle2, User, UserCheck, UserX, ShieldCheck, KeyRound, BadgeCheck, Flag, AlertCircle,
   Coins, Lock, LockOpen, Search, PlusCircle, Mail, Inbox, Trash, Sparkles, Scissors,
-  Download, FileJson,
+  Download, FileJson, CreditCard, RefreshCw, TrendingDown,
 } from "lucide-react";
 import { CredentialsModal } from "@/components/admin/CredentialsModal";
 import { ShortUrlsAdminView } from "./ManageShortUrls";
@@ -29,7 +29,7 @@ import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter, BannerSlide, Announcement, Author, User as AppUserType } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog" | "short-urls";
+type View = "stories" | "seasons" | "chapters" | "write" | "settings" | "stats" | "announcements" | "approvals" | "reports" | "coins" | "messages" | "blog" | "short-urls" | "transactions";
 type AppUser = AppUserType;
 
 function slugify(text: string) {
@@ -1637,13 +1637,14 @@ export default function ManageNovel() {
                   {tab("messages", "Pesan", <Mail size={15} />, "tab-messages")}
                   {tab("blog", "Blog", <FileText size={15} />, "tab-blog")}
                   {tab("short-urls", "URL Pendek", <Scissors size={15} />, "tab-short-urls")}
+                  {tab("transactions", "Transaksi", <CreditCard size={15} />, "tab-transactions")}
                 </>
               );
             })()}
           </div>
         </div>
 
-      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && (view as View) !== "short-urls" && <>
+      {view !== "approvals" && view !== "reports" && view !== "coins" && view !== "messages" && view !== "blog" && (view as View) !== "short-urls" && (view as View) !== "transactions" && <>
 
         {/* Breadcrumb Nav */}
         {view !== "settings" && view !== "stats" && view !== "announcements" && (view as View) !== "approvals" && (
@@ -2422,6 +2423,7 @@ export default function ManageNovel() {
       {(view as View) === "messages" && <MessagesView />}
       {(view as View) === "blog" && <BlogAdminView />}
       {(view as View) === "short-urls" && <ShortUrlsAdminView />}
+      {(view as View) === "transactions" && <TopupAdminView />}
 
       </div>
 
@@ -4078,6 +4080,267 @@ function ReportsView() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopupAdminView() {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  const { data: stats, refetch: refetchStats } = useQuery<any>({
+    queryKey: ["/api/admin/topup/stats"],
+    queryFn: () => fetch("/api/admin/topup/stats", { credentials: "include" }).then(r => r.json()),
+    refetchInterval: autoRefresh ? 30000 : false,
+  });
+
+  const { data: result, isLoading, refetch: refetchOrders } = useQuery<any>({
+    queryKey: ["/api/admin/topup/orders", statusFilter, page],
+    queryFn: () =>
+      fetch(`/api/admin/topup/orders?status=${statusFilter}&page=${page}&limit=20`, {
+        credentials: "include",
+      }).then(r => r.json()),
+    refetchInterval: autoRefresh ? 30000 : false,
+  });
+
+  const handleRefresh = () => {
+    refetchStats();
+    refetchOrders();
+  };
+
+  function formatRp(n: number) {
+    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
+  }
+
+  function formatDate(d: string | Date) {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    }).format(new Date(d));
+  }
+
+  const STATUS_OPTS = [
+    { value: "all", label: "Semua" },
+    { value: "paid", label: "Berhasil" },
+    { value: "pending", label: "Pending" },
+    { value: "failed", label: "Gagal" },
+    { value: "expired", label: "Kedaluwarsa" },
+  ];
+
+  const STATUS_STYLE: Record<string, string> = {
+    paid:    "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
+    pending: "bg-amber-500/12 text-amber-600 dark:text-amber-400",
+    failed:  "bg-red-500/12 text-red-500",
+    expired: "bg-orange-500/12 text-orange-500",
+  };
+
+  const STATUS_LABEL: Record<string, string> = {
+    paid: "Berhasil", pending: "Pending", failed: "Gagal", expired: "Kedaluwarsa",
+  };
+
+  const orders: any[] = result?.orders ?? [];
+  const totalPages: number = result?.totalPages ?? 1;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <CreditCard size={18} className="text-primary" />
+            Transaksi Topup
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Monitor pembelian koin dari semua user</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAutoRefresh(a => !a)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              autoRefresh
+                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                : "bg-muted text-muted-foreground border-border"
+            }`}
+            data-testid="button-toggle-autorefresh"
+          >
+            <RefreshCw size={11} className={autoRefresh ? "animate-spin [animation-duration:3s]" : ""} />
+            {autoRefresh ? "Live" : "Paused"}
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+            data-testid="button-refresh-transactions"
+          >
+            <RefreshCw size={11} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] text-muted-foreground mb-1">Pendapatan Hari Ini</p>
+            <p className="text-lg font-bold text-emerald-500">{formatRp(stats.todayRevenue)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{stats.todayCount} transaksi</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] text-muted-foreground mb-1">Pending Sekarang</p>
+            <p className="text-lg font-bold text-amber-500">{stats.pendingCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">menunggu pembayaran</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] text-muted-foreground mb-1">Total Pendapatan</p>
+            <p className="text-lg font-bold text-foreground">{formatRp(stats.totalRevenue)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">sepanjang masa</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-[11px] text-muted-foreground mb-1">Total Transaksi</p>
+            <p className="text-lg font-bold text-foreground">{stats.totalCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">berhasil terbayar</p>
+          </div>
+        </div>
+      )}
+
+      {/* 7-Day Revenue Bar Chart */}
+      {stats?.dailyStats?.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+            <TrendingUp size={13} className="text-primary" /> Pendapatan 7 Hari Terakhir
+          </p>
+          <div className="flex items-end gap-1.5 h-20">
+            {(() => {
+              const max = Math.max(...stats.dailyStats.map((d: any) => d.revenue), 1);
+              const days: any[] = [];
+              for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = d.toISOString().slice(0, 10);
+                const found = stats.dailyStats.find((s: any) => s._id === key);
+                days.push({ key, revenue: found?.revenue ?? 0, count: found?.count ?? 0 });
+              }
+              return days.map((day) => (
+                <div key={day.key} className="flex-1 flex flex-col items-center gap-1 group relative">
+                  <div
+                    className="w-full rounded-t bg-primary/60 group-hover:bg-primary transition-colors"
+                    style={{ height: `${Math.max(4, (day.revenue / max) * 72)}px` }}
+                  />
+                  <span className="text-[9px] text-muted-foreground">
+                    {new Date(day.key + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                  </span>
+                  {day.revenue > 0 && (
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover border border-border rounded px-1.5 py-0.5 text-[9px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow z-10">
+                      {formatRp(day.revenue)}
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {STATUS_OPTS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => { setStatusFilter(opt.value); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              statusFilter === opt.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+            }`}
+            data-testid={`button-filter-${opt.value}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">{result?.total ?? 0} order</span>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-xl border border-border overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 flex justify-center">
+            <Loader2 size={20} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            <TrendingDown size={28} className="mx-auto mb-2 opacity-30" />
+            Belum ada transaksi
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Order ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Koin</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Nominal</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Waktu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order, i) => (
+                  <tr
+                    key={order.orderId}
+                    className={`border-b border-border/50 transition-colors hover:bg-muted/20 ${i % 2 === 0 ? "" : "bg-muted/10"}`}
+                    data-testid={`row-order-${order.orderId}`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-[11px] text-muted-foreground">{order.orderId}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-foreground text-xs">{order.userName}</p>
+                      <p className="text-[10px] text-muted-foreground">{order.userEmail}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-1 text-amber-500 font-semibold text-xs">
+                        <Coins size={12} /> {order.coins}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-foreground text-xs">{formatRp(order.amount)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${STATUS_STYLE[order.status] ?? "bg-muted text-muted-foreground"}`}>
+                        {STATUS_LABEL[order.status] ?? order.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[11px] text-muted-foreground">{formatDate(order.createdAt)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium disabled:opacity-40 hover:bg-muted transition-colors"
+          >
+            ← Sebelumnya
+          </button>
+          <span className="text-xs text-muted-foreground">Hal {page} / {totalPages}</span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium disabled:opacity-40 hover:bg-muted transition-colors"
+          >
+            Berikutnya →
+          </button>
         </div>
       )}
     </div>
