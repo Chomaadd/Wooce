@@ -436,7 +436,7 @@ export default function PaymentFinish() {
 
                 {(pageStatus === "failed" || pageStatus === "expired") && (
                   <>
-                    <Link href="/koin/topup">
+                    <Link href="/topup-koin">
                       <button
                         className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
                         data-testid="button-payment-retry"

@@ -52,7 +52,7 @@ const FAQ_ID: FaqItem[] = [
   },
   {
     q: "Berapa lama proses top up koin?",
-    a: "Instan. Setelah pembayaran berhasil dikonfirmasi, koin langsung masuk ke dompet akunmu dalam hitungan detik.",
+    a: "Instan. Setelah pembayaran selesai, kamu otomatis diarahkan ke halaman konfirmasi yang mengecek status transaksi secara real-time. Begitu terkonfirmasi, koin langsung masuk ke dompetmu dan kamu diarahkan ke halaman Riwayat Koin — semua dalam hitungan detik.",
   },
   {
     q: "Apakah koin bisa dikembalikan (refund)?",
@@ -79,7 +79,7 @@ const FAQ_EN: FaqItem[] = [
   },
   {
     q: "How fast is the top-up process?",
-    a: "Instant. Once payment is confirmed, coins are added to your wallet within seconds.",
+    a: "Instant. After payment, you're automatically redirected to a confirmation page that checks your transaction status in real-time. Once confirmed, coins are added to your wallet and you're taken to Coin History — all within seconds.",
   },
   {
     q: "Can I get a refund for coins?",
@@ -332,17 +332,22 @@ export default function TopupKoin() {
               {
                 step: "1",
                 title: isID ? "Pilih Paket" : "Choose a Package",
-                desc: isID ? "Pilih jumlah koin yang sesuai kebutuhanmu dari daftar paket di atas." : "Choose the amount of coins that suits your needs from the packages above.",
+                desc: isID ? "Pilih jumlah koin yang sesuai kebutuhanmu dari daftar paket di atas, lalu klik tombol beli." : "Choose the coin amount that suits your needs from the packages above, then click the buy button.",
               },
               {
                 step: "2",
-                title: isID ? "Lakukan Pembayaran" : "Make Payment",
-                desc: isID ? "Bayar menggunakan metode pembayaran pilihanmu melalui halaman Midtrans yang aman." : "Pay using your preferred payment method through the secure Midtrans page.",
+                title: isID ? "Bayar via Midtrans" : "Pay via Midtrans",
+                desc: isID ? "Jendela pembayaran Midtrans akan muncul. Pilih metode pembayaran (GoPay, OVO, QRIS, Transfer Bank, dll.) dan selesaikan pembayaran." : "A Midtrans payment window will appear. Choose your payment method (GoPay, OVO, QRIS, Bank Transfer, etc.) and complete the payment.",
               },
               {
                 step: "3",
-                title: isID ? "Koin Langsung Masuk" : "Coins Added Instantly",
-                desc: isID ? "Setelah pembayaran berhasil, koin langsung ditambahkan ke dompet akunmu." : "After successful payment, coins are instantly added to your account wallet.",
+                title: isID ? "Verifikasi Otomatis" : "Automatic Verification",
+                desc: isID ? "Setelah bayar, kamu otomatis diarahkan ke halaman konfirmasi. Sistem mengecek status transaksimu secara real-time — tidak perlu refresh manual." : "After payment, you're automatically redirected to a confirmation page. The system checks your transaction status in real-time — no manual refresh needed.",
+              },
+              {
+                step: "4",
+                title: isID ? "Koin Masuk & Siap Pakai" : "Coins Added & Ready",
+                desc: isID ? "Setelah dikonfirmasi, koin langsung masuk ke dompetmu dan kamu otomatis diarahkan ke halaman Riwayat Koin untuk memastikan saldo." : "Once confirmed, coins are instantly added to your wallet and you're redirected to Coin History to verify your balance.",
               },
             ].map((s, i, arr) => (
               <div key={i} className="flex sm:flex-col items-start sm:items-center flex-1 gap-3 sm:gap-2 relative pb-6 sm:pb-0">
