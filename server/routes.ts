@@ -2007,6 +2007,7 @@ export async function registerRoutes(
       const { status, page = "1", limit = "50" } = req.query as any;
       const filter: any = {};
       if (status && status !== "all") filter.status = status;
+      log(`[admin-topup] orders query: status=${status ?? "all"} page=${page}`, "express");
 
       const pageNum = Math.max(1, parseInt(page) || 1);
       const limitNum = Math.min(100, parseInt(limit) || 50);
@@ -2236,7 +2237,7 @@ export async function registerRoutes(
         },
         ...(notificationUrl ? { notification_url: notificationUrl } : {}),
       });
-      console.log(`[payment-create] orderId=${orderId} notificationUrl=${notificationUrl || "(dari dashboard Midtrans)"}`);
+      if (notificationUrl) log(`[payment] orderId=${orderId} → notifUrl set via transaction`, "express");
 
       await TopupOrderModel.create({
         orderId,
