@@ -272,6 +272,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     "footer.terms": "Terms of Service",
     "footer.privacy": "Privacy Policy",
+    "footer.faq": "FAQ",
 
     "terms.title": "Terms of Service",
     "terms.updated": "Last updated",
@@ -1388,6 +1389,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     "footer.terms": "Ketentuan Layanan",
     "footer.privacy": "Kebijakan Privasi",
+    "footer.faq": "FAQ",
 
     "terms.title": "Ketentuan Layanan",
     "terms.updated": "Terakhir diperbarui",

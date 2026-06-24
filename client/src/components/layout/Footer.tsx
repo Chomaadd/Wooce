@@ -63,6 +63,12 @@ export function Footer() {
                 </span>
               </Link>
               <span className="opacity-30">·</span>
+              <Link href="/faq">
+                <span className="hover:text-foreground transition-colors cursor-pointer">
+                  {t("footer.faq")}
+                </span>
+              </Link>
+              <span className="opacity-30">·</span>
               <Link href="/contact">
                 <span className="hover:text-foreground transition-colors cursor-pointer">
                   {t("nav.contact")}
