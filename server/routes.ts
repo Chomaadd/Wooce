@@ -2124,6 +2124,9 @@ export async function registerRoutes(
       const effectiveCfg = await getEffectiveConfig();
       const siteUrl = (effectiveCfg.siteUrl || "").replace(/\/+$/, "") ||
         (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
+      const notificationUrl = siteUrl
+        ? `${siteUrl}/api/payment/topup/notification`
+        : "";
       const transaction = await snap.createTransaction({
         transaction_details: { order_id: orderId, gross_amount: pkg.price },
         item_details: [{ id: packageId, price: pkg.price, quantity: 1, name: `${pkg.label} - WOOCE Novel` }],
@@ -2134,7 +2137,9 @@ export async function registerRoutes(
         callbacks: {
           finish: `${siteUrl}/payment/finish?order_id=${orderId}`,
         },
+        ...(notificationUrl ? { notification_url: notificationUrl } : {}),
       });
+      console.log(`[payment-create] orderId=${orderId} notificationUrl=${notificationUrl || "(dari dashboard Midtrans)"}`);
 
       await TopupOrderModel.create({
         orderId,
