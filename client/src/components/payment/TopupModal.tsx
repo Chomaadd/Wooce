@@ -91,16 +91,22 @@ export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
     try {
       await loadSnapScript(config.clientKey, config.isSandbox ?? true);
       if (!(window as any).snap) throw new Error("Midtrans Snap tidak tersedia");
+      const doRedirect = (orderId: string, txStatus: string) => {
+        // Gunakan setTimeout 0 agar Snap sempat tutup overlay-nya sebelum navigasi
+        setTimeout(() => {
+          window.location.replace(`/payment/finish?order_id=${orderId}&transaction_status=${txStatus}`);
+        }, 0);
+      };
+
       (window as any).snap.pay(data.token, {
         onSuccess: () => {
-          // Redirect ke halaman finish agar koin langsung dikreditkan otomatis
-          window.location.href = `/payment/finish?order_id=${data.orderId}&transaction_status=settlement`;
+          doRedirect(data.orderId, "settlement");
         },
         onPending: () => {
-          window.location.href = `/payment/finish?order_id=${data.orderId}&transaction_status=pending`;
+          doRedirect(data.orderId, "pending");
         },
         onError: () => {
-          window.location.href = `/payment/finish?order_id=${data.orderId}&transaction_status=cancel`;
+          doRedirect(data.orderId, "cancel");
         },
         onClose: () => {
           // Snap overlay ditutup user — kembali ke layar konfirmasi

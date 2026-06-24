@@ -8,7 +8,7 @@ import {
   Gift, RotateCcw, ExternalLink, RefreshCw, Package,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { TopupModal } from "@/components/payment/TopupModal";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -211,12 +211,16 @@ function TxRow({ item }: { item: HistoryItem }) {
 }
 
 // ── Order row (Pesanan tab) ───────────────────────────────────────────────────
+const MAX_AUTO_POLLS = 20; // ~100 detik (setiap 5 detik)
+
 function OrderRow({ order }: { order: TopupOrder }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [localStatus, setLocalStatus] = useState(order.status);
   const [localCoins, setLocalCoins] = useState(order.coins);
   const [expanded, setExpanded] = useState(false);
+  const pollCountRef = useRef(0);
+  const isPollingRef = useRef(false);
 
   const checkMut = useMutation({
     mutationFn: async () => {
@@ -236,13 +240,39 @@ function OrderRow({ order }: { order: TopupOrder }) {
       if (data.expired) {
         toast({ title: "Pesanan Kadaluarsa", description: "Batas waktu pembayaran sudah lewat. Buat pesanan baru untuk membeli koin.", variant: "destructive" });
       } else if (data.status === "paid" && data.changed) {
-        toast({ title: "Pembayaran Berhasil!", description: `${data.coins} koin telah ditambahkan ke akunmu.` });
+        toast({ title: "Pembayaran Berhasil! 🎉", description: `${data.coins} koin telah ditambahkan ke akunmu.` });
       }
     },
-    onError: (err: any) => {
-      toast({ title: "Gagal Cek Status", description: err?.message || "Coba beberapa saat lagi.", variant: "destructive" });
+    onError: () => {
+      // silently fail during auto-poll; only show error on manual check
     },
   });
+
+  // Auto-poll setiap 5 detik selama status masih pending
+  useEffect(() => {
+    if (localStatus !== "pending") {
+      isPollingRef.current = false;
+      return;
+    }
+    if (isPollingRef.current) return;
+    isPollingRef.current = true;
+    pollCountRef.current = 0;
+
+    const interval = setInterval(() => {
+      if (localStatus !== "pending" || pollCountRef.current >= MAX_AUTO_POLLS) {
+        clearInterval(interval);
+        isPollingRef.current = false;
+        return;
+      }
+      pollCountRef.current += 1;
+      checkMut.mutate();
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      isPollingRef.current = false;
+    };
+  }, [localStatus]);
 
   const isPending = localStatus === "pending";
   const isPaid    = localStatus === "paid";
@@ -255,12 +285,20 @@ function OrderRow({ order }: { order: TopupOrder }) {
         data-testid={`row-order-${order.orderId}`}
       >
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isPaid ? "bg-green-500/10" : isPending ? "bg-yellow-500/10" : "bg-muted"}`}>
-          <Package size={17} className={isPaid ? "text-green-500" : isPending ? "text-yellow-500" : "text-muted-foreground"} />
+          {isPending && checkMut.isPending
+            ? <Loader2 size={17} className="text-yellow-500 animate-spin" />
+            : <Package size={17} className={isPaid ? "text-green-500" : isPending ? "text-yellow-500" : "text-muted-foreground"} />
+          }
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-sm font-semibold text-foreground">{localCoins} Koin</p>
             <StatusBadge status={localStatus} />
+            {isPending && (
+              <span className="text-[10px] text-yellow-500 font-medium flex items-center gap-1">
+                <Loader2 size={9} className="animate-spin" /> mengecek…
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 truncate font-mono">{order.orderId}</p>
           <p className="text-[11px] text-muted-foreground/60 mt-0.5">{formatDate(order.createdAt)}</p>
@@ -304,22 +342,30 @@ function OrderRow({ order }: { order: TopupOrder }) {
               </div>
 
               {isPending && (
-                <button
-                  onClick={() => checkMut.mutate()}
-                  disabled={checkMut.isPending}
-                  className="w-full mt-1 py-2 rounded-lg bg-primary/10 hover:bg-primary/15 text-primary text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
-                  data-testid={`button-check-status-${order.orderId}`}
-                >
-                  {checkMut.isPending
-                    ? <><Loader2 size={12} className="animate-spin" /> Mengecek ke Midtrans…</>
-                    : <><RefreshCw size={12} /> Cek Status Pembayaran</>}
-                </button>
-              )}
-
-              {checkMut.isError && (
-                <p className="text-[11px] text-red-500 text-center">
-                  {(checkMut.error as any)?.message || "Gagal cek status. Coba lagi."}
-                </p>
+                <div className="space-y-2">
+                  {/* Auto-polling progress bar */}
+                  <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-yellow-500 rounded-full"
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-yellow-600 dark:text-yellow-400 text-center font-medium">
+                    {checkMut.isPending ? "Mengecek ke Midtrans…" : "Otomatis cek status setiap 5 detik"}
+                  </p>
+                  {/* Manual check button juga tetap tersedia */}
+                  <button
+                    onClick={() => checkMut.mutate()}
+                    disabled={checkMut.isPending}
+                    className="w-full py-2 rounded-lg bg-primary/10 hover:bg-primary/15 text-primary text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+                    data-testid={`button-check-status-${order.orderId}`}
+                  >
+                    {checkMut.isPending
+                      ? <><Loader2 size={12} className="animate-spin" /> Mengecek…</>
+                      : <><RefreshCw size={12} /> Cek Manual Sekarang</>}
+                  </button>
+                </div>
               )}
 
               {!isPending && !isPaid && (
