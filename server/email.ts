@@ -62,42 +62,24 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
             <table cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 16px auto;">
               <tr>
                 <!-- TikTok -->
-                <td align="center" style="padding:0 8px;">
+                <td align="center" style="padding:0 10px;">
                   <a href="https://www.tiktok.com/@woocenovel" target="_blank" style="text-decoration:none;display:block;">
-                    <table cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:10px;overflow:hidden;background:#000000;width:40px;height:40px;margin:0 auto;">
-                      <tr>
-                        <td width="40" height="40" align="center" valign="middle" bgcolor="#000000" style="width:40px;height:40px;background:#000000;">
-                          <span style="color:#ffffff;font-size:13px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-0.5px;line-height:40px;display:block;">TikTok</span>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin:4px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,sans-serif;text-align:center;">TikTok</p>
+                    <img src="${BASE_URL}/image/icon-tiktok.png" width="40" height="40" alt="TikTok" style="display:block;border:0;border-radius:10px;outline:none;" />
+                    <p style="margin:5px 0 0;font-size:11px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;text-align:center;">TikTok</p>
                   </a>
                 </td>
                 <!-- Facebook -->
-                <td align="center" style="padding:0 8px;">
+                <td align="center" style="padding:0 10px;">
                   <a href="https://www.facebook.com/woocenovel" target="_blank" style="text-decoration:none;display:block;">
-                    <table cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:10px;overflow:hidden;background:#1877F2;width:40px;height:40px;margin:0 auto;">
-                      <tr>
-                        <td width="40" height="40" align="center" valign="middle" bgcolor="#1877F2" style="width:40px;height:40px;background:#1877F2;">
-                          <span style="color:#ffffff;font-size:22px;font-weight:900;font-family:Arial,Helvetica,sans-serif;line-height:40px;display:block;">f</span>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin:4px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,sans-serif;text-align:center;">Facebook</p>
+                    <img src="${BASE_URL}/image/icon-facebook.png" width="40" height="40" alt="Facebook" style="display:block;border:0;border-radius:10px;outline:none;" />
+                    <p style="margin:5px 0 0;font-size:11px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;text-align:center;">Facebook</p>
                   </a>
                 </td>
                 <!-- Instagram -->
-                <td align="center" style="padding:0 8px;">
+                <td align="center" style="padding:0 10px;">
                   <a href="https://instagram.com/woocenovel" target="_blank" style="text-decoration:none;display:block;">
-                    <table cellpadding="0" cellspacing="0" style="border-collapse:separate;border-radius:10px;overflow:hidden;background:#C13584;width:40px;height:40px;margin:0 auto;">
-                      <tr>
-                        <td width="40" height="40" align="center" valign="middle" bgcolor="#C13584" style="width:40px;height:40px;background:#C13584;">
-                          <span style="color:#ffffff;font-size:13px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-0.5px;line-height:40px;display:block;">Inst.</span>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin:4px 0 0;font-size:10px;color:#9ca3af;font-family:Arial,sans-serif;text-align:center;">Instagram</p>
+                    <img src="${BASE_URL}/image/icon-instagram.png" width="40" height="40" alt="Instagram" style="display:block;border:0;border-radius:10px;outline:none;" />
+                    <p style="margin:5px 0 0;font-size:11px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;text-align:center;">Instagram</p>
                   </a>
                 </td>
               </tr>
