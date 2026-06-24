@@ -2256,7 +2256,7 @@ export async function registerRoutes(
       res.json({ ok: true });
     } catch (err) {
       console.error("[payment-notification]", err);
-      res.status(500).json({ message: "Error" });
+      res.status(200).json({ ok: true });
     }
   });
 
