@@ -1048,6 +1048,16 @@ export async function registerRoutes(
     });
   });
 
+  // ── Google Search Console Verification ───────────────────────────────────
+  app.get("/google:token.html", (req, res, next) => {
+    const token = process.env.GOOGLE_SITE_VERIFICATION;
+    if (!token) return next();
+    const requested = req.params.token;
+    if (requested !== token) return next();
+    res.setHeader("Content-Type", "text/html");
+    res.send(`google-site-verification: google${token}.html`);
+  });
+
   // ── Sitemap ───────────────────────────────────────────────────────────────
   app.get("/sitemap.xml", async (_req, res) => {
     const SITE_URL = process.env.SITE_URL?.replace(/\/$/, "") || "https://www.woocenovel.my.id";
