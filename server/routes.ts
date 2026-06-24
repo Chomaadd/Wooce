@@ -2185,6 +2185,10 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/payment/topup/notification", (_req, res) => {
+    res.status(200).json({ ok: true, message: "Midtrans notification endpoint active" });
+  });
+
   app.post("/api/payment/topup/notification", express.json(), async (req: any, res) => {
     try {
       if (!req.body || !req.body.order_id) return res.json({ ok: true });
