@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle, Flame, Newspaper } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle, Flame, Newspaper, Download } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -411,6 +411,30 @@ export function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showTopupModal, setShowTopupModal] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [appInstalled, setAppInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => {
+      setInstallPrompt(null);
+      setAppInstalled(true);
+    });
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      setInstallPrompt(null);
+    }
+  };
 
   const showNotifBell = !!user && !user.isAdmin;
 
@@ -970,6 +994,21 @@ export function Navbar() {
                 <LogIn size={13} />
                 <span className="hidden sm:inline">Masuk</span>
               </button>
+            )}
+            {installPrompt && !appInstalled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleInstall}
+                    className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                    data-testid="button-pwa-install"
+                    aria-label={t("navbar.install")}
+                  >
+                    <Download size={15} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("navbar.install.tooltip")}</TooltipContent>
+              </Tooltip>
             )}
             <button
               onClick={() => setLanguage(language === "id" ? "en" : "id")}

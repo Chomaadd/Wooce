@@ -728,6 +728,8 @@ const translations: Record<Language, Record<string, string>> = {
     "navbar.user.manageStories": "Manage Stories",
     "navbar.user.becomeWriter": "Register as Writer",
     "navbar.user.notifications": "Notifications",
+    "navbar.install": "Install App",
+    "navbar.install.tooltip": "Install WOOCE Novel as an app",
 
     "novel.by": "by",
     "novel.lanjutBaca.subtitle": "Pick up where you left off",
@@ -1476,6 +1478,8 @@ const translations: Record<Language, Record<string, string>> = {
     "navbar.user.manageStories": "Kelola Cerita",
     "navbar.user.becomeWriter": "Daftar sebagai Penulis",
     "navbar.user.notifications": "Notifikasi",
+    "navbar.install": "Pasang Aplikasi",
+    "navbar.install.tooltip": "Pasang WOOCE Novel sebagai aplikasi",
 
     "novel.by": "oleh",
     "novel.lanjutBaca.subtitle": "Lanjutkan dari mana kamu berhenti",
