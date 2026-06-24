@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, BookOpen, ShieldCheck } from "lucide-react";
 
@@ -39,6 +40,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <Helmet>
+        <title>Login Admin — WOOCE Novel</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-primary/60 items-center justify-center p-12 flex-col">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5" />

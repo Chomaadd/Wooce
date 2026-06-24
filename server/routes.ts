@@ -1099,7 +1099,7 @@ export async function registerRoutes(
   app.get("/robots.txt", (_req, res) => {
     const SITE_URL = process.env.SITE_URL?.replace(/\/$/, "") || "https://www.woocenovel.my.id";
     res.setHeader("Content-Type", "text/plain");
-    res.send(`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /login\nDisallow: /api/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+    res.send(`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /admin\nDisallow: /login\nDisallow: /api/\nDisallow: /writer/\nDisallow: /writer\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
   });
 
   // ── Novel Stories ─────────────────────────────────────────────────────────
@@ -3629,6 +3629,7 @@ export async function registerRoutes(
   <meta name="twitter:description" content="${esc(description)}">
   <meta name="twitter:image" content="${esc(ogImage)}">
   <link rel="canonical" href="${esc(canonicalUrl)}">
+  ${process.env.GOOGLE_SITE_VERIFICATION ? `<meta name="google-site-verification" content="${process.env.GOOGLE_SITE_VERIFICATION}">` : ""}
 </head><body></body></html>`;
 
     return res.status(200).set("Content-Type", "text/html").end(html);
