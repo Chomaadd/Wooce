@@ -673,10 +673,27 @@ export default function NovelDetail() {
   return (
     <div className="min-h-screen bg-background">
       <SeoHead
-        title={story.title}
-        description={story.description ?? `Baca ${story.title}.`}
+        title={`${story.title} — WOOCE Novel`}
+        description={story.description ? story.description.replace(/<[^>]+>/g, "").slice(0, 200) : `Baca ${story.title} di WOOCE Novel. Novel ${story.category ?? "online"} karya penulis Indonesia.`}
+        keywords={`${story.title}, baca ${story.title}, novel ${story.category ?? ""}, WOOCE Novel, novel Indonesia`}
         url={`/${story.slug}`}
         image={story.coverUrl ?? undefined}
+        type="article"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Book",
+          "name": story.title,
+          "description": story.description ? story.description.replace(/<[^>]+>/g, "").slice(0, 200) : `Baca ${story.title} di WOOCE Novel.`,
+          "url": `https://www.woocenovel.my.id/${story.slug}`,
+          ...(story.coverUrl ? { "image": story.coverUrl } : {}),
+          "inLanguage": "id",
+          "genre": story.category ?? "novel",
+          "publisher": {
+            "@type": "Organization",
+            "name": "WOOCE Novel",
+            "url": "https://www.woocenovel.my.id"
+          }
+        }}
       />
       <Navbar />
 

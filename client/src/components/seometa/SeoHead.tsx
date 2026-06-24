@@ -13,6 +13,7 @@ function getSiteUrl(): string {
 interface SeoHeadProps {
   title?: string;
   description?: string;
+  keywords?: string;
   image?: string;
   url?: string;
   type?: "website" | "article";
@@ -21,16 +22,19 @@ interface SeoHeadProps {
     publishedTime?: string;
     tags?: string[];
   };
+  jsonLd?: object | object[];
 }
 
 export function SeoHead({
   title,
   description,
+  keywords,
   image,
   url,
   type = "website",
   cardType,
   article,
+  jsonLd,
 }: SeoHeadProps) {
   const { data: settings } = useSiteSettings();
   const siteUrl = getSiteUrl();
@@ -51,10 +55,13 @@ export function SeoHead({
   const fullTitle = title || siteName;
   const canonicalUrl = url ? `${siteUrl}${url}` : siteUrl;
 
+  const jsonLdArray = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+
   return (
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={resolvedDescription} />
+      {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={canonicalUrl} />
 
       <meta property="og:site_name" content={siteName} />
@@ -78,6 +85,12 @@ export function SeoHead({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={resolvedDescription} />
       <meta name="twitter:image" content={resolvedImage} />
+
+      {jsonLdArray.map((schema, i) => (
+        <script key={i} type="application/ld+json">
+          {JSON.stringify(schema)}
+        </script>
+      ))}
     </Helmet>
   );
 }

@@ -1050,13 +1050,19 @@ export async function registerRoutes(
 
   // ── Sitemap ───────────────────────────────────────────────────────────────
   app.get("/sitemap.xml", async (_req, res) => {
-    const SITE_URL = "https://wooce.novel";
+    const SITE_URL = process.env.SITE_URL?.replace(/\/$/, "") || "https://www.woocenovel.my.id";
     const today = new Date().toISOString().split("T")[0];
     const makeUrl = (loc: string, lastmod: string, changefreq: string, priority: string) =>
       `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
 
     const staticEntries = [
       makeUrl(`${SITE_URL}/`, today, "weekly", "1.0"),
+      makeUrl(`${SITE_URL}/novels`, today, "weekly", "0.9"),
+      makeUrl(`${SITE_URL}/blog`, today, "weekly", "0.8"),
+      makeUrl(`${SITE_URL}/faq`, today, "monthly", "0.6"),
+      makeUrl(`${SITE_URL}/contact`, today, "monthly", "0.6"),
+      makeUrl(`${SITE_URL}/terms`, today, "yearly", "0.4"),
+      makeUrl(`${SITE_URL}/privacy`, today, "yearly", "0.4"),
     ].join("\n");
 
     let novelEntries = "";
@@ -1081,8 +1087,9 @@ export async function registerRoutes(
   });
 
   app.get("/robots.txt", (_req, res) => {
+    const SITE_URL = process.env.SITE_URL?.replace(/\/$/, "") || "https://www.woocenovel.my.id";
     res.setHeader("Content-Type", "text/plain");
-    res.send(`User-agent: *\nAllow: /\n\nSitemap: https://wooce.novel/sitemap.xml\n`);
+    res.send(`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /login\nDisallow: /api/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
   });
 
   // ── Novel Stories ─────────────────────────────────────────────────────────

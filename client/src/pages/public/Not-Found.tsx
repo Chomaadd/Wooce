@@ -10,7 +10,7 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground overflow-hidden relative">
-      <SeoHead title="Page Not Found" description="This page doesn't exist on Choiril Ahmad's website." />
+      <SeoHead title="Halaman Tidak Ditemukan — WOOCE Novel" description="Halaman yang kamu cari tidak ditemukan di WOOCE Novel. Kembali ke beranda untuk menemukan novel, komik, dan cerita pendek favoritmu." />
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-violet-500/5 blur-3xl" />

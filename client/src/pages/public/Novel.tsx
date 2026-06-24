@@ -1142,9 +1142,47 @@ export default function Novel() {
   return (
     <div className="min-h-screen bg-background">
       <SeoHead
-        title="WOOCE Novel — Perpustakaan Novel"
-        description="Kumpulan novel, komik, dan cerita pendek yang kaya dunia dan karakter penuh warna."
+        title="WOOCE Novel — Baca Novel, Komik & Cerita Pendek Online"
+        description="Baca novel, komik, dan cerita pendek terbaik karya penulis Indonesia. Gratis, ribuan karya dari genre romance, fantasy, horror, BL/GL, action, dan lainnya — hanya di WOOCE Novel."
+        keywords="WOOCE Novel, baca novel online, novel Indonesia, novel gratis, komik online, cerita pendek, novel romance, novel fantasy, platform baca novel"
         url="/"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "WOOCE Novel",
+            "url": "https://www.woocenovel.my.id",
+            "description": "Platform baca novel, komik, dan cerita pendek terbaik karya penulis Indonesia.",
+            "inLanguage": "id",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://www.woocenovel.my.id/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "WOOCE Novel",
+            "url": "https://www.woocenovel.my.id",
+            "logo": "https://www.woocenovel.my.id/image/icon-navbar.png",
+            "description": "Platform baca novel, komik, dan cerita pendek terbaik karya penulis Indonesia.",
+            "sameAs": [
+              "https://www.tiktok.com/@wooce_novel",
+              "https://www.facebook.com/wooce.novel",
+              "https://www.instagram.com/wooce.novel"
+            ],
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "email": "support@woocenovel.my.id",
+              "contactType": "customer support",
+              "availableLanguage": ["Indonesian", "English"]
+            }
+          }
+        ]}
       />
       <Navbar />
 

@@ -1251,10 +1251,31 @@ export default function NovelRead() {
       }}
     >
       <SeoHead
-        title={`${chapter.title} — ${story?.title ?? slug}`}
-        description={`Baca Bab ${chapter.chapterNumber}: ${chapter.title} dari ${story?.title ?? slug}.`}
+        title={`${chapter.title} — ${story?.title ?? slug} | WOOCE Novel`}
+        description={`Baca Bab ${chapter.chapterNumber}: ${chapter.title} dari novel ${story?.title ?? slug} di WOOCE Novel. Baca gratis online tanpa aplikasi tambahan.`}
+        keywords={`${story?.title ?? slug}, bab ${chapter.chapterNumber}, ${chapter.title}, baca gratis, WOOCE Novel`}
         url={`/${slug}/season-${seasonNum}/bab-${chapterNum}`}
         image={story?.coverUrl ?? undefined}
+        type="article"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": chapter.title,
+          "name": `${chapter.title} — ${story?.title ?? slug}`,
+          "description": `Baca Bab ${chapter.chapterNumber}: ${chapter.title} dari novel ${story?.title ?? slug} di WOOCE Novel.`,
+          "url": `https://www.woocenovel.my.id/${slug}/season-${seasonNum}/bab-${chapterNum}`,
+          "inLanguage": "id",
+          "isPartOf": {
+            "@type": "Book",
+            "name": story?.title ?? slug,
+            "url": `https://www.woocenovel.my.id/${slug}`
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "WOOCE Novel",
+            "url": "https://www.woocenovel.my.id"
+          }
+        }}
       />
 
       {/* Reading progress bar — hidden in page flip mode */}
