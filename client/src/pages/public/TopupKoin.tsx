@@ -63,6 +63,10 @@ const FAQ_ID: FaqItem[] = [
     a: "Buka halaman chapter premium di novel pilihanmu, lalu klik tombol 'Buka Chapter'. Koin akan otomatis terpotong dari dompetmu.",
   },
   {
+    q: "Kenapa koin belum masuk setelah bayar?",
+    a: "Tenang, jangan panik dulu. Ikuti langkah ini: (1) Buka halaman Riwayat Koin dan cek tab 'Pesanan' — statusnya mungkin masih 'Menunggu' dan sistem sedang verifikasi otomatis. (2) Tunggu 1–2 menit, sistem akan mengecek ulang secara otomatis tanpa perlu kamu refresh. (3) Kalau sudah lebih dari 5 menit dan koin belum masuk padahal pembayaran sudah terpotong, klik tombol 'Cek Manual Sekarang' di baris pesanan tersebut. (4) Masih belum? Hubungi kami melalui halaman Kontak dengan menyertakan Order ID-mu — kami akan bantu secepatnya.",
+  },
+  {
     q: "Apakah pembayaran aman?",
     a: "Ya. Semua transaksi diproses oleh Midtrans, payment gateway terpercaya yang sudah digunakan jutaan bisnis di Indonesia dan berlisensi Bank Indonesia.",
   },
@@ -88,6 +92,10 @@ const FAQ_EN: FaqItem[] = [
   {
     q: "How do I use coins?",
     a: "Open a premium chapter on any novel and click 'Unlock Chapter'. Coins will be automatically deducted from your wallet.",
+  },
+  {
+    q: "Why haven't my coins arrived after payment?",
+    a: "Don't worry. Follow these steps: (1) Open Coin History and check the 'Orders' tab — the status might still show 'Pending' while the system auto-verifies. (2) Wait 1–2 minutes; the system checks automatically without you needing to refresh. (3) If it's been more than 5 minutes and coins haven't arrived but payment was deducted, click the 'Check Now' button on that order row. (4) Still nothing? Contact us via the Contact page with your Order ID — we'll help as soon as possible.",
   },
   {
     q: "Is the payment secure?",
