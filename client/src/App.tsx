@@ -37,6 +37,7 @@ import Blog from "./pages/public/blog/Blog";
 import BlogDetail from "./pages/public/blog/BlogDetail";
 import LinkExpired from "./pages/public/LinkExpired";
 import FAQ from "./pages/public/FAQ";
+import AuthDone from "./pages/public/AuthDone";
 import NotFound from "@/pages/public/Not-Found";
 import { DailyLoginBonus } from "@/components/daily-login/DailyLoginBonus";
 
@@ -105,6 +106,7 @@ function Router() {
       <Route path="/login-bonus" component={LoginBonusPage} />
       <Route path="/payment/finish" component={PaymentFinish} />
       <Route path="/artikel/:slug" component={BlogDetail} />
+      <Route path="/auth/done" component={AuthDone} />
       <Route path="/faq" component={FAQ} />
       <Route path="/blog" component={Blog} />
       <Route path="/link-kedaluwarsa" component={LinkExpired} />
