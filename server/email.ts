@@ -15,7 +15,7 @@ const logoAttachment = {
 async function getBaseUrl(): Promise<string> {
   const config = await getEffectiveConfig();
   const raw = config.siteUrl ||
-    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://wooce-novel.replit.app");
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://www.woocenovel.my.id");
   try {
     return new URL(raw).origin;
   } catch {
