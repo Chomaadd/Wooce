@@ -119,8 +119,11 @@ export async function registerRoutes(
       } catch {
         callbackURL = `${config.siteUrl.replace(/\/+$/, "")}/auth/google/callback`;
       }
+    } else if (process.env.SITE_URL) {
+      // 3. SITE_URL env var — production domain (set this in Railway / hosting env vars)
+      callbackURL = `${process.env.SITE_URL.replace(/\/+$/, "")}/auth/google/callback`;
     } else if (process.env.REPLIT_DEV_DOMAIN) {
-      // 3. Replit dev domain (stable per-repl URL) — preferred over request headers
+      // 4. Replit dev domain (stable per-repl URL) — dev only
       callbackURL = `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`;
     } else if (req) {
       // 4. Last resort: derive from request headers (may vary per session)
