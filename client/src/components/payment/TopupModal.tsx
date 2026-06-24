@@ -93,19 +93,14 @@ export function TopupModal({ onClose, onSuccess }: TopupModalProps) {
       if (!(window as any).snap) throw new Error("Midtrans Snap tidak tersedia");
       (window as any).snap.pay(data.token, {
         onSuccess: () => {
-          setSuccessCoins(data.coins);
-          setStepSafe("success");
-          queryClient.invalidateQueries({ queryKey: ["/api/coins/balance"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/payment/topup/orders"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/coins/history"] });
-          onSuccess?.();
+          // Redirect ke halaman finish agar koin langsung dikreditkan otomatis
+          window.location.href = `/payment/finish?order_id=${data.orderId}&transaction_status=settlement`;
         },
         onPending: () => {
-          setStepSafe("ready");
+          window.location.href = `/payment/finish?order_id=${data.orderId}&transaction_status=pending`;
         },
         onError: () => {
-          setStepSafe("error");
-          setErrorMsg("Pembayaran gagal atau ditolak. Kamu bisa coba metode lain.");
+          window.location.href = `/payment/finish?order_id=${data.orderId}&transaction_status=cancel`;
         },
         onClose: () => {
           // Snap overlay ditutup user — kembali ke layar konfirmasi

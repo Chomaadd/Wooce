@@ -64,22 +64,19 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
                 <!-- TikTok -->
                 <td align="center" style="padding:0 10px;">
                   <a href="https://www.tiktok.com/@woocenovel" target="_blank" style="text-decoration:none;display:block;">
-                    <img src="${BASE_URL}/image/icon-tiktok.png" width="40" height="40" alt="TikTok" style="display:block;border:0;border-radius:10px;outline:none;" />
-                    <p style="margin:5px 0 0;font-size:11px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;text-align:center;">TikTok</p>
+                    <img src="${BASE_URL}/image/tiktok.svg" width="25" height="25" alt="TikTok" style="display:block;border:0;border-radius:10px;outline:none;" />
                   </a>
                 </td>
                 <!-- Facebook -->
                 <td align="center" style="padding:0 10px;">
                   <a href="https://www.facebook.com/woocenovel" target="_blank" style="text-decoration:none;display:block;">
-                    <img src="${BASE_URL}/image/icon-facebook.png" width="40" height="40" alt="Facebook" style="display:block;border:0;border-radius:10px;outline:none;" />
-                    <p style="margin:5px 0 0;font-size:11px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;text-align:center;">Facebook</p>
+                    <img src="${BASE_URL}/image/facebook.svg" width="25" height="25" alt="Facebook" style="display:block;border:0;border-radius:10px;outline:none;" />
                   </a>
                 </td>
                 <!-- Instagram -->
                 <td align="center" style="padding:0 10px;">
                   <a href="https://instagram.com/woocenovel" target="_blank" style="text-decoration:none;display:block;">
-                    <img src="${BASE_URL}/image/icon-instagram.png" width="40" height="40" alt="Instagram" style="display:block;border:0;border-radius:10px;outline:none;" />
-                    <p style="margin:5px 0 0;font-size:11px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;text-align:center;">Instagram</p>
+                    <img src="${BASE_URL}/image/instagram.svg" width="25" height="25" alt="Instagram" style="display:block;border:0;border-radius:10px;outline:none;" />
                   </a>
                 </td>
               </tr>
