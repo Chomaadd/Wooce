@@ -62,21 +62,54 @@ const emailWrapper = (headerBg: string, headerTitle: string, headerSub: string, 
             <table cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 16px auto;">
               <tr>
                 <!-- TikTok -->
-                <td style="padding:0 8px;">
-                  <a href="https://www.tiktok.com/@woocenovel" target="_blank" style="display:block;text-decoration:none;" title="TikTok">
-                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNMTIuNTI1LjAyYzEuMzEtLjAyIDIuNjEtLjAxIDMuOTEtLjAyLjA4IDEuNTMuNjMgMy4wOSAxLjc1IDQuMTcgMS4xMiAxLjExIDIuNyAxLjYyIDQuMjQgMS43OXY0LjAzYy0xLjQ0LS4wNS0yLjg5LS4zNS00LjItLjk3LS41Ny0uMjYtMS4xLS41OS0xLjYyLS45My0uMDEgMi45Mi4wMSA1Ljg0LS4wMiA4Ljc1LS4wOCAxLjQtLjU0IDIuNzktMS4zNSAzLjk0LTEuMzEgMS45Mi0zLjU4IDMuMTctNS45MSAzLjIxLTEuNDMuMDgtMi44Ni0uMzEtNC4wOC0xLjAzLTIuMDItMS4xOS0zLjQ0LTMuMzctMy42NS01LjcxLS4wMi0uNS0uMDMtMS0uMDEtMS40OS4xOC0xLjkgMS4xMi0zLjcyIDIuNTgtNC45NiAxLjY2LTEuNDQgMy45OC0yLjEzIDYuMTUtMS43Mi4wMiAxLjQ4LS4wNCAyLjk2LS4wNCA0LjQ0LS45OS0uMzItMi4xNS0uMjMtMy4wMi4zNy0uNjMuNDEtMS4xMSAxLjA0LTEuMzYgMS43NS0uMjEuNTEtLjE1IDEuMDctLjE0IDEuNjEuMjQgMS42NCAxLjgyIDMuMDIgMy41IDIuODcgMS4xMi0uMDEgMi4xOS0uNjYgMi43Ny0xLjYxLjE5LS4zMy40LS42Ny40MS0xLjA2LjEtMS43OS4wNi0zLjU3LjA3LTUuMzYuMDEtNC4wMy0uMDEtOC4wNS4wMi0xMi4wN3oiLz48L3N2Zz4=" width="36" height="36" alt="TikTok" style="display:block;border:0;">
+                <td style="padding:0 6px;">
+                  <a href="https://www.tiktok.com/@woocenovel" target="_blank" style="display:inline-block;text-decoration:none;" title="TikTok">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td width="36" height="36" align="center" valign="middle" style="background:#000000;border-radius:8px;width:36px;height:36px;">
+                          <span style="color:#ffffff;font-size:15px;font-weight:900;font-family:Arial,sans-serif;line-height:1;">&#9835;</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding-top:4px;">
+                          <span style="color:#6b7280;font-size:10px;font-family:Arial,sans-serif;">TikTok</span>
+                        </td>
+                      </tr>
+                    </table>
                   </a>
                 </td>
                 <!-- Facebook -->
-                <td style="padding:0 8px;">
-                  <a href="https://www.facebook.com/woocenovel" target="_blank" style="display:block;text-decoration:none;" title="Facebook">
-                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2IiBmaWxsPSIjMTg3N0YyIj48cGF0aCBkPSJNMjQgMTIuMDczYzAtNi42MjctNS4zNzMtMTItMTItMTJzLTEyIDUuMzczLTEyIDEyYzAgNS45OSA0LjM4OCAxMC45NTQgMTAuMTI1IDExLjg1NHYtOC4zODVINy4wNzh2LTMuNDdoMy4wNDdWOS40M2MwLTMuMDA3IDEuNzkyLTQuNjY5IDQuNTMzLTQuNjY5IDEuMzEyIDAgMi42ODYuMjM1IDIuNjg2LjIzNXYyLjk1M0gxNS44M2MtMS40OTEgMC0xLjk1Ni45MjUtMS45NTYgMS44NzR2Mi4yNWgzLjMyOGwtLjUzMiAzLjQ3aC0yLjc5NnY4LjM4NUMxOS42MTIgMjMuMDI3IDI0IDE4LjA2MiAyNCAxMi4wNzN6Ii8+PC9zdmc+" width="36" height="36" alt="Facebook" style="display:block;border:0;">
+                <td style="padding:0 6px;">
+                  <a href="https://www.facebook.com/woocenovel" target="_blank" style="display:inline-block;text-decoration:none;" title="Facebook">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td width="36" height="36" align="center" valign="middle" style="background:#1877F2;border-radius:8px;width:36px;height:36px;">
+                          <span style="color:#ffffff;font-size:18px;font-weight:900;font-family:Arial,sans-serif;line-height:1;">f</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding-top:4px;">
+                          <span style="color:#6b7280;font-size:10px;font-family:Arial,sans-serif;">Facebook</span>
+                        </td>
+                      </tr>
+                    </table>
                   </a>
                 </td>
                 <!-- Instagram -->
-                <td style="padding:0 8px;">
-                  <a href="https://instagram.com/woocenovel" target="_blank" style="display:block;text-decoration:none;" title="Instagram">
-                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImlnIiB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRkZEQzgwIi8+PHN0b3Agb2Zmc2V0PSIyNSUiIHN0eWxlPSJzdG9wLWNvbG9yOiNGQ0FGNDUiLz48c3RvcCBvZmZzZXQ9IjUwJSIgc3R5bGU9InN0b3AtY29sb3I6I0Y3NzczNyIvPjxzdG9wIG9mZnNldD0iNzUlIiBzdHlsZT0ic3RvcC1jb2xvcjojRTEzMDZDIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojODMzQUI0Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHBhdGggZmlsbD0idXJsKCNpZykiIGQ9Ik0xMiAyLjE2M2MzLjIwNCAwIDMuNTg0LjAxMiA0Ljg1LjA3IDMuMjUyLjE0OCA0Ljc3MSAxLjY5MSA0LjkxOSA0LjkxOS4wNTggMS4yNjUuMDY5IDEuNjQ1LjA2OSA0Ljg0OSAwIDMuMjA1LS4wMTIgMy41ODQtLjA2OSA0Ljg0OS0uMTQ5IDMuMjI1LTEuNjY0IDQuNzcxLTQuOTE5IDQuOTE5LTEuMjY2LjA1OC0xLjY0NC4wNy00Ljg1LjA3LTMuMjA0IDAtMy41ODQtLjAxMi00Ljg0OS0uMDctMy4yNi0uMTQ5LTQuNzcxLTEuNjk5LTQuOTE5LTQuOTItLjA1OC0xLjI2NS0uMDctMS42NDQtLjA3LTQuODQ5IDAtMy4yMDQuMDEzLTMuNTgzLjA3LTQuODQ5LjE0OS0zLjIyNyAxLjY2NC00Ljc3MSA0LjkxOS00LjkxOSAxLjI2Ni0uMDU3IDEuNjQ1LS4wNjkgNC44NDktLjA2OXpNMTIgMEM4Ljc0MSAwIDguMzMzLjAxNCA3LjA1My4wNzIgMi42OTUuMjcyLjI3MyAyLjY5LjA3MyA3LjA1Mi4wMTQgOC4zMzMgMCA4Ljc0MSAwIDEyYzAgMy4yNTkuMDE0IDMuNjY4LjA3MiA0Ljk0OC4yIDQuMzU4IDIuNjE4IDYuNzggNi45OCA2Ljk4QzguMzMzIDIzLjk4NiA4Ljc0MSAyNCAxMiAyNGMzLjI1OSAwIDMuNjY4LS4wMTQgNC45NDgtLjA3MiA0LjM1NC0uMiA2Ljc4Mi0yLjYxOCA2Ljk3OS02Ljk4LjA1OS0xLjI4LjA3My0xLjY4OS4wNzMtNC45NDggMC0zLjI1OS0uMDE0LTMuNjY3LS4wNzItNC45NDctLjE5Ni00LjM1NC0yLjYxNy02Ljc4LTYuOTc5LTYuOThDMTUuNjY4LjAxNCAxNS4yNTkgMCAxMiAwem0wIDUuODM4YTYuMTYyIDYuMTYyIDAgMTAwIDEyLjMyNCA2LjE2MiA2LjE2MiAwIDAwMC0xMi4zMjR6TTEyIDE2YTQgNCAwIDExMC04IDQgNCAwIDAxMCA4em02LjQwNi0xMS44NDVhMS40NCAxLjQ0IDAgMTAwIDIuODgxIDEuNDQgMS40NCAwIDAwMC0yLjg4MXoiLz48L3N2Zz4=" width="36" height="36" alt="Instagram" style="display:block;border:0;">
+                <td style="padding:0 6px;">
+                  <a href="https://instagram.com/woocenovel" target="_blank" style="display:inline-block;text-decoration:none;" title="Instagram">
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td width="36" height="36" align="center" valign="middle" style="background:#E1306C;border-radius:8px;width:36px;height:36px;">
+                          <span style="color:#ffffff;font-size:17px;font-weight:900;font-family:Arial,sans-serif;line-height:1;">&#9900;</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding-top:4px;">
+                          <span style="color:#6b7280;font-size:10px;font-family:Arial,sans-serif;">Instagram</span>
+                        </td>
+                      </tr>
+                    </table>
                   </a>
                 </td>
               </tr>
