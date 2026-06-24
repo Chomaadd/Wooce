@@ -112,12 +112,12 @@ export default function PaymentFinish() {
   }
 
   function startCountdown() {
-    setCountdown(7);
+    setCountdown(5);
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownRef.current!);
-          window.location.href = "/";
+          window.location.replace("/koin/riwayat");
           return 0;
         }
         return prev - 1;
@@ -379,20 +379,20 @@ export default function PaymentFinish() {
               <div className="w-full flex flex-col gap-3">
                 {pageStatus === "success" && (
                   <>
-                    <Link href="/">
-                      <button
-                        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                        data-testid="button-payment-home"
-                      >
-                        <Home size={15} /> {t("payment.finish.btn.home")}
-                      </button>
-                    </Link>
                     <Link href="/koin/riwayat">
                       <button
-                        className="w-full py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
                         data-testid="button-payment-history"
                       >
                         <Coins size={15} /> {t("payment.finish.btn.history")}
+                      </button>
+                    </Link>
+                    <Link href="/">
+                      <button
+                        className="w-full py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2"
+                        data-testid="button-payment-home"
+                      >
+                        <Home size={15} /> {t("payment.finish.btn.home")}
                       </button>
                     </Link>
                   </>
