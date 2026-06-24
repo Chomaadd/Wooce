@@ -56,6 +56,8 @@ import {
   FileDown,
   BadgeCheck,
   Users,
+  Copy,
+  Check,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { NovelStory, NovelSeason, NovelChapter } from "@shared/schema";
@@ -458,6 +460,7 @@ export default function WriterStories() {
     name: string;
   } | null>(null);
   const [deleteConfirmTitle, setDeleteConfirmTitle] = useState("");
+  const [titleCopied, setTitleCopied] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
   const [characterStory, setCharacterStory] = useState<StoryWithStats | null>(null);
@@ -2584,8 +2587,25 @@ export default function WriterStories() {
                     <div className="space-y-1.5">
                       <p className="text-xs text-muted-foreground">
                         Ketik judul novel untuk konfirmasi:
-                        <span className="block font-mono font-semibold text-foreground/80 mt-0.5 text-[11px] break-all">
-                          {deleteConfirm?.name}
+                        <span className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="font-mono font-semibold text-foreground/80 text-[11px] break-all">
+                            {deleteConfirm?.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(deleteConfirm?.name ?? "");
+                              setTitleCopied(true);
+                              setTimeout(() => setTitleCopied(false), 2000);
+                            }}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted hover:bg-accent border border-border text-muted-foreground hover:text-foreground transition-all shrink-0"
+                            title="Salin judul"
+                          >
+                            {titleCopied
+                              ? <><Check size={10} className="text-emerald-500" /> Disalin</>
+                              : <><Copy size={10} /> Salin</>
+                            }
+                          </button>
                         </span>
                       </p>
                       <input

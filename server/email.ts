@@ -331,7 +331,6 @@ export async function sendWriterRejectedEmail(to: string, name: string) {
     to,
     subject: "Pengajuan Penulis Ditolak — Bisa Coba Lagi dalam 7 Hari",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7f1d1d 0%,#991b1b 60%,#7f1d1d 100%)",
       "Pengajuan Tidak Disetujui",
@@ -353,7 +352,6 @@ export async function sendOtpEmail(to: string, name: string, otp: string) {
     to,
     subject: "Kode Verifikasi Hapus Akun — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7f1d1d 0%,#991b1b 60%,#7f1d1d 100%)",
       "Verifikasi Penghapusan Akun",
@@ -380,7 +378,6 @@ export async function sendAccountDeletedByAdminEmail(to: string, name: string) {
     to,
     subject: "Akunmu di WOOCE Novel Telah Dihapus",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#1f2937 0%,#111827 60%,#1f2937 100%)",
       "Akun Dihapus",
@@ -403,7 +400,6 @@ export async function sendWriterAccountDeletedByAdminEmail(to: string, name: str
     subject: "Akun Penulismu Dihapus — Backup Cerita Terlampir",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
     attachments: [
-      logoAttachment,
       {
         filename: `backup-cerita-${name.replace(/\s+/g, "-").toLowerCase()}.pdf`,
         content: pdfBuffer,
@@ -432,7 +428,6 @@ export async function sendSelfDeleteConfirmedEmail(to: string, name: string) {
     to,
     subject: "Akunmu Berhasil Dihapus — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#374151 0%,#1f2937 60%,#374151 100%)",
       "Akun Berhasil Dihapus",
@@ -454,7 +449,6 @@ export async function sendWriterSelfDeleteConfirmedEmail(to: string, name: strin
     subject: "Akunmu Dihapus — Backup Cerita Terlampir",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
     attachments: [
-      logoAttachment,
       {
         filename: `backup-cerita-${name.replace(/\s+/g, "-").toLowerCase()}.pdf`,
         content: pdfBuffer,
@@ -485,7 +479,6 @@ export async function sendStoryDeletedByWriterEmail(to: string, writerName: stri
     subject: `Backup Novel "${storyTitle}" — WOOCE Novel`,
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
     attachments: [
-      logoAttachment,
       {
         filename: `backup-novel-${safeFilename}.pdf`,
         content: pdfBuffer,
@@ -517,7 +510,6 @@ export async function sendWriterSuspendedEmail(to: string, name: string) {
     to,
     subject: "Akun Penulismu di WOOCE Novel Telah Disuspend",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#7c2d12 0%,#9a3412 60%,#7c2d12 100%)",
       "Akun Disuspend",
@@ -547,7 +539,6 @@ export async function sendStoryRemovedByReportEmail(
     subject: `Ceritamu "${storyTitle}" Telah Dihapus — WOOCE Novel`,
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
     attachments: [
-      logoAttachment,
       { filename: safeFilename, content: pdfBuffer, contentType: "application/pdf" },
     ],
     html: emailWrapper(
@@ -571,9 +562,8 @@ export async function sendStoryRemovedByReportEmail(
 }
 
 export function generateEmailHtml(type: string, baseUrl: string): string {
-  const logoUrl = `${baseUrl}/image/icon-email-new.png`;
   const wrap = (bg: string, title: string, sub: string, body: string) =>
-    emailWrapper(bg, title, sub, body, baseUrl).replace(`cid:${LOGO_CID}`, logoUrl);
+    emailWrapper(bg, title, sub, body, baseUrl);
 
   switch (type) {
     case "otp":
@@ -749,7 +739,6 @@ export async function sendTestEmail(to: string) {
     to,
     subject: "Test Email — WOOCE Novel",
     headers: { "X-Mailer": "WOOCE Novel Mailer" },
-    attachments: [logoAttachment],
     html: emailWrapper(
       "linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)",
       "Test Email Berhasil!",
