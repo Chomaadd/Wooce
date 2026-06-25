@@ -1,9 +1,7 @@
-const CACHE_NAME = "wooce-novel-v1";
+const CACHE_NAME = "wooce-novel-v2";
 
-// App shell — files that make the UI work offline
-const SHELL_URLS = ["/", "/manifest.json", "/image/icon-navbar.png", "/image/favicon.png"];
+const SHELL_URLS = ["/", "/manifest.webmanifest", "/image/icon-navbar.png", "/image/favicon.png"];
 
-// Install: cache the app shell
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_URLS))
@@ -11,7 +9,6 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -21,24 +18,17 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch strategy:
-// - API calls  → network only (always fresh data)
-// - Assets     → cache first, then network (fast loads)
-// - Pages      → network first, fall back to cache (always try fresh HTML)
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and cross-origin requests
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
 
-  // API calls — always network, never cache
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Static assets (images, fonts, JS, CSS) — cache first
   if (
     url.pathname.startsWith("/image/") ||
     url.pathname.startsWith("/assets/") ||
@@ -58,7 +48,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML pages — network first, fall back to cached shell
   event.respondWith(
     fetch(request)
       .then((res) => {
