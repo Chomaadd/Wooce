@@ -769,7 +769,7 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "User not found" });
       await UserModel.updateOne({ _id: req.params.id }, { $unset: { suspendedAt: 1 } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { status: "active" });
-      storage.createNotification({ userId: user.id, type: "unsuspended", title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa kembali mengakses WOOCE Novel seperti biasa." }).catch(console.error);
+      storage.createNotification({ userId: user.id, type: "unsuspended" as any, title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa kembali mengakses WOOCE Novel seperti biasa." }).catch(console.error);
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -1570,11 +1570,11 @@ export async function registerRoutes(
         ? await NovelChapterModel.find({ _id: { $in: chapterIds } })
             .select("_id title chapterNumber storyId seasonId").lean() as any[]
         : [];
-      const storyIds = [...new Set(chapterDocs.map((c: any) => c.storyId.toString()))];
+      const storyIds = Array.from(new Set(chapterDocs.map((c: any) => c.storyId.toString())));
       const storyDocs = storyIds.length > 0
         ? await NovelStoryModel.find({ _id: { $in: storyIds } }).select("_id title").lean() as any[]
         : [];
-      const seasonIds = [...new Set(chapterDocs.map((c: any) => c.seasonId?.toString()).filter(Boolean))];
+      const seasonIds = Array.from(new Set(chapterDocs.map((c: any) => c.seasonId?.toString()).filter(Boolean)));
       const seasonDocs = seasonIds.length > 0
         ? await NovelSeasonModel.find({ _id: { $in: seasonIds } }).select("_id seasonNumber").lean() as any[]
         : [];
@@ -1689,13 +1689,13 @@ export async function registerRoutes(
             .select("_id title chapterNumber storyId seasonId").lean() as any[]
         : [];
 
-      const storyIds = [...new Set(chapterDocs.map((c: any) => c.storyId.toString()))];
+      const storyIds = Array.from(new Set(chapterDocs.map((c: any) => c.storyId.toString())));
       const storyDocs = storyIds.length > 0
         ? await NovelStoryModel.find({ _id: { $in: storyIds } })
             .select("_id title slug").lean() as any[]
         : [];
 
-      const seasonIds = [...new Set(chapterDocs.map((c: any) => c.seasonId.toString()))];
+      const seasonIds = Array.from(new Set(chapterDocs.map((c: any) => c.seasonId.toString())));
       const seasonDocs = seasonIds.length > 0
         ? await NovelSeasonModel.find({ _id: { $in: seasonIds } })
             .select("_id seasonNumber").lean() as any[]
@@ -1842,7 +1842,7 @@ export async function registerRoutes(
       if (questBonus > 0) {
         storage.createNotification({
           userId,
-          type: "bonus",
+          type: "bonus" as any,
           title: `Quest Selesai! +${questBonus} Koin`,
           message: `Login ${questMilestone} hari berturut-turut! Bonus ${questBonus} koin langsung ditambahkan.`,
           link: "/koin/riwayat",
@@ -2017,7 +2017,7 @@ export async function registerRoutes(
         TopupOrderModel.countDocuments(filter),
       ]);
 
-      const userIds = [...new Set((orders as any[]).map((o: any) => o.userId?.toString()).filter(Boolean))];
+      const userIds = Array.from(new Set((orders as any[]).map((o: any) => o.userId?.toString()).filter(Boolean)));
       const users = await UserModel.find({ _id: { $in: userIds } }).select("_id name email username").lean();
       const userMap = new Map<string, any>();
       for (const u of users as any[]) userMap.set(u._id.toString(), u);
@@ -3392,7 +3392,7 @@ export async function registerRoutes(
   // Public: related articles by tags
   app.get("/api/blog/:slug/related", async (req, res) => {
     try {
-      const current = await ArticleModel.findOne({ slug: req.params.slug, status: "published" }).select("_id tags").lean();
+      const current = await ArticleModel.findOne({ slug: req.params.slug, status: "published" }).select("_id tags").lean() as any;
       if (!current || !current.tags?.length) return res.json([]);
       const related = await ArticleModel.find({
         status: "published",
@@ -3402,10 +3402,10 @@ export async function registerRoutes(
         .sort({ publishedAt: -1 })
         .select("title slug excerpt coverUrl tags publishedAt views authorName")
         .limit(6)
-        .lean();
+        .lean() as any[];
       // sort by number of matching tags descending, take top 3
       const scored = related
-        .map(a => ({ ...a, _score: (a.tags as string[]).filter((t: string) => (current.tags as string[]).includes(t)).length }))
+        .map((a: any) => ({ ...a, _score: (a.tags as string[]).filter((t: string) => (current.tags as string[]).includes(t)).length }))
         .sort((a, b) => b._score - a._score)
         .slice(0, 3);
       res.json(scored);
