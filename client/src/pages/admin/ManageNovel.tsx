@@ -2907,6 +2907,32 @@ function BlogAdminView() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [exportSelLoading, setExportSelLoading] = useState(false);
 
+  async function handleExportSelectedBlog(ids: string[]) {
+    setExportSelLoading(true);
+    try {
+      const res = await fetch("/api/admin/export/blog/selected", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Export gagal");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blog-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: `✅ ${ids.length} artikel diekspor` });
+      setSelectedIds(new Set());
+    } catch {
+      toast({ title: "Export gagal", variant: "destructive" });
+    } finally {
+      setExportSelLoading(false);
+    }
+  }
+
   const [form, setForm] = useState({
     title: "", slug: "", excerpt: "", content: "", coverUrl: "",
     tags: "", status: "draft" as "draft" | "published", authorName: "Admin",
@@ -3142,9 +3168,26 @@ function BlogAdminView() {
           <h2 className="font-bold text-foreground">Manajemen Blog</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Buat dan kelola artikel di halaman /blog</p>
         </div>
-        <Button size="sm" onClick={openCreate} data-testid="button-blog-create">
-          <Plus size={14} className="mr-1.5" /> Artikel Baru
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleExportSelectedBlog(Array.from(selectedIds))}
+              disabled={exportSelLoading}
+              data-testid="button-blog-export-selected"
+              className="text-xs"
+            >
+              {exportSelLoading
+                ? <Loader2 size={12} className="animate-spin mr-1.5" />
+                : <Download size={12} className="mr-1.5" />}
+              Export {selectedIds.size} Artikel
+            </Button>
+          )}
+          <Button size="sm" onClick={openCreate} data-testid="button-blog-create">
+            <Plus size={14} className="mr-1.5" /> Artikel Baru
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -3156,33 +3199,72 @@ function BlogAdminView() {
           <p className="text-xs mt-1">Klik "Artikel Baru" untuk mulai menulis</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {articles.map(a => (
-            <div key={a._id} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors" data-testid={`row-article-${a._id}`}>
-              {a.coverUrl && (
-                <img src={a.coverUrl} alt="" className="w-14 h-10 rounded-lg object-cover flex-shrink-0 border border-border" />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.status === "published" ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-                    {a.status === "published" ? "Terbit" : "Draft"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">{formatDate(a.publishedAt)}</span>
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Eye size={10} />{a.views}</span>
+        <>
+          {/* Select all bar */}
+          <div className="flex items-center gap-3 px-1">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === articles.length && articles.length > 0}
+              onChange={e => setSelectedIds(e.target.checked ? new Set(articles.map(a => a._id)) : new Set())}
+              className="w-4 h-4 rounded accent-primary cursor-pointer"
+              data-testid="checkbox-blog-select-all"
+            />
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size > 0 ? `${selectedIds.size} dipilih` : "Pilih semua"}
+            </span>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline"
+              >
+                Batal pilih
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {articles.map(a => (
+              <div
+                key={a._id}
+                className={`flex items-center gap-3 p-4 rounded-xl border transition-colors bg-card hover:bg-muted/30 ${selectedIds.has(a._id) ? "border-primary/40 bg-primary/5" : "border-border"}`}
+                data-testid={`row-article-${a._id}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(a._id)}
+                  onChange={e => {
+                    const next = new Set(selectedIds);
+                    e.target.checked ? next.add(a._id) : next.delete(a._id);
+                    setSelectedIds(next);
+                  }}
+                  className="w-4 h-4 rounded accent-primary cursor-pointer shrink-0"
+                  data-testid={`checkbox-article-${a._id}`}
+                />
+                {a.coverUrl && (
+                  <img src={a.coverUrl} alt="" className="w-14 h-10 rounded-lg object-cover flex-shrink-0 border border-border" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.status === "published" ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                      {a.status === "published" ? "Terbit" : "Draft"}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{formatDate(a.publishedAt)}</span>
+                    <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Eye size={10} />{a.views}</span>
+                  </div>
+                  <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
+                  <p className="text-[11px] text-muted-foreground font-mono">/artikel/{a.slug}</p>
                 </div>
-                <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
-                <p className="text-[11px] text-muted-foreground font-mono">/artikel/{a.slug}</p>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <a href={`/artikel/${a.slug}`} target="_blank" rel="noreferrer">
+                    <Button size="icon" variant="ghost" className="h-8 w-8" title="Lihat" data-testid={`button-blog-view-${a._id}`}><ExternalLink size={13} /></Button>
+                  </a>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(a)} data-testid={`button-blog-edit-${a._id}`}><Pencil size={13} /></Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(a._id)} data-testid={`button-blog-delete-${a._id}`}><Trash2 size={13} /></Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <a href={`/artikel/${a.slug}`} target="_blank" rel="noreferrer">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" title="Lihat" data-testid={`button-blog-view-${a._id}`}><ExternalLink size={13} /></Button>
-                </a>
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(a)} data-testid={`button-blog-edit-${a._id}`}><Pencil size={13} /></Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(a._id)} data-testid={`button-blog-delete-${a._id}`}><Trash2 size={13} /></Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Delete Confirm */}
@@ -4135,6 +4217,28 @@ function TopupAdminView() {
     refetchOrders();
   };
 
+  async function handleExportCSV() {
+    setExportLoading(true);
+    try {
+      const params = new URLSearchParams({ status: exportStatus });
+      if (exportFrom) params.set("from", exportFrom);
+      if (exportTo) params.set("to", exportTo);
+      const res = await fetch(`/api/admin/topup/export/csv?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Export gagal");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transaksi-topup-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Export CSV gagal, coba lagi.");
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
   function formatRp(n: number) {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
   }
@@ -4181,6 +4285,17 @@ function TopupAdminView() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowExport(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              showExport
+                ? "bg-primary/10 text-primary border-primary/30"
+                : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+            }`}
+            data-testid="button-toggle-export"
+          >
+            <Download size={11} /> Export CSV
+          </button>
+          <button
             onClick={() => setAutoRefresh(a => !a)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
               autoRefresh
@@ -4201,6 +4316,69 @@ function TopupAdminView() {
           </button>
         </div>
       </div>
+
+      {/* Export CSV Panel */}
+      {showExport && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <Download size={12} className="text-primary" /> Export Transaksi sebagai CSV
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] text-muted-foreground font-medium">Dari Tanggal</label>
+              <input
+                type="date"
+                value={exportFrom}
+                onChange={e => setExportFrom(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="input-export-from"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] text-muted-foreground font-medium">Sampai Tanggal</label>
+              <input
+                type="date"
+                value={exportTo}
+                onChange={e => setExportTo(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="input-export-to"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] text-muted-foreground font-medium">Status</label>
+              <select
+                value={exportStatus}
+                onChange={e => setExportStatus(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                data-testid="select-export-status"
+              >
+                <option value="all">Semua Status</option>
+                <option value="paid">Berhasil</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Gagal</option>
+                <option value="expired">Kedaluwarsa</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-[11px] text-muted-foreground">
+              {!exportFrom && !exportTo ? "Semua periode" : `${exportFrom || "awal"} → ${exportTo || "sekarang"}`}
+              {exportStatus !== "all" ? ` · ${exportStatus}` : ""}
+            </p>
+            <button
+              onClick={handleExportCSV}
+              disabled={exportLoading}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-60"
+              data-testid="button-export-csv"
+            >
+              {exportLoading
+                ? <><Loader2 size={11} className="animate-spin" /> Mengekspor...</>
+                : <><Download size={11} /> Download CSV</>
+              }
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       {stats && (
