@@ -2906,39 +2906,6 @@ function BlogAdminView() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [exportSelLoading, setExportSelLoading] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [importMode, setImportMode] = useState<"skip" | "overwrite">("skip");
-  const [importLoading, setImportLoading] = useState(false);
-  const [importResult, setImportResult] = useState<{ inserted: number; updated: number; skipped: number; errors: number; total: number } | null>(null);
-  const importFileRef = useRef<HTMLInputElement>(null);
-
-  async function handleImportBlog(file: File) {
-    setImportLoading(true);
-    setImportResult(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("mode", importMode);
-      const res = await fetch("/api/admin/import/blog", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: data.message || "Import gagal", variant: "destructive" });
-        return;
-      }
-      setImportResult(data);
-      toast({ title: `✅ Import selesai: ${data.inserted} ditambah, ${data.updated} diperbarui, ${data.skipped} dilewati` });
-      refetch();
-    } catch {
-      toast({ title: "Import gagal", variant: "destructive" });
-    } finally {
-      setImportLoading(false);
-      if (importFileRef.current) importFileRef.current.value = "";
-    }
-  }
 
   async function handleExportSelectedBlog(ids: string[]) {
     setExportSelLoading(true);
@@ -3217,83 +3184,12 @@ function BlogAdminView() {
               Export {selectedIds.size} Artikel
             </Button>
           )}
-          <button
-            onClick={() => { setShowImport(v => !v); setImportResult(null); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              showImport ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-            }`}
-            data-testid="button-blog-import-toggle"
-          >
-            <Upload size={11} /> Import JSON
-          </button>
           <Button size="sm" onClick={openCreate} data-testid="button-blog-create">
             <Plus size={14} className="mr-1.5" /> Artikel Baru
           </Button>
         </div>
       </div>
 
-      {/* Import panel */}
-      {showImport && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <Upload size={12} className="text-primary" /> Import Artikel dari File JSON
-          </p>
-          <p className="text-[11px] text-muted-foreground">Upload file hasil export (.json) untuk mengembalikan atau memindahkan artikel.</p>
-
-          {/* Mode selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground font-medium">Jika slug sudah ada:</span>
-            <button
-              onClick={() => setImportMode("skip")}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${importMode === "skip" ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border"}`}
-              data-testid="button-import-mode-skip"
-            >
-              Lewati
-            </button>
-            <button
-              onClick={() => setImportMode("overwrite")}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${importMode === "overwrite" ? "bg-amber-500 text-white border-amber-500" : "bg-muted text-muted-foreground border-border"}`}
-              data-testid="button-import-mode-overwrite"
-            >
-              Timpa
-            </button>
-          </div>
-
-          {/* File picker */}
-          <input
-            ref={importFileRef}
-            type="file"
-            accept=".json,application/json"
-            className="hidden"
-            onChange={e => {
-              const f = e.target.files?.[0];
-              if (f) handleImportBlog(f);
-            }}
-            data-testid="input-import-file"
-          />
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => importFileRef.current?.click()}
-              disabled={importLoading}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-60"
-              data-testid="button-import-pick-file"
-            >
-              {importLoading ? <><Loader2 size={11} className="animate-spin" /> Mengimpor...</> : <><Upload size={11} /> Pilih File JSON</>}
-            </button>
-          </div>
-
-          {/* Import result */}
-          {importResult && (
-            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-[11px] space-y-1">
-              <p className="font-semibold text-foreground mb-1">Hasil Import ({importResult.total} artikel diproses)</p>
-              <p className="text-emerald-600">✅ Ditambah: {importResult.inserted}</p>
-              {importResult.updated > 0 && <p className="text-amber-600">⚠️ Ditimpa: {importResult.updated}</p>}
-              {importResult.skipped > 0 && <p className="text-muted-foreground">⏭ Dilewati: {importResult.skipped}</p>}
-              {importResult.errors > 0 && <p className="text-destructive">❌ Error: {importResult.errors}</p>}
-            </div>
-          )}
-        </div>
-      )}
 
       {isLoading ? (
         <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
