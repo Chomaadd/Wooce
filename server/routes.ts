@@ -3594,6 +3594,7 @@ export async function registerRoutes(
   app.post("/api/admin/import/blog", requireAuth, multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single("file"), async (req: any, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "File tidak ditemukan" });
+      const { ArticleModel: AM } = await import("./blog-db");
       let articles: any[];
       try {
         articles = JSON.parse(req.file.buffer.toString("utf-8"));
@@ -3608,24 +3609,24 @@ export async function registerRoutes(
       for (const article of articles) {
         if (!article.slug || !article.title) { errors++; continue; }
         try {
-          const existing = await ArticleModel.findOne({ slug: article.slug });
+          const existing = await AM.findOne({ slug: article.slug });
           const { _id, __v, ...data } = article;
           if (existing) {
             if (mode === "overwrite") {
-              await ArticleModel.updateOne({ slug: article.slug }, { $set: data });
+              await AM.updateOne({ slug: article.slug }, { $set: data });
               updated++;
             } else {
               skipped++;
             }
           } else {
-            await ArticleModel.create(data);
+            await AM.create(data);
             inserted++;
           }
         } catch { errors++; }
       }
 
       res.json({ ok: true, inserted, skipped, updated, errors, total: articles.length });
-    } catch { res.status(500).json({ message: "Gagal mengimpor data" }); }
+    } catch (e) { console.error("blog import error", e); res.status(500).json({ message: "Gagal mengimpor data" }); }
   });
 
   // ── Social Bot OG Middleware ──────────────────────────────────────────────
