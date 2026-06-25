@@ -3510,6 +3510,62 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Gagal mengekspor data" }); }
   });
 
+  // Export selected blog articles as JSON download
+  app.post("/api/admin/export/blog/selected", requireAuth, async (req, res) => {
+    try {
+      const { ids } = req.body as { ids: string[] };
+      if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "Tidak ada artikel dipilih" });
+      const mongoose = (await import("mongoose")).default;
+      const objectIds = ids.map((id: string) => new mongoose.Types.ObjectId(id));
+      const articles = await ArticleModel.find({ _id: { $in: objectIds } }).lean();
+      const clean = articles.map(({ _id, __v, ...rest }: any) => rest);
+      const json = JSON.stringify(clean, null, 2);
+      const filename = `blog-export-selected-${new Date().toISOString().slice(0, 10)}.json`;
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(json);
+    } catch { res.status(500).json({ message: "Gagal mengekspor data" }); }
+  });
+
+  // Export topup transactions as CSV
+  app.get("/api/admin/topup/export/csv", requireAuth, async (req, res) => {
+    try {
+      const { from, to, status } = req.query as { from?: string; to?: string; status?: string };
+      const filter: any = {};
+      if (status && status !== "all") filter.status = status;
+      if (from || to) {
+        filter.createdAt = {};
+        if (from) filter.createdAt.$gte = new Date(from + "T00:00:00.000+07:00");
+        if (to)   filter.createdAt.$lte = new Date(to   + "T23:59:59.999+07:00");
+      }
+      const orders = await TopupOrderModel.find(filter).sort({ createdAt: -1 }).lean();
+      const userIds = Array.from(new Set((orders as any[]).map((o: any) => o.userId?.toString()).filter(Boolean)));
+      const users = await UserModel.find({ _id: { $in: userIds } }).select("_id name email username").lean();
+      const userMap = new Map<string, any>();
+      for (const u of users as any[]) userMap.set(u._id.toString(), u);
+
+      const STATUS_LABEL: Record<string, string> = { paid: "Berhasil", pending: "Pending", failed: "Gagal", expired: "Kedaluwarsa" };
+      const esc = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+      const header = ["Order ID", "Nama User", "Email User", "Koin", "Nominal (IDR)", "Status", "Tanggal (WIB)"].map(esc).join(",");
+      const rows = (orders as any[]).map((o: any) => {
+        const u = userMap.get(o.userId?.toString());
+        const tanggal = new Intl.DateTimeFormat("id-ID", {
+          day: "2-digit", month: "2-digit", year: "numeric",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          timeZone: "Asia/Jakarta",
+        }).format(new Date(o.createdAt));
+        return [o.orderId, u?.name || u?.username || "-", u?.email || "-", o.coins, o.amount, STATUS_LABEL[o.status] ?? o.status, tanggal].map(esc).join(",");
+      });
+
+      const csv = [header, ...rows].join("\r\n");
+      const filename = `transaksi-topup-${new Date().toISOString().slice(0, 10)}.csv`;
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send("\uFEFF" + csv); // BOM for Excel compatibility
+    } catch { res.status(500).json({ message: "Gagal mengekspor data" }); }
+  });
+
   // Import blog articles from JSON upload
   app.post("/api/admin/import/blog", requireAuth, multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single("file"), async (req: any, res) => {
     try {

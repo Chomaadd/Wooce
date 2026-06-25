@@ -1240,6 +1240,23 @@ export default function ManageNovel() {
     if (importFileInputRef.current) importFileInputRef.current.value = "";
   }
 
+  async function handleExportSelectedBlog(ids: string[]) {
+    try {
+      const res = await fetch("/api/admin/export/blog/selected", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Export gagal");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `blog-export-selected-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert("Export gagal, coba lagi."); }
+  }
+
   // ── Story search & filter state ────────────────────────────────────────────
   const [storySearch, setStorySearch] = useState("");
   const [storyFilterCategory, setStoryFilterCategory] = useState<string>("all");
@@ -2887,6 +2904,8 @@ function BlogAdminView() {
   const [mode, setMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<BlogArticle | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [exportSelLoading, setExportSelLoading] = useState(false);
 
   const [form, setForm] = useState({
     title: "", slug: "", excerpt: "", content: "", coverUrl: "",
@@ -4090,6 +4109,11 @@ function TopupAdminView() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exportStatus, setExportStatus] = useState("all");
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   const { data: stats, refetch: refetchStats } = useQuery<any>({
     queryKey: ["/api/admin/topup/stats"],
