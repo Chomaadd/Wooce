@@ -173,7 +173,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-14 border-b border-border flex items-center gap-2 px-3 md:px-8 bg-card/80 backdrop-blur-sm shrink-0 sticky top-0 z-30">
+        <header className="h-14 border-b border-border flex items-center gap-2 px-3 md:px-8 bg-card/80 backdrop-blur-sm shrink-0 sticky top-0 z-30 overflow-hidden">
           {/* Left: hamburger + breadcrumb */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
@@ -190,12 +190,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Right: actions */}
+          {/* Right: actions — Export/Import Blog hidden on mobile to prevent overflow */}
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={handleExportBlog}
               disabled={exportLoading}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all disabled:opacity-50"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all disabled:opacity-50"
               data-testid="button-export-blog"
               title="Export semua artikel blog ke file JSON"
             >
@@ -204,7 +204,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={() => { setImportOpen(true); resetImport(); }}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
               data-testid="button-open-import"
               title="Import artikel blog dari file JSON"
             >
@@ -253,7 +253,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto overflow-x-hidden">
           <div className="max-w-6xl mx-auto p-6 md:p-8">
             {children}
           </div>

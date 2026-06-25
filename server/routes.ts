@@ -3538,17 +3538,22 @@ export async function registerRoutes(
     try {
       const { ids } = req.body as { ids: string[] };
       if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "Tidak ada artikel dipilih" });
-      const { ArticleModel: AM } = await import("./blog-db");
+      // Use ArticleModel from outer scope (already imported at line above), not re-import
+      // Validate each id is a 24-char hex string before converting to ObjectId
       const mg = (await import("mongoose")).default;
-      const objectIds = ids.map((id: string) => new mg.Types.ObjectId(id));
-      const articles = await AM.find({ _id: { $in: objectIds } }).lean();
+      const validIds = ids
+        .map(id => (typeof id === "string" ? id.trim() : ""))
+        .filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+      if (validIds.length === 0) return res.status(400).json({ message: "ID artikel tidak valid" });
+      const objectIds = validIds.map(id => new mg.Types.ObjectId(id));
+      const articles = await ArticleModel.find({ _id: { $in: objectIds } }).lean();
       const clean = (articles as any[]).map(({ _id, __v, ...rest }: any) => rest);
       const json = JSON.stringify(clean, null, 2);
       const filename = `blog-export-selected-${new Date().toISOString().slice(0, 10)}.json`;
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(json);
-    } catch (e) { console.error("blog export error", e); res.status(500).json({ message: "Gagal mengekspor data" }); }
+    } catch (e) { console.error("blog export selected error", e); res.status(500).json({ message: "Gagal mengekspor data" }); }
   });
 
   // Export topup transactions as CSV

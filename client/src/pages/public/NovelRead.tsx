@@ -531,14 +531,13 @@ function useTTS(preferredVoiceURI = "") {
     utterance.rate = Math.max(0.5, Math.min(2.0, speechRate));
 
     const pickVoice = (voices: SpeechSynthesisVoice[]) => {
-      // If user manually selected a voice, use it first
       if (preferredVoiceURI) {
         const preferred = voices.find(v => v.voiceURI === preferredVoiceURI);
         if (preferred) return preferred;
       }
       const idVoices = voices.filter(v => v.lang.startsWith("id"));
-      if (idVoices.length === 0) return null;
-      // Prefer male voice: avoid known female names/keywords
+      // FIX: fall back to any available voice instead of returning null
+      if (idVoices.length === 0) return voices[0] ?? null;
       const femaleKeywords = ["damayanti", "female", "wanita", "perempuan", "woman", "girl", "siti", "sri"];
       const maleKeywords = ["male", "laki", "pria", "man", "boy"];
       const maleVoice = idVoices.find(v => {
@@ -550,26 +549,8 @@ function useTTS(preferredVoiceURI = "") {
       return maleVoice || idVoices[0];
     };
 
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      const picked = pickVoice(voices);
-      if (picked) utterance.voice = picked;
-    } else {
-      // Mobile: voices load async — attach after voiceschanged
-      const onVoicesChanged = () => {
-        const picked = pickVoice(window.speechSynthesis.getVoices());
-        if (picked) utterance.voice = picked;
-        window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
-      };
-      window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
-    }
-
-    utterance.onstart = () => {
-      intentionalCancelRef.current = false;
-    };
-    utterance.onboundary = (e) => {
-      if (e.name === "word") charIndexRef.current = e.charIndex;
-    };
+    utterance.onstart = () => { intentionalCancelRef.current = false; };
+    utterance.onboundary = (e) => { if (e.name === "word") charIndexRef.current = e.charIndex; };
     utterance.onend = () => {
       if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
       charIndexRef.current = 0;
@@ -585,21 +566,36 @@ function useTTS(preferredVoiceURI = "") {
       setIsPaused(false);
     };
 
-    window.speechSynthesis.speak(utterance);
-    setIsPlaying(true);
-    setIsPaused(false);
-
-    // Chrome fix: pause+resume every 14s to prevent auto-stop bug
-    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg|OPR/.test(navigator.userAgent);
-    if (isChrome) {
+    // FIX: startSpeaking is called AFTER voice is assigned — critical for mobile
+    const startSpeaking = (voices: SpeechSynthesisVoice[]) => {
+      const picked = pickVoice(voices);
+      if (picked) utterance.voice = picked;
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
+      setIsPaused(false);
+      // Keep-alive: prevent auto-stop on Chrome desktop AND mobile browsers
       keepAliveRef.current = setInterval(() => {
         if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
           window.speechSynthesis.pause();
           window.speechSynthesis.resume();
         }
       }, 14000);
+    };
+
+    const currentVoices = window.speechSynthesis.getVoices();
+    if (currentVoices.length > 0) {
+      // Desktop: voices already available — speak immediately
+      startSpeaking(currentVoices);
+    } else {
+      // Mobile: voices load async — MUST wait before calling speak()
+      // Calling speak() before voices are set causes silent failure on mobile
+      const onVoicesChanged = () => {
+        window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
+        startSpeaking(window.speechSynthesis.getVoices());
+      };
+      window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
     }
-  }, [supported]);
+  }, [supported, preferredVoiceURI]);
 
   const pause = useCallback(() => {
     if (!supported) return;
@@ -1610,7 +1606,7 @@ export default function NovelRead() {
               ...fontFamilyOverride,
             }}
             data-testid="text-chapter-content"
-            dangerouslySetInnerHTML={{ __html: translatedContent ?? renderRichContent(chapter.content) }}
+            dangerouslySetInnerHTML={{ __html: translatedContent || renderRichContent(chapter.content) }}
           />
         )}
 
