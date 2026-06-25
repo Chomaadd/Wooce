@@ -39,6 +39,7 @@ export default function Terms() {
         "Menikmati pengalaman baca yang dapat disesuaikan dengan pengaturan font, mode baca (terang/gelap), scroll progress, dan pintasan keyboard (← → untuk navigasi chapter, F untuk mode fokus)",
         "Menggunakan fitur Database Karakter per novel untuk mengenal tokoh-tokoh cerita lebih dalam tanpa keluar dari halaman baca",
         "Membagikan kutipan favorit dari chapter sebagai kartu gambar (Quote Card) ke media sosial — menggunakan Canvas API tanpa data tambahan yang disimpan di server",
+        "Mengikuti (follow) novel atau cerita favorit untuk mendapatkan informasi pembaruan chapter terbaru",
         "Melanjutkan bacaan dari chapter terakhir yang dibuka melalui fitur 'Lanjut Baca' di halaman utama",
         "Menyalin tautan chapter secara langsung melalui tombol Salin Link di halaman baca",
         "Melaporkan konten yang melanggar ketentuan melalui tombol Laporkan di halaman baca",
@@ -76,6 +77,21 @@ export default function Terms() {
         "WOOCE Novel tidak bertanggung jawab atas kegagalan transaksi yang disebabkan oleh masalah pada metode pembayaran pengguna, gangguan bank, atau faktor eksternal di luar kendali platform.",
         "Jika koin tidak masuk setelah pembayaran berhasil, pengguna dapat menghubungi tim support dengan bukti pembayaran untuk pengecekan manual.",
       ],
+    },
+    {
+      title: "2c. Program Bagi Hasil Penulis",
+      paragraphs: [
+        "WOOCE Novel sedang mengembangkan sistem bagi hasil bagi penulis yang menggunakan fitur chapter premium. Dalam program ini, penulis akan mendapatkan persentase dari setiap transaksi koin yang terjadi pada chapter premium karyanya.",
+        "Ketentuan program bagi hasil:",
+      ],
+      items: [
+        "Eligibilitas: Program bagi hasil diperuntukkan bagi penulis aktif yang memiliki minimal satu chapter premium yang telah dipublikasikan.",
+        "Mekanisme: Penulis mendapatkan bagian dari koin yang digunakan pembaca untuk membuka chapter premium. Detail besaran persentase dan jadwal pencairan akan diumumkan secara resmi saat program diluncurkan.",
+        "Prioritas Verifikasi: Penulis dengan badge verifikasi (centang biru) akan diprioritaskan dalam program bagi hasil tahap awal.",
+        "Transparansi: Riwayat transaksi koin dari chapter premium dapat dipantau melalui dashboard penulis.",
+        "Pembaruan Program: Seluruh informasi terkini mengenai program bagi hasil — termasuk tanggal peluncuran, besaran persentase, dan mekanisme pencairan — akan disampaikan melalui pengumuman resmi di platform, email terdaftar penulis, dan media sosial WOOCE Novel.",
+      ],
+      note: "Program bagi hasil masih dalam tahap pengembangan aktif. Penulis yang sudah memiliki chapter premium akan otomatis diikutsertakan dalam program begitu diluncurkan secara resmi. Tidak diperlukan pendaftaran ulang.",
     },
     {
       title: "3. Akun Pengguna",
@@ -280,6 +296,7 @@ export default function Terms() {
         "Enjoying a fully customizable reading experience with font settings, reading modes (light/dark), scroll progress indicator, and keyboard shortcuts (← → for chapter navigation, F for focus mode)",
         "Using the Character Database feature per novel to learn more about story characters without leaving the reading page",
         "Sharing favorite chapter quotes as image cards (Quote Cards) to social media — using the Canvas API with no additional data stored on the server",
+        "Following favorite novels or stories to stay updated on new chapter releases",
         "Resuming reading from the last opened chapter via the 'Continue Reading' feature on the homepage",
         "Copying the chapter link directly via the Copy Link button on the reading page",
         "Reporting content that violates the terms via the Report button on the reading page",
@@ -317,6 +334,21 @@ export default function Terms() {
         "WOOCE Novel is not responsible for failed transactions caused by issues with the user's payment method, bank disruptions, or external factors beyond the platform's control.",
         "If coins are not received after a successful payment, users may contact the support team with proof of payment for manual verification.",
       ],
+    },
+    {
+      title: "2c. Writer Revenue Sharing Program",
+      paragraphs: [
+        "WOOCE Novel is developing a revenue sharing system for writers who use the premium chapter feature. Under this program, writers will receive a percentage of every coin transaction on their premium chapters.",
+        "Revenue sharing program terms:",
+      ],
+      items: [
+        "Eligibility: The revenue sharing program is open to active writers who have at least one published premium chapter.",
+        "Mechanism: Writers receive a share of the coins readers spend to unlock their premium chapters. Details on the percentage and payout schedule will be announced officially at program launch.",
+        "Verification Priority: Writers with a verification badge (blue checkmark) will be prioritized in the early stages of the revenue sharing program.",
+        "Transparency: Coin transaction history from premium chapters can be monitored through the writer dashboard.",
+        "Program Updates: All latest information regarding the revenue sharing program — including launch date, percentage breakdown, and payout mechanism — will be shared via official platform announcements, registered writer emails, and WOOCE Novel social media.",
+      ],
+      note: "The revenue sharing program is still under active development. Writers who already have premium chapters will be automatically included in the program upon official launch. No re-registration is required.",
     },
     {
       title: "3. User Accounts",
@@ -521,7 +553,7 @@ export default function Terms() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t("terms.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("terms.updated")}: 11 Juni 2026
+            {t("terms.updated")}: 24 Juni 2026
           </p>
         </div>
 

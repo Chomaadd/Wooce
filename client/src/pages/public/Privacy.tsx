@@ -155,6 +155,8 @@ export default function Privacy() {
         "Google (OAuth Provider): Proses autentikasi login melewati layanan Google OAuth 2.0. Google dapat memproses data profil dasarmu sesuai Kebijakan Privasi Google mereka sendiri.",
         "Google (Gmail SMTP): Notifikasi email dikirim melalui infrastruktur Gmail Google. Google dapat memproses metadata email (pengirim, penerima, waktu) sesuai kebijakan mereka.",
         "MongoDB Atlas: Data platform disimpan di infrastruktur MongoDB Atlas. Data diproses oleh MongoDB, Inc. sesuai kebijakan privasi dan keamanan data mereka.",
+        "Cloudflare: Situs WOOCE Novel dilindungi dan dipercepat oleh layanan Cloudflare sebagai CDN (Content Delivery Network) dan lapisan keamanan jaringan. Cloudflare dapat memproses metadata permintaan seperti alamat IP dan user agent sesuai dengan kebijakan privasinya sendiri.",
+        "Railway: Platform WOOCE Novel dihosting di infrastruktur Railway.app. Data yang ditransmisikan ke dan dari server kami melewati infrastruktur Railway sesuai dengan kebijakan privasi dan keamanan data mereka.",
         "Kewajiban Hukum: Kami dapat mengungkapkan data jika diwajibkan oleh hukum, peraturan pemerintah, atau perintah pengadilan yang sah.",
       ],
       note: "Selain kondisi di atas, data pribadimu tidak dibagikan kepada pihak manapun tanpa persetujuan eksplisitmu.",
@@ -363,6 +365,8 @@ export default function Privacy() {
         "Google (OAuth Provider): The login authentication process passes through Google OAuth 2.0 services. Google may process your basic profile data according to their own Privacy Policy.",
         "Google (Gmail SMTP): Email notifications are sent through Google's Gmail infrastructure. Google may process email metadata (sender, recipient, time) according to their policies.",
         "MongoDB Atlas: Platform data is stored in MongoDB Atlas infrastructure. Data is processed by MongoDB, Inc. according to their data privacy and security policies.",
+        "Cloudflare: WOOCE Novel's site is protected and accelerated by Cloudflare's CDN (Content Delivery Network) and network security services. Cloudflare may process request metadata such as IP addresses and user agents in accordance with its own privacy policy.",
+        "Railway: WOOCE Novel is hosted on Railway.app infrastructure. Data transmitted to and from our servers passes through Railway's infrastructure in accordance with their data privacy and security policies.",
         "Legal Obligations: We may disclose data if required by applicable law, government regulations, or valid court orders.",
       ],
       note: "Beyond the conditions above, your personal data is not shared with any party without your explicit consent.",
@@ -455,7 +459,7 @@ export default function Privacy() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-foreground mb-2">{t("privacy.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("privacy.updated")}: 11 Juni 2026
+            {t("privacy.updated")}: 24 Juni 2026
           </p>
         </div>
 

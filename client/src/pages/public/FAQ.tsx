@@ -219,6 +219,22 @@ export default function FAQ() {
               q: "Bagaimana cara cek riwayat pembelian koin?",
               a: "Buka menu Koin di navbar, lalu pilih 'Riwayat Koin'. Di sana ada dua tab: 'Transaksi' (penggunaan koin) dan 'Pesanan' (riwayat pembelian/topup).",
             },
+            {
+              q: "Bagaimana cara mendapatkan koin secara gratis?",
+              a: "Ada beberapa cara mendapatkan koin tanpa harus membeli:\n• Login Harian — klaim koin setiap hari dengan menekan tombol login bonus di navbar\n• Streak Login — semakin banyak hari berturut-turut kamu login, semakin besar bonus koin yang kamu dapatkan\n• Quest Streak — capai milestone streak tertentu (misal 7 hari, 30 hari, dst.) untuk bonus ekstra\n• Quest Sosial Media — ikuti akun media sosial resmi WOOCE Novel dan dapatkan 50 koin sekali",
+            },
+            {
+              q: "Apa itu streak login harian dan bagaimana cara mendapatkan bonusnya?",
+              a: "Streak adalah jumlah hari berturut-turut kamu melakukan login dan klaim bonus harian. Semakin panjang streak-mu, semakin besar koin yang kamu dapatkan per hari.\n\nCara kerja:\n• Login setiap hari dan klik tombol klaim bonus di navbar\n• Jika kamu melewatkan 1 hari, streak-mu kembali ke 0\n• Setiap milestone streak (7 hari, 30 hari, dll.) memberikan bonus tambahan\n\nTips: Biasakan buka WOOCE Novel setiap hari meski cuma sebentar untuk klaim bonus!",
+            },
+            {
+              q: "Apakah chapter premium yang sudah saya buka akan hilang jika logout atau ganti perangkat?",
+              a: "Tidak! Chapter premium yang sudah kamu buka tersimpan di akun, bukan di perangkat. Selama kamu login dengan akun yang sama, chapter tersebut bisa dibaca kapan saja, di perangkat mana saja, tanpa perlu membayar koin lagi.",
+            },
+            {
+              q: "Apa itu Quest Sosial Media dan bagaimana cara menyelesaikannya?",
+              a: "Quest Sosial Media adalah misi satu kali yang memberimu 50 koin gratis jika kamu mengikuti (follow) akun media sosial resmi WOOCE Novel.\n\nCara mendapatkannya:\n1. Buka halaman Koin di navbar\n2. Scroll ke bagian 'Quest Sosial Media'\n3. Ikuti akun WOOCE Novel di platform yang tersedia (TikTok, Instagram, Facebook)\n4. Klik 'Klaim' setelah mengikuti\n\nCatatan: Quest ini hanya bisa diklaim sekali per akun.",
+            },
           ],
         },
         {
@@ -261,6 +277,18 @@ export default function FAQ() {
             {
               q: "Apakah karya saya bisa dilihat semua orang?",
               a: "Novel yang statusnya 'Published' akan tampil di halaman publik dan bisa dibaca semua pengunjung. Novel berstatus 'Draft' hanya bisa dilihat oleh kamu (penulis).",
+            },
+            {
+              q: "Apa itu badge centang biru (✓) pada profil penulis?",
+              a: "Badge centang biru adalah tanda verifikasi resmi dari WOOCE Novel yang menunjukkan bahwa penulis tersebut telah terverifikasi identitasnya dan merupakan penulis aktif yang terpercaya di platform.\n\nManfaat centang biru:\n• Meningkatkan kepercayaan pembaca terhadap karyamu\n• Diprioritaskan dalam program bagi hasil chapter premium\n• Sistem koin otomatis aktif untuk chapter-chapter karyamu\n\nCara mengajukan:\nBuka halaman Verifikasi Penulis dari profil atau navbar. Isi formulir permohonan dengan data lengkap. Tim admin akan meninjau dan memverifikasi dalam 3–7 hari kerja.",
+            },
+            {
+              q: "Berapa koin yang sebaiknya saya pasang untuk chapter premium?",
+              a: "Tidak ada aturan baku, tapi ini panduan umum berdasarkan panjang dan kualitas konten:\n• Chapter pendek (kurang dari 1.000 kata): 5–10 koin\n• Chapter standar (1.000–3.000 kata): 10–20 koin\n• Chapter panjang/eksklusif (3.000+ kata): 20–50 koin\n\nTips:\n• Jaga konsistensi harga antar chapter\n• Buat beberapa chapter gratis dulu agar pembaca 'terjebak' ceritamu sebelum menemui chapter premium\n• Dengarkan feedback pembaca dan sesuaikan jika perlu",
+            },
+            {
+              q: "Apakah ada cara melihat siapa yang membuka chapter premium saya?",
+              a: "Saat ini dashboard penulis menampilkan total views dan statistik per chapter, termasuk jumlah pembuka chapter premium. Data identitas pembaca bersifat anonim — kamu bisa melihat jumlah pembuka, namun tidak nama atau identitas spesifik mereka, sesuai kebijakan privasi platform.",
             },
           ],
         },
@@ -451,6 +479,22 @@ export default function FAQ() {
               q: "How do I check my coin purchase history?",
               a: "Open the Coins menu in the navbar, then select 'Coin History'. You'll find two tabs: 'Transactions' (coin usage) and 'Orders' (purchase/top-up history).",
             },
+            {
+              q: "How can I get coins for free?",
+              a: "There are several ways to earn coins without purchasing:\n• Daily Login — claim coins every day by tapping the login bonus button in the navbar\n• Login Streak — the more consecutive days you log in, the bigger your daily coin bonus\n• Streak Quest — reach certain streak milestones (e.g. 7 days, 30 days) for extra coin rewards\n• Social Media Quest — follow WOOCE Novel's official social media accounts and get 50 coins once",
+            },
+            {
+              q: "What is the daily login streak and how do I earn streak bonuses?",
+              a: "Your streak counts how many consecutive days you've logged in and claimed your daily bonus. The longer your streak, the more coins you earn per day.\n\nHow it works:\n• Log in every day and click the claim button in the navbar\n• Missing 1 day resets your streak to 0\n• Reaching streak milestones (7 days, 30 days, etc.) gives extra bonuses\n\nTip: Make it a habit to open WOOCE Novel daily — even briefly — to keep your streak alive!",
+            },
+            {
+              q: "Will unlocked premium chapters disappear if I log out or switch devices?",
+              a: "No! Premium chapters you've unlocked are saved to your account, not your device. As long as you're logged into the same account, you can read them anytime, on any device, without spending coins again.",
+            },
+            {
+              q: "What is the Social Media Quest and how do I complete it?",
+              a: "The Social Media Quest is a one-time mission that rewards you with 50 free coins for following WOOCE Novel's official social media accounts.\n\nHow to get them:\n1. Open the Coins page from the navbar\n2. Scroll to the 'Social Media Quest' section\n3. Follow WOOCE Novel on the available platforms (TikTok, Instagram, Facebook)\n4. Click 'Claim' after following\n\nNote: This quest can only be claimed once per account.",
+            },
           ],
         },
         {
@@ -489,6 +533,18 @@ export default function FAQ() {
             {
               q: "Can I delete or withdraw my work?",
               a: "Yes, you can change a novel's status to draft or delete specific chapters through the writer dashboard. To delete an entire novel, contact admin.",
+            },
+            {
+              q: "What is the blue checkmark (✓) badge on a writer's profile?",
+              a: "The blue checkmark is WOOCE Novel's official verification badge. It indicates that the writer has been verified and is a trusted, active author on the platform.\n\nBenefits of the badge:\n• Builds reader trust in your work\n• Prioritized in the premium chapter revenue sharing program\n• Coin system automatically enabled for your novels\n\nHow to apply:\nOpen the Writer Verification page from your profile or navbar. Fill out the form with complete information. The admin team will review and respond within 3–7 business days.",
+            },
+            {
+              q: "How many coins should I charge for a premium chapter?",
+              a: "There's no hard rule, but here are general guidelines based on content length and quality:\n• Short chapter (under 1,000 words): 5–10 coins\n• Standard chapter (1,000–3,000 words): 10–20 coins\n• Long/exclusive chapter (3,000+ words): 20–50 coins\n\nTips:\n• Keep prices consistent across chapters\n• Start with several free chapters so readers get hooked before hitting a premium chapter\n• Listen to reader feedback and adjust if needed",
+            },
+            {
+              q: "Can I see who unlocked my premium chapters?",
+              a: "Currently the writer dashboard shows total views and per-chapter statistics, including the number of premium chapter unlocks. Reader identity data is anonymous — you can see the count of unlocks, but not individual names or identities, in line with the platform's privacy policy.",
             },
           ],
         },
