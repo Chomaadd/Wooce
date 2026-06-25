@@ -2643,8 +2643,31 @@ export async function registerRoutes(
   app.patch("/api/writer/profile", requireWriter, async (req: any, res) => {
     try {
       const user = req.writerUser;
-      const authorId = await ensureAuthorId(user);
-      if (!authorId) return res.status(400).json({ message: "Silakan set username terlebih dahulu", needsUsername: true });
+      let authorId = await ensureAuthorId(user);
+
+      // First-time setup: no author record yet — create one if slug is provided
+      if (!authorId) {
+        const rawSlug = req.body.slug ? String(req.body.slug).toLowerCase().trim().replace(/[^a-z0-9-]/g, "").replace(/--+/g, "-").replace(/^-|-$/g, "") : "";
+        if (!rawSlug || rawSlug.length < 4) {
+          return res.status(400).json({ message: "Silakan set username terlebih dahulu", needsUsername: true });
+        }
+        if (isBannedNickname(rawSlug)) {
+          return res.status(400).json({ message: "Username mengandung kata yang tidak diperbolehkan" });
+        }
+        const taken = await storage.getAuthorBySlug(rawSlug);
+        if (taken) return res.status(409).json({ message: "Username sudah dipakai, coba yang lain" });
+        const author = await storage.createAuthor({
+          name: req.body.name?.trim() || user.name || "Penulis",
+          slug: rawSlug,
+          bio: req.body.bio || "",
+          photoUrl: user.photoUrl ?? null,
+          tiktok: null, instagram: null, facebook: null, twitter: null,
+          website: null, saweria: null, trakteer: null, email: user.email,
+        });
+        await storage.updateUser(user.id, { authorId: author.id });
+        authorId = author.id;
+      }
+
       const allowed = ["name", "bio", "photoUrl", "tiktok", "instagram", "facebook", "twitter", "website", "saweria", "trakteer"];
       const updateData: Record<string, any> = {};
       for (const key of allowed) {
@@ -3515,16 +3538,17 @@ export async function registerRoutes(
     try {
       const { ids } = req.body as { ids: string[] };
       if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "Tidak ada artikel dipilih" });
-      const mongoose = (await import("mongoose")).default;
-      const objectIds = ids.map((id: string) => new mongoose.Types.ObjectId(id));
-      const articles = await ArticleModel.find({ _id: { $in: objectIds } }).lean();
-      const clean = articles.map(({ _id, __v, ...rest }: any) => rest);
+      const { ArticleModel: AM } = await import("./blog-db");
+      const mg = (await import("mongoose")).default;
+      const objectIds = ids.map((id: string) => new mg.Types.ObjectId(id));
+      const articles = await AM.find({ _id: { $in: objectIds } }).lean();
+      const clean = (articles as any[]).map(({ _id, __v, ...rest }: any) => rest);
       const json = JSON.stringify(clean, null, 2);
       const filename = `blog-export-selected-${new Date().toISOString().slice(0, 10)}.json`;
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(json);
-    } catch { res.status(500).json({ message: "Gagal mengekspor data" }); }
+    } catch (e) { console.error("blog export error", e); res.status(500).json({ message: "Gagal mengekspor data" }); }
   });
 
   // Export topup transactions as CSV
