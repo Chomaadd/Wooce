@@ -42,10 +42,10 @@ const FONT_FAMILY_VALUE: Record<FontFamily, string> = {
   georgia: "Georgia, 'Times New Roman', serif",
 };
 
-const MODE_STYLES: Record<ReadingMode, { bg: string; text: string; border: string; panelBg: string }> = {
-  light:  { bg: "#ffffff",       text: "#111827",  border: "#e5e7eb",     panelBg: "#ffffff" },
-  sepia:  { bg: "#faf3e8",       text: "#5c3d1e",  border: "#e8d9c0",     panelBg: "#f5e9d5" },
-  night:  { bg: "#0f1117",       text: "#c9d1d9",  border: "#21262d",     panelBg: "#161b22" },
+const MODE_STYLES: Record<ReadingMode, { bg: string; text: string; border: string; panelBg: string; cardBg: string; cardBorder: string }> = {
+  light:  { bg: "#ffffff",  text: "#111827",  border: "#e5e7eb",  panelBg: "#ffffff",  cardBg: "#f3f4f6",  cardBorder: "rgba(0,0,0,0.08)"  },
+  sepia:  { bg: "#faf3e8",  text: "#5c3d1e",  border: "#e8d9c0",  panelBg: "#f5e9d5",  cardBg: "#ede5d4",  cardBorder: "rgba(0,0,0,0.07)"  },
+  night:  { bg: "#0f1117",  text: "#c9d1d9",  border: "#21262d",  panelBg: "#161b22",  cardBg: "#1c2128",  cardBorder: "rgba(255,255,255,0.06)" },
 };
 
 function useReadingSettings() {
@@ -1475,9 +1475,8 @@ export default function NovelRead() {
           <div
             className="relative rounded-2xl overflow-hidden mb-8"
             style={{
-              background: modeStyle.bg !== "transparent"
-                ? `color-mix(in srgb, ${modeStyle.bg} 85%, transparent)`
-                : undefined,
+              background: modeStyle.cardBg,
+              boxShadow: `0 0 0 1px ${modeStyle.cardBorder}`,
             }}
           >
             {/* Blurred cover bg */}
