@@ -550,7 +550,8 @@ function useTTS(preferredVoiceURI = "") {
     charIndexRef.current = 0;
     textOffsetRef.current = startOffset;
     const utteranceText = startOffset > 0 ? text.slice(startOffset) : text;
-    const chunks = splitTTSChunks(utteranceText);
+    // Small chunks (≤100 chars) so each finishes well within Android's ~15s limit
+    const chunks = splitTTSChunks(utteranceText, 100);
     const clampedRate = Math.max(0.5, Math.min(2.0, speechRate));
 
     const pickVoice = (voices: SpeechSynthesisVoice[]) => {
@@ -588,34 +589,24 @@ function useTTS(preferredVoiceURI = "") {
       const picked = pickVoice(voices);
       if (picked) utterance.voice = picked;
 
-      utterance.onstart = () => { stoppedRef.current = false; };
       utterance.onboundary = (e) => { if (e.name === "word") charIndexRef.current = e.charIndex; };
       utterance.onend = () => {
         if (stoppedRef.current) return;
-        clearKeepAlive();
         const nextOffset = chunkOffset + chunks[idx].length + 1;
         textOffsetRef.current = startOffset + nextOffset;
         charIndexRef.current = 0;
-        speakChunk(voices, idx + 1, nextOffset);
+        // Small delay before next chunk — helps Android Chrome settle between utterances
+        setTimeout(() => speakChunk(voices, idx + 1, nextOffset), 50);
       };
       utterance.onerror = (e) => {
         if (stoppedRef.current) return;
-        if ((e as SpeechSynthesisErrorEvent).error === "interrupted") return;
-        clearKeepAlive();
+        const err = (e as SpeechSynthesisErrorEvent).error;
+        if (err === "interrupted" || err === "canceled") return;
         setIsPlaying(false);
         setIsPaused(false);
       };
 
       window.speechSynthesis.speak(utterance);
-
-      // Keep-alive: prevents Android Chrome from silently stopping mid-chunk
-      clearKeepAlive();
-      keepAliveRef.current = setInterval(() => {
-        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }, 8000);
     };
 
     const startSpeaking = (voices: SpeechSynthesisVoice[]) => {
