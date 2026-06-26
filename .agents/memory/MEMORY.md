@@ -2,3 +2,4 @@
 - [Coin system ObjectId casting](coin-objectid.md) — all ChapterPremiumModel/UnlockedChapterModel queries need explicit `new mongoose.Types.ObjectId()` casting; string comparison fails silently with Mongoose ObjectId fields.
 - [Midtrans integration](midtrans-integration.md) — uses Snap API; midtrans-client has no @types so needs server/midtrans.d.ts; client key served via /api/payment/config endpoint; server key in MIDTRANS_SERVER_KEY env var.
 - [Always translate new features](always-translate-new-features.md) — every new feature must include EN+ID translation keys in i18n.ts in the same task, never deferred.
+- [Android TTS Web Speech API](android-tts.md) — pause/resume keep-alive kills TTS on Android; use small chunks (≤100 chars) + 50ms delay between chunks instead.
