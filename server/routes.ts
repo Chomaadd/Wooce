@@ -95,6 +95,36 @@ export async function registerRoutes(
     next();
   };
 
+  // ── Universal notify helper — DB + WS real-time + Browser Push ──────────
+  async function notifyUser(data: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    link?: string | null;
+  }): Promise<void> {
+    try {
+      const notif = await storage.createNotification(data as any);
+      const createdAt = notif.createdAt instanceof Date
+        ? notif.createdAt.toISOString()
+        : String(notif.createdAt);
+      pushNotificationToUser(data.userId, {
+        id:        notif.id,
+        type:      notif.type,
+        title:     notif.title,
+        message:   notif.message,
+        link:      (notif as any).link ?? null,
+        read:      notif.read,
+        createdAt,
+      });
+      sendPushToUser(data.userId, {
+        title: notif.title,
+        body:  notif.message,
+        url:   (notif as any).link ?? "/",
+      }).catch(() => {});
+    } catch (e) { log(`notifyUser error: ${e}`, "notif"); }
+  }
+
   // ── Passport / Google OAuth (dynamic — reads credentials from DB on each request) ──
   app.use(passport.initialize());
   app.use(passport.session());
@@ -713,7 +743,7 @@ export async function registerRoutes(
       req.session.save((err: any) => { if (err) console.error("Session save error (request-writer):", err); });
 
       sendWriterPendingEmail(user.email, user.name).catch(console.error);
-      storage.createNotification({ userId: user.id, type: "pending", title: "Pengajuan Sedang Ditinjau", message: "Permohonanmu untuk menjadi penulis sedang ditinjau oleh admin. Kami akan segera memberitahumu." }).catch(console.error);
+      notifyUser({ userId: user.id, type: "pending", title: "Pengajuan Sedang Ditinjau", message: "Permohonanmu untuk menjadi penulis sedang ditinjau oleh admin. Kami akan segera memberitahumu." });
 
       broadcastToAdmins({ type: "writer_application", userId: user.id, userName: user.name, novelTitle: "" });
 
@@ -736,7 +766,7 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "User not found" });
       const updated = await storage.updateUser(req.params.id, { status: "active" });
       sendWriterApprovedEmail(user.email, user.name).catch(console.error);
-      storage.createNotification({ userId: user.id, type: "approved", title: "Pengajuan Diterima!", message: "Selamat! Permohonanmu untuk menjadi penulis telah disetujui. Sekarang kamu bisa mulai menulis di WOOCE Novel." }).catch(console.error);
+      notifyUser({ userId: user.id, type: "approved", title: "Pengajuan Diterima!", message: "Selamat! Permohonanmu untuk menjadi penulis telah disetujui. Sekarang kamu bisa mulai menulis di WOOCE Novel." });
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -748,7 +778,7 @@ export async function registerRoutes(
       await UserModel.updateOne({ _id: req.params.id }, { $set: { rejectedAt: new Date() } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { role: "reader", status: "active" });
       sendWriterRejectedEmail(user.email, user.name).catch(console.error);
-      storage.createNotification({ userId: user.id, type: "rejected", title: "Pengajuan Tidak Disetujui", message: "Permohonanmu untuk menjadi penulis belum disetujui saat ini. Kamu bisa mencoba lagi dalam 7 hari." }).catch(console.error);
+      notifyUser({ userId: user.id, type: "rejected", title: "Pengajuan Tidak Disetujui", message: "Permohonanmu untuk menjadi penulis belum disetujui saat ini. Kamu bisa mencoba lagi dalam 7 hari." });
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -761,7 +791,7 @@ export async function registerRoutes(
       await UserModel.updateOne({ _id: req.params.id }, { $set: { suspendedAt: new Date() } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { status: "suspended" });
       sendWriterSuspendedEmail(user.email, user.name).catch(console.error);
-      storage.createNotification({ userId: user.id, type: "suspended", title: "Akun Disuspend", message: "Akunmu telah disuspend oleh admin. Cerita-ceritamu masih ada namun profilmu ditandai suspended." }).catch(console.error);
+      notifyUser({ userId: user.id, type: "suspended", title: "Akun Disuspend", message: "Akunmu telah disuspend oleh admin. Cerita-ceritamu masih ada namun profilmu ditandai suspended." });
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -772,7 +802,7 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "User not found" });
       await UserModel.updateOne({ _id: req.params.id }, { $unset: { suspendedAt: 1 } }, { strict: false });
       const updated = await storage.updateUser(req.params.id, { status: "active" });
-      storage.createNotification({ userId: user.id, type: "unsuspended" as any, title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa kembali mengakses WOOCE Novel seperti biasa." }).catch(console.error);
+      notifyUser({ userId: user.id, type: "unsuspended", title: "Akun Dipulihkan", message: "Akunmu telah dipulihkan oleh admin. Kamu bisa kembali mengakses WOOCE Novel seperti biasa." });
       res.json(updated);
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
@@ -810,12 +840,12 @@ export async function registerRoutes(
       if (user.authorId) {
         await NovelStoryModel.updateMany({ authorId: user.authorId }, { $set: { verified: true } });
       }
-      storage.createNotification({
+      notifyUser({
         userId: req.params.id,
         type: "approved",
         title: "Verifikasi Penulis Diterima!",
         message: "Selamat! Pengajuan verifikasi penulismu telah disetujui. Centang biru kini tampil di profilmu.",
-      }).catch(console.error);
+      });
       res.json({ success: true });
     } catch (err) {
       console.error("[verify-writer]", err);
@@ -836,12 +866,12 @@ export async function registerRoutes(
       if (user.authorId) {
         await NovelStoryModel.updateMany({ authorId: user.authorId }, { $set: { verified: false } });
       }
-      storage.createNotification({
+      notifyUser({
         userId: req.params.id,
         type: "rejected",
         title: "Pengajuan Verifikasi Ditolak",
         message: "Pengajuan verifikasi penulismu belum memenuhi syarat saat ini. Kamu bisa mengajukan kembali setelah 30 hari.",
-      }).catch(console.error);
+      });
       res.json({ success: true });
     } catch (err) {
       console.error("[reject-verification]", err);
