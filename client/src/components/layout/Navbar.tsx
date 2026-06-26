@@ -1,6 +1,6 @@
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle, Flame, Newspaper } from "lucide-react";
+import { Moon, Sun, Globe, Shield, Search, X, BookOpen, Bookmark, Library, PenLine, LogIn, LogOut, User, Clock, Bell, CheckCircle2, AlertCircle, AlertTriangle, BellOff, ChevronDown, Megaphone, BookMarked, BookHeart, FileText, Coins, XCircle, Flame, Newspaper, BellRing } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { LoginModal } from "@/components/layout/LoginModal";
 import { TopupModal } from "@/components/payment/TopupModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useUserWs } from "@/hooks/use-user-ws";
 
 type StoryWithStats = NovelStory & { totalChapters: number; lastChapterAt: string | null };
 
@@ -377,6 +378,15 @@ function WriterModal({ onClose, onLoginClick }: { onClose: () => void; onLoginCl
   );
 }
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+
 function notifIcon(type: AppNotification["type"]) {
   if (type === "approved") return <CheckCircle2 size={14} className="text-green-500 flex-shrink-0 mt-0.5" />;
   if (type === "rejected") return <AlertCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />;
@@ -413,6 +423,8 @@ export function Navbar() {
   const [showTopupModal, setShowTopupModal] = useState(false);
   const showNotifBell = !!user && !user.isAdmin;
 
+  useUserWs(showNotifBell ? user?.id : null);
+
   const { data: notifications = [] } = useQuery<AppNotification[]>({
     queryKey: ["/api/notifications"],
     enabled: showNotifBell,
@@ -426,6 +438,55 @@ export function Navbar() {
     mutationFn: () => apiRequest("PATCH", "/api/notifications/read-all"),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
   });
+
+  const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    if (!showNotifBell || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (Notification.permission === "denied") { setPushEnabled(false); return; }
+    fetch("/api/push/status", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setPushEnabled(d.subscribed))
+      .catch(() => {});
+  }, [showNotifBell]);
+
+  const togglePush = useCallback(async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await fetch("/api/push/unsubscribe", {
+            method: "DELETE", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+          await sub.unsubscribe();
+        }
+        setPushEnabled(false);
+      } else {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") { setPushEnabled(false); setPushLoading(false); return; }
+        const keyRes = await fetch("/api/push/vapid-key");
+        const { publicKey } = await keyRes.json();
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        await fetch("/api/push/subscribe", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sub.toJSON()),
+        });
+        setPushEnabled(true);
+      }
+    } catch (e) { console.error("Push toggle error:", e); }
+    setPushLoading(false);
+  }, [pushEnabled]);
 
   const { data: stories } = useQuery<StoryWithStats[]>({
     queryKey: ["/api/novel/stories"],
@@ -685,15 +746,35 @@ export function Navbar() {
                     >
                       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                         <p className="text-sm font-semibold text-foreground">{t("navbar.notif.title")}</p>
-                        {notifications.length > 0 && (
-                          <button
-                            onClick={() => markAllReadMutation.mutate()}
-                            className="text-[11px] text-primary hover:underline"
-                            data-testid="button-mark-all-read"
-                          >
-                            {t("navbar.notif.markAllRead")}
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {pushEnabled !== null && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={togglePush}
+                                  disabled={pushLoading}
+                                  className={`p-1 rounded-md transition-colors ${pushEnabled ? "text-primary hover:bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}
+                                  data-testid="button-push-toggle"
+                                  aria-label={pushEnabled ? t("navbar.notif.pushOff") : t("navbar.notif.pushOn")}
+                                >
+                                  {pushEnabled ? <BellRing size={13} /> : <BellOff size={13} />}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                {pushEnabled ? t("navbar.notif.pushOff") : t("navbar.notif.pushOn")}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {notifications.length > 0 && (
+                            <button
+                              onClick={() => markAllReadMutation.mutate()}
+                              className="text-[11px] text-primary hover:underline"
+                              data-testid="button-mark-all-read"
+                            >
+                              {t("navbar.notif.markAllRead")}
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="max-h-80 overflow-y-auto">
                         {notifications.length === 0 ? (

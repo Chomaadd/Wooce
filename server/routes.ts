@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { broadcastToAdmins } from "./ws-admin";
+import { createUserWsToken, pushNotificationToUser } from "./ws-user";
+import { getVapidPublicKey, sendPushToUser } from "./web-push";
+import { PushSubscriptionModel } from "./pushSubscriptionModel";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import mongoose from "mongoose";
@@ -930,6 +933,53 @@ export async function registerRoutes(
     try {
       await storage.markAllNotificationsRead(req.session.userId);
       res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  // ── WebSocket Token (short-lived, for /ws/user auth) ──────────────────────
+  app.get("/api/ws-token", requireUser, (req: any, res) => {
+    const token = createUserWsToken(req.session.userId);
+    res.json({ token });
+  });
+
+  // ── Push Subscriptions ────────────────────────────────────────────────────
+  app.get("/api/push/vapid-key", (_req, res) => {
+    const key = getVapidPublicKey();
+    if (!key) return res.status(503).json({ message: "Push not configured" });
+    res.json({ publicKey: key });
+  });
+
+  app.post("/api/push/subscribe", requireUser, async (req: any, res) => {
+    try {
+      const { endpoint, keys } = req.body;
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        return res.status(400).json({ message: "Invalid subscription" });
+      }
+      await PushSubscriptionModel.findOneAndUpdate(
+        { endpoint },
+        { userId: new mongoose.Types.ObjectId(req.session.userId), endpoint, keys },
+        { upsert: true, new: true },
+      );
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.delete("/api/push/unsubscribe", requireUser, async (req: any, res) => {
+    try {
+      const { endpoint } = req.body;
+      if (endpoint) {
+        await PushSubscriptionModel.deleteOne({ endpoint, userId: new mongoose.Types.ObjectId(req.session.userId) });
+      } else {
+        await PushSubscriptionModel.deleteMany({ userId: new mongoose.Types.ObjectId(req.session.userId) });
+      }
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
+  app.get("/api/push/status", requireUser, async (req: any, res) => {
+    try {
+      const count = await PushSubscriptionModel.countDocuments({ userId: new mongoose.Types.ObjectId(req.session.userId) });
+      res.json({ subscribed: count > 0 });
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
@@ -2908,14 +2958,36 @@ export async function registerRoutes(
             storage.getNovelStoryById(storyId),
           ]);
           if (story && followerIds.length > 0) {
-            await Promise.all(followerIds.map((uid: string) =>
-              storage.createNotification({
-                userId: uid,
-                type: "chapter_new",
-                title: `Chapter baru — ${story.title}`,
-                message: `Bab ${(chapter as any).chapterNumber}: ${(chapter as any).title} sudah tersedia!`,
-              })
-            ));
+            const chapterTitle = `Bab ${(chapter as any).chapterNumber}: ${(chapter as any).title} sudah tersedia!`;
+            const storySlug = (story as any).slug ?? storyId;
+            const chapterSlug = (chapter as any).slug ?? "";
+            const seasonSlug = "";
+            const chapterUrl = `/`;
+            const notifTitle = `Chapter baru — ${story.title}`;
+            await Promise.all(followerIds.map(async (uid: string) => {
+              try {
+                const notif = await storage.createNotification({
+                  userId: uid,
+                  type: "chapter_new",
+                  title: notifTitle,
+                  message: chapterTitle,
+                });
+                pushNotificationToUser(uid, {
+                  id:        notif.id,
+                  type:      notif.type,
+                  title:     notif.title,
+                  message:   notif.message,
+                  link:      notif.link ?? null,
+                  read:      notif.read,
+                  createdAt: notif.createdAt instanceof Date ? notif.createdAt.toISOString() : String(notif.createdAt),
+                });
+                sendPushToUser(uid, {
+                  title: notifTitle,
+                  body:  chapterTitle,
+                  url:   `/`,
+                }).catch(() => {});
+              } catch {}
+            }));
           }
         } catch (e) { console.error("Chapter notification error:", e); }
       }

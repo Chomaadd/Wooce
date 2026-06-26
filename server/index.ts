@@ -10,6 +10,8 @@ import { log, colorMethod, colorStatus, clr } from "./logger";
 import { NotificationModel } from "./notificationModel";
 import { ContactMessageModel } from "./contactMessageModel";
 import { initAdminWs } from "./ws-admin";
+import { initUserWs } from "./ws-user";
+import { initWebPush } from "./web-push";
 
 export { log };
 
@@ -68,6 +70,7 @@ const healthcheckMiddleware = (_req: Request, res: Response, next: NextFunction)
 app.use(healthcheckMiddleware);
 
 initAdminWs(httpServer);
+initUserWs(httpServer);
 
 // Start the server immediately so healthchecks work
 const port = parseInt(process.env.PORT || "5000", 10);
@@ -86,6 +89,7 @@ httpServer.listen(
 (async () => {
   try {
     await connectToDatabase();
+    await initWebPush();
 
     // Delete notifications older than 3 days on startup
     try {
