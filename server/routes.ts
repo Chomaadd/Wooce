@@ -1062,16 +1062,34 @@ export async function registerRoutes(
   });
 
   // ── Sitemap ───────────────────────────────────────────────────────────────
+  // Sitemap cache — regenerated at most once per hour
+  let sitemapCache: { xml: string; expiresAt: number } | null = null;
+
   app.get("/sitemap.xml", async (_req, res) => {
+    const now = Date.now();
+
+    if (sitemapCache && now < sitemapCache.expiresAt) {
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.send(sitemapCache.xml);
+    }
+
     const SITE_URL = process.env.SITE_URL?.replace(/\/$/, "") || "https://www.woocenovel.my.id";
     const today = new Date().toISOString().split("T")[0];
+
+    const escapeXml = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
     const makeUrl = (loc: string, lastmod: string, changefreq: string, priority: string) =>
-      `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+      `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+
+    const toDate = (d: any) => {
+      try { return new Date(d).toISOString().split("T")[0]; } catch { return today; }
+    };
 
     const staticEntries = [
       makeUrl(`${SITE_URL}/`, today, "weekly", "1.0"),
       makeUrl(`${SITE_URL}/novels`, today, "weekly", "0.9"),
-      makeUrl(`${SITE_URL}/blog`, today, "weekly", "0.8"),
       makeUrl(`${SITE_URL}/faq`, today, "monthly", "0.6"),
       makeUrl(`${SITE_URL}/contact`, today, "monthly", "0.6"),
       makeUrl(`${SITE_URL}/terms`, today, "yearly", "0.4"),
@@ -1080,23 +1098,52 @@ export async function registerRoutes(
 
     let novelEntries = "";
     try {
+      // Fetch all data in parallel — no N+1 loop
       const stories = await storage.getNovelStories(true);
+      const [allSeasons, allChapters] = await Promise.all([
+        NovelSeasonModel.find({}).lean(),
+        NovelChapterModel.find({ published: true }).lean(),
+      ]);
+
+      // Index for fast lookup
+      const seasonsByStory = new Map<string, typeof allSeasons>();
+      for (const s of allSeasons) {
+        const key = s.storyId?.toString() ?? "";
+        if (!seasonsByStory.has(key)) seasonsByStory.set(key, []);
+        seasonsByStory.get(key)!.push(s);
+      }
+      const chaptersBySeason = new Map<string, typeof allChapters>();
+      for (const c of allChapters) {
+        const key = c.seasonId?.toString() ?? "";
+        if (!chaptersBySeason.has(key)) chaptersBySeason.set(key, []);
+        chaptersBySeason.get(key)!.push(c);
+      }
+
       const lines: string[] = [];
       for (const story of stories) {
-        lines.push(makeUrl(`${SITE_URL}/${story.slug}`, today, "weekly", "0.8"));
-        const seasons = await storage.getNovelSeasons(story.id);
+        lines.push(makeUrl(`${SITE_URL}/${story.slug}`, toDate((story as any).updatedAt ?? (story as any).createdAt), "weekly", "0.8"));
+        const seasons = seasonsByStory.get(story.id) ?? [];
         for (const season of seasons) {
-          const chapters = await storage.getNovelChapters(season.id, true);
+          const chapters = chaptersBySeason.get(season._id?.toString() ?? "") ?? [];
           for (const chapter of chapters) {
-            lines.push(makeUrl(`${SITE_URL}/${story.slug}/season-${season.seasonNumber}/bab-${chapter.chapterNumber}`, today, "monthly", "0.6"));
+            lines.push(makeUrl(
+              `${SITE_URL}/${story.slug}/season-${season.seasonNumber}/bab-${chapter.chapterNumber}`,
+              toDate((chapter as any).updatedAt ?? (chapter as any).createdAt),
+              "monthly", "0.6"
+            ));
           }
         }
       }
       novelEntries = lines.join("\n");
     } catch { novelEntries = ""; }
 
-    res.setHeader("Content-Type", "application/xml");
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${novelEntries}\n</urlset>`);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${staticEntries}\n${novelEntries}\n</urlset>`;
+
+    sitemapCache = { xml, expiresAt: now + 60 * 60 * 1000 };
+
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(xml);
   });
 
   app.get("/robots.txt", (_req, res) => {
