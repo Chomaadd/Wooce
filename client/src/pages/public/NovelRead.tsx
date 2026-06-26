@@ -494,22 +494,22 @@ function useAvailableVoices() {
 }
 
 // Split text into short chunks at sentence boundaries for mobile TTS reliability
+// Uses simple replace+split to avoid lookbehind regex (not supported on older Android WebView)
 function splitTTSChunks(text: string, maxLen = 180): string[] {
+  // Insert delimiter AFTER sentence-ending punctuation, then split on it
+  const marked = text.replace(/([.!?。\n])\s*/g, "$1\x00");
+  const sentences = marked.split("\x00").map(s => s.trim()).filter(Boolean);
   const chunks: string[] = [];
-  // Split on sentence-ending punctuation
-  const sentences = text.split(/(?<=[.!?。\n])\s*/);
   let current = "";
   for (const s of sentences) {
-    const part = s.trim();
-    if (!part) continue;
-    if (current.length + part.length + 1 > maxLen && current) {
-      chunks.push(current.trim());
-      current = part;
+    if (current.length + s.length + 1 > maxLen && current) {
+      chunks.push(current);
+      current = s;
     } else {
-      current += (current ? " " : "") + part;
+      current += (current ? " " : "") + s;
     }
   }
-  if (current.trim()) chunks.push(current.trim());
+  if (current) chunks.push(current);
   return chunks.length ? chunks : [text];
 }
 
