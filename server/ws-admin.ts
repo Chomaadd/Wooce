@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
 import type { IncomingMessage } from "http";
+import type { Duplex } from "stream";
 import { log } from "./logger";
 
 export type AdminWsEvent =
@@ -14,7 +15,7 @@ export type AdminWsEvent =
 const adminClients = new Set<WebSocket>();
 
 export function initAdminWs(server: Server) {
-  const wss = new WebSocketServer({ server, path: "/ws/admin" });
+  const wss = new WebSocketServer({ noServer: true });
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     adminClients.add(ws);
@@ -37,6 +38,14 @@ export function initAdminWs(server: Server) {
     });
 
     ws.send(JSON.stringify({ type: "connected" }));
+  });
+
+  server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    if (req.url === "/ws/admin") {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
+      });
+    }
   });
 
   log("Admin WebSocket server initialized at /ws/admin", "ws");
