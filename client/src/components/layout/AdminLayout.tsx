@@ -213,7 +213,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={() => setCredentialsOpen(true)}
-              className="relative flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
+              className="relative hidden sm:flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded-md border border-border transition-all"
               data-testid="button-open-credentials"
               title={
                 configStatus === undefined ? "Memuat status..." :

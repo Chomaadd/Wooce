@@ -1610,9 +1610,9 @@ export default function ManageNovel() {
     <div className="min-h-screen bg-background">
       <AdminHeader />
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
-          {/* Tab Nav — icon only, tooltip on hover, centered */}
-        <div className="mb-6 flex justify-center">
-          <div className="inline-flex items-center gap-0.5 p-1 bg-muted/60 rounded-2xl border border-border/40 shadow-sm">
+          {/* Tab Nav — icon only, tooltip on hover, centered, scrollable on mobile */}
+        <div className="mb-6 flex justify-center overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-0.5 p-1 bg-muted/60 rounded-2xl border border-border/40 shadow-sm min-w-max">
             {(() => {
               const isStoryView = ["stories", "seasons", "chapters", "write"].includes(view);
 

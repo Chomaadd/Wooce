@@ -493,12 +493,32 @@ function useAvailableVoices() {
   return voices;
 }
 
+// Split text into short chunks at sentence boundaries for mobile TTS reliability
+function splitTTSChunks(text: string, maxLen = 180): string[] {
+  const chunks: string[] = [];
+  // Split on sentence-ending punctuation
+  const sentences = text.split(/(?<=[.!?。\n])\s*/);
+  let current = "";
+  for (const s of sentences) {
+    const part = s.trim();
+    if (!part) continue;
+    if (current.length + part.length + 1 > maxLen && current) {
+      chunks.push(current.trim());
+      current = part;
+    } else {
+      current += (current ? " " : "") + part;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text];
+}
+
 function useTTS(preferredVoiceURI = "") {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [rate, setRate] = useState(1.0);
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const intentionalCancelRef = useRef(false);
+  const stoppedRef = useRef(false);
   const charIndexRef = useRef(0);
   const textOffsetRef = useRef(0);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -507,9 +527,14 @@ function useTTS(preferredVoiceURI = "") {
     return textOffsetRef.current + charIndexRef.current;
   }, []);
 
-  const stop = useCallback(() => {
+  const clearKeepAlive = () => {
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
-    if (supported) { intentionalCancelRef.current = false; window.speechSynthesis.cancel(); }
+  };
+
+  const stop = useCallback(() => {
+    clearKeepAlive();
+    stoppedRef.current = true;
+    if (supported) window.speechSynthesis.cancel();
     charIndexRef.current = 0;
     textOffsetRef.current = 0;
     setIsPlaying(false);
@@ -518,17 +543,15 @@ function useTTS(preferredVoiceURI = "") {
 
   const speak = useCallback((text: string, speechRate: number, startOffset = 0) => {
     if (!supported || !text.trim()) return;
-    if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
-    intentionalCancelRef.current = true;
+    clearKeepAlive();
+    stoppedRef.current = true;
     window.speechSynthesis.cancel();
 
     charIndexRef.current = 0;
     textOffsetRef.current = startOffset;
     const utteranceText = startOffset > 0 ? text.slice(startOffset) : text;
-
-    const utterance = new SpeechSynthesisUtterance(utteranceText);
-    utterance.lang = "id-ID";
-    utterance.rate = Math.max(0.5, Math.min(2.0, speechRate));
+    const chunks = splitTTSChunks(utteranceText);
+    const clampedRate = Math.max(0.5, Math.min(2.0, speechRate));
 
     const pickVoice = (voices: SpeechSynthesisVoice[]) => {
       if (preferredVoiceURI) {
@@ -536,7 +559,6 @@ function useTTS(preferredVoiceURI = "") {
         if (preferred) return preferred;
       }
       const idVoices = voices.filter(v => v.lang.startsWith("id"));
-      // FIX: fall back to any available voice instead of returning null
       if (idVoices.length === 0) return voices[0] ?? null;
       const femaleKeywords = ["damayanti", "female", "wanita", "perempuan", "woman", "girl", "siti", "sri"];
       const maleKeywords = ["male", "laki", "pria", "man", "boy"];
@@ -549,46 +571,65 @@ function useTTS(preferredVoiceURI = "") {
       return maleVoice || idVoices[0];
     };
 
-    utterance.onstart = () => { intentionalCancelRef.current = false; };
-    utterance.onboundary = (e) => { if (e.name === "word") charIndexRef.current = e.charIndex; };
-    utterance.onend = () => {
-      if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
-      charIndexRef.current = 0;
-      textOffsetRef.current = 0;
-      setIsPlaying(false);
-      setIsPaused(false);
-    };
-    utterance.onerror = (e) => {
-      if (intentionalCancelRef.current) return;
-      if ((e as SpeechSynthesisErrorEvent).error === "interrupted") return;
-      if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
-      setIsPlaying(false);
-      setIsPaused(false);
-    };
+    const speakChunk = (voices: SpeechSynthesisVoice[], idx: number, chunkOffset: number) => {
+      if (stoppedRef.current || idx >= chunks.length) {
+        if (!stoppedRef.current) {
+          charIndexRef.current = 0;
+          textOffsetRef.current = 0;
+          setIsPlaying(false);
+          setIsPaused(false);
+        }
+        return;
+      }
 
-    // FIX: startSpeaking is called AFTER voice is assigned — critical for mobile
-    const startSpeaking = (voices: SpeechSynthesisVoice[]) => {
+      const utterance = new SpeechSynthesisUtterance(chunks[idx]);
+      utterance.lang = "id-ID";
+      utterance.rate = clampedRate;
       const picked = pickVoice(voices);
       if (picked) utterance.voice = picked;
+
+      utterance.onstart = () => { stoppedRef.current = false; };
+      utterance.onboundary = (e) => { if (e.name === "word") charIndexRef.current = e.charIndex; };
+      utterance.onend = () => {
+        if (stoppedRef.current) return;
+        clearKeepAlive();
+        const nextOffset = chunkOffset + chunks[idx].length + 1;
+        textOffsetRef.current = startOffset + nextOffset;
+        charIndexRef.current = 0;
+        speakChunk(voices, idx + 1, nextOffset);
+      };
+      utterance.onerror = (e) => {
+        if (stoppedRef.current) return;
+        if ((e as SpeechSynthesisErrorEvent).error === "interrupted") return;
+        clearKeepAlive();
+        setIsPlaying(false);
+        setIsPaused(false);
+      };
+
       window.speechSynthesis.speak(utterance);
-      setIsPlaying(true);
-      setIsPaused(false);
-      // Keep-alive: prevent auto-stop on Chrome desktop AND mobile browsers
+
+      // Keep-alive: prevents Android Chrome from silently stopping mid-chunk
+      clearKeepAlive();
       keepAliveRef.current = setInterval(() => {
         if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
           window.speechSynthesis.pause();
           window.speechSynthesis.resume();
         }
-      }, 14000);
+      }, 8000);
     };
 
+    const startSpeaking = (voices: SpeechSynthesisVoice[]) => {
+      stoppedRef.current = false;
+      speakChunk(voices, 0, 0);
+      setIsPlaying(true);
+      setIsPaused(false);
+    };
+
+    // Mobile: voices may load async — must wait before calling speak()
     const currentVoices = window.speechSynthesis.getVoices();
     if (currentVoices.length > 0) {
-      // Desktop: voices already available — speak immediately
       startSpeaking(currentVoices);
     } else {
-      // Mobile: voices load async — MUST wait before calling speak()
-      // Calling speak() before voices are set causes silent failure on mobile
       const onVoicesChanged = () => {
         window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
         startSpeaking(window.speechSynthesis.getVoices());
@@ -610,7 +651,7 @@ function useTTS(preferredVoiceURI = "") {
   }, [supported]);
 
   useEffect(() => () => {
-    if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+    clearKeepAlive();
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
