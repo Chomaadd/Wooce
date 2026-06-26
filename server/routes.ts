@@ -1105,6 +1105,10 @@ export async function registerRoutes(
     res.send(`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /admin\nDisallow: /login\nDisallow: /api/\nDisallow: /writer/\nDisallow: /writer\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
   });
 
+  app.get("/favicon.ico", (_req, res) => {
+    res.redirect(301, "/image/favicon.png");
+  });
+
   // ── Novel Stories ─────────────────────────────────────────────────────────
   // In-memory cache for public stories list (avoids repeated MongoDB round-trips)
   let storiesCache: { data: any[]; expiresAt: number } | null = null;
