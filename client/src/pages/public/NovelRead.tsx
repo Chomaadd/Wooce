@@ -43,7 +43,7 @@ const FONT_FAMILY_VALUE: Record<FontFamily, string> = {
 };
 
 const MODE_STYLES: Record<ReadingMode, { bg: string; text: string; border: string; panelBg: string }> = {
-  light:  { bg: "transparent",  text: "inherit",  border: "transparent", panelBg: "#ffffff" },
+  light:  { bg: "#ffffff",       text: "#111827",  border: "#e5e7eb",     panelBg: "#ffffff" },
   sepia:  { bg: "#faf3e8",       text: "#5c3d1e",  border: "#e8d9c0",     panelBg: "#f5e9d5" },
   night:  { bg: "#0f1117",       text: "#c9d1d9",  border: "#21262d",     panelBg: "#161b22" },
 };
@@ -1203,9 +1203,20 @@ export default function NovelRead() {
   const fontClass   = FONT_CLASS_MAP[settings.fontFamily];
   const fontFamilyOverride: React.CSSProperties = settings.fontFamily === "georgia"
     ? { fontFamily: "Georgia, 'Times New Roman', serif" } : {};
-  const proseInvert = settings.mode === "light" ? "dark:prose-invert" : settings.mode === "night" ? "prose-invert" : "";
+  const proseInvert = settings.mode === "night" ? "prose-invert" : "";
 
   const proseColorVars: React.CSSProperties =
+    settings.mode === "light" ? {
+      "--tw-prose-body":          "#111827",
+      "--tw-prose-headings":      "#030712",
+      "--tw-prose-bold":          "#030712",
+      "--tw-prose-links":         "#2563eb",
+      "--tw-prose-code":          "#111827",
+      "--tw-prose-quotes":        "#374151",
+      "--tw-prose-quote-borders": "#d1d5db",
+      "--tw-prose-captions":      "#6b7280",
+      "--tw-prose-hr":            "#e5e7eb",
+    } as React.CSSProperties :
     settings.mode === "sepia" ? {
       "--tw-prose-body":          "#5c3d1e",
       "--tw-prose-headings":      "#3d2810",
@@ -1552,7 +1563,7 @@ export default function NovelRead() {
                     background: `linear-gradient(to bottom, transparent, ${
                       settings.mode === "night" ? "#0f1117" :
                       settings.mode === "sepia" ? "#faf3e8" :
-                      "var(--background)"
+                      "#ffffff"
                     })`,
                   }}
                 />
