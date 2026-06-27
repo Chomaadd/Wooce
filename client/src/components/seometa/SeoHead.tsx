@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { useSiteSettings } from "@/hooks/use-settings";
 
-const FALLBACK_NAME = "WOOCE Novel";
+const FALLBACK_NAME = "Wooce Novel";
 const FALLBACK_DESCRIPTION = "Platform baca novel, komik, dan cerita pendek terbaik";
 const FALLBACK_OG_IMAGE = "/image/icon-email-new.png";
 

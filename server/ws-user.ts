@@ -23,7 +23,7 @@ export function initUserWs(server: Server) {
   wss.on("connection", (ws: WebSocket, userId: string) => {
     if (!userClients.has(userId)) userClients.set(userId, new Set());
     userClients.get(userId)!.add(ws);
-    log(`User WS connected: ${userId} (total connections: ${[...userClients.values()].reduce((a, s) => a + s.size, 0)})`, "ws");
+    log(`User WS connected: ${userId} (total connections: ${Array.from(userClients.values()).reduce((a, s) => a + s.size, 0)})`, "ws");
 
     ws.on("close", () => {
       userClients.get(userId)?.delete(ws);
