@@ -28,7 +28,7 @@ export async function initWebPush() {
     _vapidPrivate = doc.privateKey;
 
     webpush.setVapidDetails(
-      "mailto:admin@woocenovel.my.id",
+      "mailto:support@woocenovel.my.id",
       _vapidPublic,
       _vapidPrivate,
     );
