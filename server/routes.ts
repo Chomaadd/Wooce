@@ -1115,7 +1115,7 @@ export async function registerRoutes(
       else if (target === "readers") users = await storage.getUsers("reader");
       else users = await storage.getUsers();
       await Promise.all(users.map((u: any) =>
-        storage.createNotification({ userId: u.id, type: "announcement", title, message })
+        notifyUser({ userId: u.id, type: "announcement", title, message })
       ));
       res.json({ sent: users.length });
     } catch { res.status(500).json({ message: "Internal server error" }); }
@@ -1532,12 +1532,12 @@ export async function registerRoutes(
         sendStoryRemovedByReportEmail(writerEmail, writerName, report.storyTitle, reasonLabel, pdfBuffer).catch(console.error);
       }
       if (writerId) {
-        storage.createNotification({
+        notifyUser({
           userId: writerId,
-          type: "story_removed" as any,
+          type: "story_removed",
           title: "Ceritamu Dihapus",
           message: `Ceritamu "${report.storyTitle}" dihapus dari platform karena: ${reasonLabel}. File backup dikirim ke emailmu.`,
-        }).catch(console.error);
+        });
       }
 
       await ReportModel.updateMany({ storyId: report.storyId, status: "pending" }, { $set: { status: "approved" } });
@@ -1552,12 +1552,12 @@ export async function registerRoutes(
 
       // Send in-app notification to the reporter if they're a logged-in user
       if (report.reporterId) {
-        storage.createNotification({
+        notifyUser({
           userId: report.reporterId,
-          type: "report_rejected" as any,
+          type: "report_rejected",
           title: "Laporan Ditolak",
           message: `Laporan kamu untuk cerita "${report.storyTitle}" telah ditinjau dan tidak memenuhi kriteria pelanggaran kami. Terima kasih telah membantu menjaga kualitas platform.`,
-        }).catch(console.error);
+        });
       }
 
       res.json({ ...report.toObject(), id: report._id.toString() });
@@ -1971,13 +1971,13 @@ export async function registerRoutes(
         description: `Login bonus hari ke-${currentDay} dalam siklus${questBonus > 0 ? ` + Quest ${questMilestone} hari` : ""}`,
       });
       if (questBonus > 0) {
-        storage.createNotification({
+        notifyUser({
           userId,
-          type: "bonus" as any,
+          type: "bonus",
           title: `Quest Selesai! +${questBonus} Koin`,
           message: `Login ${questMilestone} hari berturut-turut! Bonus ${questBonus} koin langsung ditambahkan.`,
           link: "/koin/riwayat",
-        }).catch(console.error);
+        });
       }
       res.json({ coinsEarned, questBonus, questMilestone, totalStreak, currentDay, totalCoins });
     } catch { res.status(500).json({ message: "Internal server error" }); }
@@ -2099,13 +2099,13 @@ export async function registerRoutes(
       const notifMessage = note
         ? `Admin menambahkan ${amount} koin ke akunmu. Catatan: ${note}`
         : `Admin menambahkan ${amount} koin ke akunmu.`;
-      storage.createNotification({
+      notifyUser({
         userId: user.id,
         type: "topup_success",
         title: `+${amount} Koin Ditambahkan`,
         message: notifMessage,
         link: "/koin/riwayat",
-      }).catch(console.error);
+      });
 
       res.json({ success: true, coins: newBalance });
     } catch (err: any) {
@@ -2432,13 +2432,13 @@ export async function registerRoutes(
 
         // Notifikasi in-app: pembelian berhasil
         const priceFormatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(order.amount);
-        storage.createNotification({
+        notifyUser({
           userId: order.userId.toString(),
           type: "topup_success",
           title: `${order.coins} Koin Berhasil Ditambahkan!`,
           message: `Pembelian ${order.coins} koin seharga ${priceFormatted} telah berhasil. Koin langsung bisa digunakan untuk membaca chapter premium.`,
           link: "/koin/riwayat",
-        }).catch(console.error);
+        });
 
         { const buyer = await UserModel.findById(order.userId).select("name username").lean() as any;
           broadcastToAdmins({ type: "payment_received", orderId, coins: order.coins, amount: order.amount, userName: buyer?.name || buyer?.username || "User" }); }
@@ -2449,13 +2449,13 @@ export async function registerRoutes(
         // Notifikasi in-app: pembelian gagal
         const reasonMap: Record<string, string> = { cancel: "dibatalkan", deny: "ditolak oleh bank", expire: "kedaluwarsa" };
         const reason = reasonMap[txStatus] || "tidak berhasil";
-        storage.createNotification({
+        notifyUser({
           userId: order.userId.toString(),
           type: "topup_failed",
           title: "Pembelian Koin Gagal",
           message: `Transaksi untuk ${order.coins} koin ${reason}. Tidak ada koin yang dikurangi. Kamu bisa coba lagi kapan saja.`,
           link: "/koin/riwayat",
-        }).catch(console.error);
+        });
 
         broadcastToAdmins({ type: "payment_failed", orderId, coins: order.coins, reason });
       }
@@ -2547,13 +2547,13 @@ export async function registerRoutes(
             description: `Top-up ${order.coins} koin (${orderId})`,
           });
           const priceFormatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(order.amount);
-          storage.createNotification({
+          notifyUser({
             userId: req.session.userId,
             type: "topup_success",
             title: `${order.coins} Koin Berhasil Ditambahkan!`,
             message: `Pembelian ${order.coins} koin seharga ${priceFormatted} telah dikonfirmasi.`,
             link: "/koin/riwayat",
-          }).catch(console.error);
+          });
 
           const buyer = await UserModel.findById(userObjId).select("name username").lean() as any;
           broadcastToAdmins({ type: "payment_received", orderId, coins: order.coins, amount: order.amount, userName: buyer?.name || buyer?.username || "User" });
@@ -2988,36 +2988,11 @@ export async function registerRoutes(
             storage.getNovelStoryById(storyId),
           ]);
           if (story && followerIds.length > 0) {
-            const chapterTitle = `Bab ${(chapter as any).chapterNumber}: ${(chapter as any).title} sudah tersedia!`;
-            const storySlug = (story as any).slug ?? storyId;
-            const chapterSlug = (chapter as any).slug ?? "";
-            const seasonSlug = "";
-            const chapterUrl = `/`;
-            const notifTitle = `Chapter baru — ${story.title}`;
-            await Promise.all(followerIds.map(async (uid: string) => {
-              try {
-                const notif = await storage.createNotification({
-                  userId: uid,
-                  type: "chapter_new",
-                  title: notifTitle,
-                  message: chapterTitle,
-                });
-                pushNotificationToUser(uid, {
-                  id:        notif.id,
-                  type:      notif.type,
-                  title:     notif.title,
-                  message:   notif.message,
-                  link:      notif.link ?? null,
-                  read:      notif.read,
-                  createdAt: notif.createdAt instanceof Date ? notif.createdAt.toISOString() : String(notif.createdAt),
-                });
-                sendPushToUser(uid, {
-                  title: notifTitle,
-                  body:  chapterTitle,
-                  url:   `/`,
-                }).catch(() => {});
-              } catch {}
-            }));
+            const notifTitle  = `Chapter baru — ${story.title}`;
+            const notifBody   = `Bab ${(chapter as any).chapterNumber}: ${(chapter as any).title} sudah tersedia!`;
+            await Promise.all(followerIds.map((uid: string) =>
+              notifyUser({ userId: uid, type: "chapter_new", title: notifTitle, message: notifBody })
+            ));
           }
         } catch (e) { console.error("Chapter notification error:", e); }
       }
