@@ -441,6 +441,15 @@ export function Navbar() {
 
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
   const [pushLoading, setPushLoading] = useState(false);
+  const [pushTestLoading, setPushTestLoading] = useState(false);
+
+  const testPush = useCallback(async () => {
+    setPushTestLoading(true);
+    try {
+      await fetch("/api/push/test", { method: "POST", credentials: "include" });
+    } catch {}
+    setTimeout(() => setPushTestLoading(false), 2000);
+  }, []);
 
   useEffect(() => {
     if (!showNotifBell || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -748,22 +757,44 @@ export function Navbar() {
                         <p className="text-sm font-semibold text-foreground">{t("navbar.notif.title")}</p>
                         <div className="flex items-center gap-2">
                           {pushEnabled !== null && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={togglePush}
-                                  disabled={pushLoading}
-                                  className={`p-1 rounded-md transition-colors ${pushEnabled ? "text-primary hover:bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}
-                                  data-testid="button-push-toggle"
-                                  aria-label={pushEnabled ? t("navbar.notif.pushOff") : t("navbar.notif.pushOn")}
-                                >
-                                  {pushEnabled ? <BellRing size={13} /> : <BellOff size={13} />}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" className="text-xs">
-                                {pushEnabled ? t("navbar.notif.pushOff") : t("navbar.notif.pushOn")}
-                              </TooltipContent>
-                            </Tooltip>
+                            <>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={togglePush}
+                                    disabled={pushLoading}
+                                    className={`p-1 rounded-md transition-colors ${pushEnabled ? "text-primary hover:bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}
+                                    data-testid="button-push-toggle"
+                                    aria-label={pushEnabled ? t("navbar.notif.pushOff") : t("navbar.notif.pushOn")}
+                                  >
+                                    {pushEnabled ? <BellRing size={13} /> : <BellOff size={13} />}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="text-xs">
+                                  {pushEnabled ? t("navbar.notif.pushOff") : t("navbar.notif.pushOn")}
+                                </TooltipContent>
+                              </Tooltip>
+                              {pushEnabled && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={testPush}
+                                      disabled={pushTestLoading}
+                                      className="p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                                      data-testid="button-push-test"
+                                      aria-label={t("navbar.notif.pushTest")}
+                                    >
+                                      {pushTestLoading
+                                        ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin block" />
+                                        : <span className="text-[11px] leading-none">✦</span>}
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="text-xs">
+                                    {t("navbar.notif.pushTest")}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </>
                           )}
                           {notifications.length > 0 && (
                             <button

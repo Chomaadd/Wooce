@@ -1013,6 +1013,19 @@ export async function registerRoutes(
     } catch { res.status(500).json({ message: "Internal server error" }); }
   });
 
+  app.post("/api/push/test", requireUser, async (req: any, res) => {
+    try {
+      const count = await PushSubscriptionModel.countDocuments({ userId: new mongoose.Types.ObjectId(req.session.userId) });
+      if (count === 0) return res.status(400).json({ message: "Belum subscribe push notification" });
+      await sendPushToUser(req.session.userId, {
+        title: "🔔 Test Notifikasi WOOCE Novel",
+        body:  "Push notification berhasil! Kamu akan dapat notif chapter baru & info akun di sini.",
+        url:   "/",
+      });
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Internal server error" }); }
+  });
+
   // ── Follow ────────────────────────────────────────────────────────────────
   app.post("/api/novel/stories/:id/follow", requireUser, async (req: any, res) => {
     try {
